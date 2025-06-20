@@ -1,0 +1,56 @@
+{% load render_table from django_tables2 %}
+{% load helpers %}
+
+<div class="card">
+  <h5 class="card-header">
+    <i class="mdi mdi-license"></i> License Overview
+  </h5>
+  <div class="card-body">
+    <!-- Summary Stats -->
+    <div class="row mb-3">
+      <div class="col-md-3">
+        <div class="card bg-light">
+          <div class="card-body text-center">
+            <h5 class="card-title text-primary">{{ table.data|length }}</h5>
+            <p class="card-text small text-muted">Total Licenses</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card bg-light">
+          <div class="card-body text-center">
+            <h5 class="card-title">{{ total_cost|floatformat:2 }} kr</h5>
+            <p class="card-text small text-muted">Total Cost</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card bg-light">
+          <div class="card-body text-center">
+            <h5 class="card-title text-warning">{{ expiring_soon_count }}</h5>
+            <p class="card-text small text-muted">Expiring Soon</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card bg-light">
+          <div class="card-body text-center">
+            <h5 class="card-title text-danger">{{ expired_count }}</h5>
+            <p class="card-text small text-muted">Expired</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- License Table -->
+    {% if table.data %}
+      <h6 class="mb-3">License Instances</h6>
+      {% render_table table %}
+    {% else %}
+      <div class="text-muted text-center py-4">
+        <i class="mdi mdi-license-outline mdi-48px"></i>
+        <p class="mt-2">No license instances assigned to this contact.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>

@@ -1,0 +1,43 @@
+{% extends 'generic/object.html' %}
+{% load helpers %}
+
+  {% block content %}
+<div class="row">
+  <div class="col col-md-6">
+    <div class="card">
+      <h5 class="card-header">License Instance</h5>
+      <div class="card-body">
+        <table class="table table-hover attr-table">
+          <tr>
+            <td>License</td>
+            <td>{{ object.license }}</td>
+          </tr>
+          <tr>
+            <td>Assigned User</td>
+            <td>{{ object.assigned_user|default:"—" }}</td>
+          </tr>
+          <tr>
+            <td>Effective Price</td>
+            <td>{{ object.effective_price|default:"—" }}</td>
+          </tr>
+          <tr>
+            <td>Status</td>
+          <tr>
+            <td>Status</td>
+            <td>
+              {% if object.derived_status %}
+              <span class="badge text-bg-{{ object.get_derived_status_class }}">{{ object.derived_status|capfirst }}</span>
+              {% else %}
+              -
+              {% endif %}
+            </td>
+          </tr>
+
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
