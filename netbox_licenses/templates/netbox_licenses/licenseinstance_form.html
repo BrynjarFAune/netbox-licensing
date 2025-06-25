@@ -1,0 +1,34 @@
+{% extends 'generic/object_edit.html' %}
+{% load form_helpers %}
+
+  {% block content %}
+  <form method="post" enctype="multipart/form-data" class="form">
+    {% csrf_token %}
+    {% render_errors form %}
+
+    <div class="field-group">
+      {% render_field form.license %}
+      {% render_field form.price_override %}
+      {% render_field form.start_date %}
+      {% render_field form.end_date %}
+      {% render_field form.comments %}
+      {% render_field form.tags %}
+
+      <div
+        id="assigned-object-container"
+        hx-get="{% url 'plugins:netbox_licenses:assigned-object-field' %}"
+        hx-target="#assigned-object-container"
+        hx-trigger="change from:#id_license"
+        hx-include="[name='license']"
+      >
+        {% include 'netbox_licenses/assigned_object_field.html' %}
+      </div>
+
+    {% block buttons %}
+    <div class="form-group text-end noprint">
+      <button type="submit" class="btn btn-primary">Save</button>
+      <a href="{{ return_url }}" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+    {% endblock %}
+  </form>
+  {% endblock %}

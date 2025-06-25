@@ -17,7 +17,7 @@ class LicenseInstanceFilterSet(NetBoxModelFilterSet):
 
     class Meta:
         model = LicenseInstance
-        fields = ('id', 'license', 'assigned_user', 'start_date', 'end_date', 'start_date__gte', 'end_date__lte', 'derived_status')
+        fields = ('id', 'license', 'start_date', 'end_date', 'start_date__gte', 'end_date__lte', 'derived_status')
 
     def search(self, queryset, name, value):
         return queryset.filter(description_icontains=value)
@@ -32,10 +32,6 @@ class LicenseInstanceFilterForm(NetBoxModelFilterSetForm):
 
     license = forms.ModelMultipleChoiceField(
         queryset=License.objects.all(),
-        required=False
-    )
-    assigned_user = forms.ModelMultipleChoiceField(
-        queryset=Contact.objects.all(),
         required=False
     )
     derived_status = forms.MultipleChoiceField(

@@ -32,7 +32,7 @@ class LicenseTable(NetBoxTable):
         return record.total_cost
 
     def render_assigned_count(self, record):
-        return record.instances.filter(assigned_user__isnull=False).count()
+        return sum(1 for i in record.instances.all() if i.assigned_object is not None)
 
     def render_warning_count(self, record):
         from django.utils import timezone
@@ -46,7 +46,7 @@ class LicenseTable(NetBoxTable):
 
 class LicenseInstanceTable(NetBoxTable):
     license = tables.Column(linkify=True)
-    assigned_user = tables.Column(linkify=True)
+    assigned_object = tables.Column(linkify=True, verbose_name="Assigned To")
     start_date = tables.DateColumn(format='d/m/Y')
     end_date = tables.DateColumn(format='d/m/Y')
     status = tables.Column(verbose_name="Status", orderable=False, accessor='derived_status')
@@ -55,10 +55,10 @@ class LicenseInstanceTable(NetBoxTable):
     class Meta(NetBoxTable.Meta):
         model = LicenseInstance
         fields = (
-            'pk', 'id', 'license', 'assigned_user', 'start_date', 'end_date', 'status', 'effective_price', 'actions'
+            'pk', 'id', 'license', 'assigned_object', 'start_date', 'end_date', 'status', 'effective_price', 'actions'
         )
         default_columns = (
-            'id', 'license', 'assigned_user', 'effective_price', 'status'
+            'id', 'license', 'assigned_object', 'effective_price', 'status'
         )
 
     def render_effective_price(self, record):

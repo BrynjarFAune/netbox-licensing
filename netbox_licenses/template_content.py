@@ -2,28 +2,36 @@ from netbox.plugins import PluginTemplateExtension
 from .models import LicenseInstance
 from .tables import LicenseInstanceTable
 from .choices import LicenseStatusChoices
+from django.contrib.contenttypes.models import ContentType
 from django.db.models import Sum
 from decimal import Decimal
 
-class ContactLicenseInstance(PluginTemplateExtension):
-    models = ['tenancy.contact']
+class ObjectLicenseInstance(PluginTemplateExtension):
+    models = ['tenancy.contact', 'dcim.device', 'virtualization.virtualmachine', 'tenancy.tenant']
 
     def right_page(self):
-        instances = LicenseInstance.objects.filter(assigned_user=self.context['object'])
+        obj = self.context['object']
+        ct = ContentType.objects.get_for_model(obj)
+
+        instances = LicenseInstance.objects.filter(
+            assigned_object_type=ct,
+            assigned_object_id=obj.pk
+        )
+
         if not instances.exists():
             return ""
 
-        total_cost = sum(instance.effective_price or Decimal('0') for instance in instances)
-        expiring_soon_count = sum(1 for instance in instances if instance.derived_status == LicenseStatusChoices.WARNING)
-        expired_count = sum(1 for instance in instances if instance.derived_status == LicenseStatusChoices.EXPIRED)
+        total_cost = sum(i.effective_prive or Decimal('0') for i in instances)
+        expiring_soon = sum(1 for i in instances if i.derived_status == LicenseStatusChoices.WARNING)
+        expired = sum(1 for i in instances if i.derived_status == LicenseStatusChoices.EXPIRED)
 
         table = LicenseInstanceTable(instances, user=self.context['request'].user)
 
-        return self.render("netbox_licenses/contact_licenses.html", extra_context={
+        return self.render("netbox_licenses/object_licenses.html", extra_context={
             "table": table,
             "total_cost": total_cost,
-            "expiring_soon_count": expiring_soon_count,
-            "expired_count": expired_count,
+            "expiring_soon_count": expiring_soon,
+            "expired_count": expired,
         })
 
-template_extensions = [ContactLicenseInstance]
+template_extensions = [ObjectLicenseInstance]

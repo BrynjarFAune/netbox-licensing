@@ -2,7 +2,7 @@ from django.urls import path
 from netbox.views.generic import ObjectChangeLogView
 from . import models, views
 
-urlpatterns = (
+urlpatterns = [
     # Licenses
     path('licenses/', views.LicenseListView.as_view(), name='license_list'),
     path('licenses/add/', views.LicenseAddView.as_view(), name='license_add'),
@@ -22,4 +22,6 @@ urlpatterns = (
     path('license-instances/<int:pk>/changelog', ObjectChangeLogView.as_view(), name='licenseinstance_changelog', kwargs={
         'model': models.LicenseInstance
     }),
-)
+
+    path('ajax/assigned-object/', views.AssignedObjectFieldView.as_view(), name='assigned-object-field'),
+]

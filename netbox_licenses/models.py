@@ -1,5 +1,7 @@
 from django.urls import reverse
 from django.contrib.postgres.fields import ArrayField
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.utils.functional import cached_property
 from django.utils import timezone
 from datetime import timedelta
@@ -23,6 +25,14 @@ class License(NetBoxModel):
         to=Tenant,
         on_delete=models.PROTECT,
         related_name='licenses'
+    )
+    assignment_type = models.ForeignKey(
+        ContentType,
+        limit_choices_to={
+            "model__in": ["contact", "device", "virtualmachine", "tenant", "service"]
+        },
+        on_delete=models.PROTECT,
+        help_text="What object type will the license be assigned to"
     )
     price = models.DecimalField(max_digits=10, decimal_places=2)
     comments = models.TextField(blank=True)
@@ -48,13 +58,11 @@ class LicenseInstance(NetBoxModel):
         on_delete=models.CASCADE,
         related_name='instances'
     )
-    assigned_user = models.ForeignKey(
-        to=Contact,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="licenses"
-    )
+
+    assigned_object_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
+    assigned_object_id = models.PositiveIntegerField()
+    assigned_object = GenericForeignKey("assigned_object_type", "assigned_object_id")
+
     price_override = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -93,12 +101,16 @@ class LicenseInstance(NetBoxModel):
 
     @property
     def is_available(self):
-        return self.assigned_user is None and (self.derived_status == LicenseStatusChoices.ACTIVE or self.derived_status == LicenseStatusChoices.WARNING)
+        return self.assigned_object is None and self.derived_status != LicenseStatusChoices.EXPIRED
 
     def get_absolute_url(self):
         return reverse('plugins:netbox_licenses:licenseinstance', args=[self.pk])
 
     def save(self, *args, **kwargs):
+        if not self.assigned_object_type_id and self.license:
+            self.assigned_object_type = self.license.assignment_type
+
         if self.price_override is None and not self.pk:
             self.price_override = self.license.price
+
         super().save(*args, **kwargs)

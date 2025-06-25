@@ -14,7 +14,7 @@ class LicenseViewSet(NetBoxModelViewSet):
 
 class LicenseInstanceViewSet(NetBoxModelViewSet):
     queryset = models.LicenseInstance.objects.prefetch_related(
-        'license', 'assigned_user', 'tags'
+        'license', 'assigned_object', 'tags'
     )
     serializer_class = LicenseInstanceSerializer
     filterset_class = filtersets.LicenseInstanceFilterSet
