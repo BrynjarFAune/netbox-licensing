@@ -45,17 +45,19 @@ class LicenseTable(NetBoxTable):
         ).count()
 
 class LicenseInstanceTable(NetBoxTable):
+    pk = tables.CheckBoxColumn()
     license = tables.Column(linkify=True)
     assigned_object = tables.Column(linkify=True, verbose_name="Assigned To")
     start_date = tables.DateColumn(format='d/m/Y')
     end_date = tables.DateColumn(format='d/m/Y')
     status = tables.Column(verbose_name="Status", orderable=False, accessor='derived_status')
     effective_price = tables.Column(empty_values=())
+    actions = tables.Column()
 
     class Meta(NetBoxTable.Meta):
         model = LicenseInstance
         fields = (
-            'pk', 'id', 'license', 'assigned_object', 'start_date', 'end_date', 'status', 'effective_price', 'actions'
+            'pk', 'id', 'license', 'assigned_object', 'start_date', 'end_date', 'status', 'effective_price'
         )
         default_columns = (
             'id', 'license', 'assigned_object', 'effective_price', 'status'

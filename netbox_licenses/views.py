@@ -1,3 +1,4 @@
+from netbox.views import generic
 from django.views import View
 from django.shortcuts import render
 from netbox.views import generic
@@ -144,3 +145,7 @@ class AssignedObjectFieldView(View):
                 "verbose_name": verbose_name,
             },
         )
+
+class LicenseInstanceBulkDeleteView(generic.BulkDeleteView):
+    queryset = models.LicenseInstance.objects.all()
+    table = tables.LicenseInstanceTable

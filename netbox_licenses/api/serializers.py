@@ -46,13 +46,9 @@ class LicenseInstanceSerializer(NetBoxModelSerializer):
         view_name='plugins-api:netbox_licenses-api:licenseinstance-detail'
     )
 
-    assigned_object_type = serializers.PrimaryKeyRelatedField(
-            queryset=ContentType.objects.filter(model__in=[
-            "contact", "device", "virtualmachine", "tenant"
-        ])
-    )
+    assigned_object_type = serializers.PrimaryKeyRelatedField(queryset=ContentType.objects.all())
     assigned_object_id = serializers.IntegerField()
-    license = NestedLicenseSerializer()
+    license = serializers.PrimaryKeyRelatedField(queryset=License.objects.all())
     effective_price = serializers.SerializerMethodField()
 
     def get_effective_price(self, obj):
@@ -61,10 +57,6 @@ class LicenseInstanceSerializer(NetBoxModelSerializer):
     class Meta:
         model = LicenseInstance
         fields = (
-            'id', 'url', 'display', 'license',
-            'assigned_object_type', 'assigned_object_id',
-            'assigned_object', 'effective_price',
-            'start_date', 'end_date', 'comments',
-            'created', 'last_updated', 'custom_fields', 'tags'
+            '__all__'
         )
 
