@@ -48,6 +48,10 @@ class LicenseEditView(generic.ObjectEditView):
 class LicenseDeleteView(generic.ObjectDeleteView):
     queryset = models.License.objects.all()
 
+class LicenseBulkDeleteView(generic.BulkDeleteView):
+    queryset = models.License.objects.all()
+    table = tables.LicenseTable
+
 # LicenseInstance views
 class LicenseInstanceListView(generic.ObjectListView):
     queryset = models.LicenseInstance.objects.prefetch_related('license', 'assigned_object')

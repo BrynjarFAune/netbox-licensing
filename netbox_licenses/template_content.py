@@ -9,7 +9,7 @@ from decimal import Decimal
 class ObjectLicenseInstance(PluginTemplateExtension):
     models = ['tenancy.contact', 'dcim.device', 'virtualization.virtualmachine', 'tenancy.tenant']
 
-    def right_page(self):
+    def full_width_page(self):
         obj = self.context['object']
         ct = ContentType.objects.get_for_model(obj)
 

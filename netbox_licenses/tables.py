@@ -5,6 +5,7 @@ from .models import License, LicenseInstance
 from .choices import LicenseStatusChoices
 
 class LicenseTable(NetBoxTable):
+    pk = tables.CheckBoxColumn()
     name = tables.Column(linkify=True)
     vendor = tables.Column(linkify=True)
     tenant = tables.Column(linkify=True)
