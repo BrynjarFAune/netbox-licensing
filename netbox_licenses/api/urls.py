@@ -1,7 +1,7 @@
 from netbox.api.routers import NetBoxRouter
 from . import views
 
-app_name = 'netbox_license'
+app_name = 'netbox_licenses'
 
 router = NetBoxRouter()
 router.register('licenses', views.LicenseViewSet)
