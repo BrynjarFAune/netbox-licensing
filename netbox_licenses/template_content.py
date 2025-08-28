@@ -21,7 +21,7 @@ class ObjectLicenseInstance(PluginTemplateExtension):
         if not instances.exists():
             return ""
 
-        total_cost = sum(i.effective_prive or Decimal('0') for i in instances)
+        total_cost = sum(i.effective_price or Decimal('0') for i in instances)
         expiring_soon = sum(1 for i in instances if i.derived_status == LicenseStatusChoices.WARNING)
         expired = sum(1 for i in instances if i.derived_status == LicenseStatusChoices.EXPIRED)
 
