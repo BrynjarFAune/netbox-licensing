@@ -9,12 +9,12 @@ class LicenseViewSet(NetBoxModelViewSet):
         'tags', 'tenant', 'vendor'
     ).annotate(
         instance_count=Count('instances')
-    )
+    ).order_by('name')
     serializer_class = LicenseSerializer
 
 class LicenseInstanceViewSet(NetBoxModelViewSet):
     queryset = models.LicenseInstance.objects.prefetch_related(
         'license', 'assigned_object', 'tags'
-    )
+    ).order_by('license__name', 'id')
     serializer_class = LicenseInstanceSerializer
     filterset_class = filtersets.LicenseInstanceFilterSet
