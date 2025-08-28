@@ -53,7 +53,6 @@ class LicenseInstanceTable(NetBoxTable):
     end_date = tables.DateColumn(format='d/m/Y')
     status = tables.Column(verbose_name="Status", orderable=False, accessor='derived_status')
     effective_price = tables.Column(empty_values=())
-    actions = tables.Column()
 
     class Meta(NetBoxTable.Meta):
         model = LicenseInstance
