@@ -46,7 +46,7 @@ class LicenseInstanceSerializer(NetBoxModelSerializer):
         view_name='plugins-api:netbox_licenses-api:licenseinstance-detail'
     )
 
-    assigned_object_type = serializers.PrimaryKeyRelatedField(queryset=ContentType.objects.all(), required=False, allow_null=True)
+    assigned_object_type = serializers.PrimaryKeyRelatedField(queryset=ContentType.objects.all())
     assigned_object_id = serializers.IntegerField(required=False, allow_null=True)
     license = serializers.PrimaryKeyRelatedField(queryset=License.objects.all())
     effective_price = serializers.SerializerMethodField()

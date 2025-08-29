@@ -14,7 +14,7 @@ from .choices import LicenseStatusChoices
 
 class License(NetBoxModel):
     name = models.CharField(
-        max_length=30
+        max_length=50
     )
     vendor = models.ForeignKey(
         to=Manufacturer,
@@ -35,6 +35,7 @@ class License(NetBoxModel):
         help_text="What object type will the license be assigned to"
     )
     price = models.DecimalField(max_digits=10, decimal_places=2)
+    total_instances = models.PositiveIntegerField(default=0)
     comments = models.TextField(blank=True)
 
     def __str__(self):
@@ -59,7 +60,7 @@ class LicenseInstance(NetBoxModel):
         related_name='instances'
     )
 
-    assigned_object_type = models.ForeignKey(ContentType, on_delete=models.PROTECT, null=True, blank=True)
+    assigned_object_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
     assigned_object_id = models.PositiveIntegerField(null=True, blank=True)
     assigned_object = GenericForeignKey("assigned_object_type", "assigned_object_id")
 
