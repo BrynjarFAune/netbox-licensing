@@ -60,7 +60,7 @@ class LicenseInstanceTable(NetBoxTable):
             'pk', 'id', 'license', 'assigned_object', 'start_date', 'end_date', 'status', 'effective_price'
         )
         default_columns = (
-            'pk', 'id', 'license', 'assigned_object', 'effective_price', 'status'
+            'id', 'license', 'assigned_object', 'effective_price', 'status'
         )
 
     def render_effective_price(self, record):
