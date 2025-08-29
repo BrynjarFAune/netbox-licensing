@@ -5,7 +5,6 @@ from .models import License, LicenseInstance
 from .choices import LicenseStatusChoices
 
 class LicenseTable(NetBoxTable):
-    pk = tables.CheckBoxColumn(accessor='pk')
     name = tables.Column(linkify=True)
     vendor = tables.Column(linkify=True)
     tenant = tables.Column(linkify=True)
@@ -20,7 +19,7 @@ class LicenseTable(NetBoxTable):
         fields = (
             "pk", "name", "vendor", "tenant", "price",
             "instance_count", "assigned_count", "warning_count", "total_cost",
-            "tags", "created", "last_updated",
+            "tags", "created", "last_updated", "actions"
         )
         default_columns = (
             "pk", "name", "vendor", "tenant", "price", "instance_count", "total_cost"
@@ -46,7 +45,6 @@ class LicenseTable(NetBoxTable):
         ).count()
 
 class LicenseInstanceTable(NetBoxTable):
-    pk = tables.CheckBoxColumn(accessor='pk')
     license = tables.Column(linkify=True)
     assigned_object = tables.Column(linkify=True, verbose_name="Assigned To")
     start_date = tables.DateColumn(format='d/m/Y')
@@ -57,10 +55,10 @@ class LicenseInstanceTable(NetBoxTable):
     class Meta(NetBoxTable.Meta):
         model = LicenseInstance
         fields = (
-            'pk', 'id', 'license', 'assigned_object', 'start_date', 'end_date', 'status', 'effective_price'
+            'pk', 'id', 'license', 'assigned_object', 'start_date', 'end_date', 'status', 'effective_price', 'actions'
         )
         default_columns = (
-            'id', 'license', 'assigned_object', 'effective_price', 'status'
+            'pk', 'id', 'license', 'assigned_object', 'effective_price', 'status'
         )
 
     def render_effective_price(self, record):
