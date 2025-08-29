@@ -13,7 +13,6 @@ from utilities.forms.fields import DynamicModelChoiceField
 class LicenseListView(generic.ObjectListView):
     queryset = models.License.objects.prefetch_related('vendor', 'tenant', 'instances')
     table = tables.LicenseTable
-    actions = {'bulk': ['delete']}
 
 class LicenseView(generic.ObjectView):
     queryset = models.License.objects.prefetch_related('instances', 'instances__assigned_object')
@@ -59,7 +58,6 @@ class LicenseInstanceListView(generic.ObjectListView):
     table = tables.LicenseInstanceTable
     filterset = filtersets.LicenseInstanceFilterSet
     filterset_form = filtersets.LicenseInstanceFilterForm
-    actions = {'bulk': ['delete']}
 
 class LicenseInstanceView(generic.ObjectView):
     queryset = models.LicenseInstance.objects.prefetch_related('license', 'assigned_object')
