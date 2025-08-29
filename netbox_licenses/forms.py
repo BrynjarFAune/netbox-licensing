@@ -66,6 +66,20 @@ class LicenseInstanceForm(NetBoxModelForm):
         label="Currency Override",
         help_text="Override the currency for this instance"
     )
+    
+    # Input mode selection
+    price_input_mode = ChoiceField(
+        choices=[
+            ('conversion_rate', 'Enter Conversion Rate'),
+            ('nok_price', 'Enter NOK Price Directly')
+        ],
+        initial='conversion_rate',
+        required=False,
+        label="Price Input Mode",
+        help_text="Choose how to specify the currency conversion",
+        widget=CharField().widget
+    )
+    
     conversion_rate_to_nok = DecimalField(
         max_digits=10,
         decimal_places=6,
@@ -73,20 +87,20 @@ class LicenseInstanceForm(NetBoxModelForm):
         label="Conversion Rate to NOK",
         help_text="Exchange rate to convert from selected currency to NOK"
     )
-    price_in_nok = DecimalField(
+    
+    nok_price_direct = DecimalField(
         max_digits=10,
         decimal_places=2,
         required=False,
         label="Price in NOK",
-        help_text="Calculated price in Norwegian Kroner (read-only when conversion rate is set)",
-        widget=DecimalField().widget
+        help_text="Direct price in Norwegian Kroner"
     )
 
     class Meta:
         model = LicenseInstance
         fields = (
             'license', 'assigned_object_selector',
-            'price_override', 'currency_override', 'conversion_rate_to_nok', 
+            'price_override', 'currency_override', 'price_input_mode', 'conversion_rate_to_nok', 'nok_price_direct',
             'start_date', 'end_date', 'comments', 'tags'
         )
         widgets = {
@@ -112,10 +126,10 @@ class LicenseInstanceForm(NetBoxModelForm):
         
         # Add JavaScript classes for currency conversion
         self.fields['currency_override'].widget.attrs.update({
-            'class': 'currency-selector',
-            'data-target-price': 'price_override',
-            'data-target-conversion': 'conversion_rate_to_nok',
-            'data-target-nok': 'price_in_nok'
+            'class': 'currency-selector'
+        })
+        self.fields['price_input_mode'].widget.attrs.update({
+            'class': 'price-input-mode-selector'
         })
         self.fields['price_override'].widget.attrs.update({
             'class': 'price-field',
@@ -125,9 +139,9 @@ class LicenseInstanceForm(NetBoxModelForm):
             'class': 'conversion-rate-field',
             'step': '0.000001'
         })
-        self.fields['price_in_nok'].widget.attrs.update({
-            'class': 'nok-price-field readonly',
-            'readonly': True
+        self.fields['nok_price_direct'].widget.attrs.update({
+            'class': 'nok-price-field',
+            'step': '0.01'
         })
 
     def _get_license_object(self):
@@ -185,20 +199,11 @@ class LicenseInstanceForm(NetBoxModelForm):
                 self.fields['currency_override'].initial = self.instance.currency_override
             if self.instance.conversion_rate_to_nok:
                 self.fields['conversion_rate_to_nok'].initial = self.instance.conversion_rate_to_nok
-            # Calculate and show NOK price
-            self.fields['price_in_nok'].initial = self.instance.price_in_nok
-        elif hasattr(self, 'data') and self.data:
-            # Handle form submission - calculate NOK price from submitted data
-            currency = self.data.get('currency_override')
-            price = self.data.get('price_override')
-            rate = self.data.get('conversion_rate_to_nok')
-            
-            if price and rate and currency and currency != CurrencyChoices.NOK:
-                try:
-                    nok_price = float(price) * float(rate)
-                    self.fields['price_in_nok'].widget.attrs['value'] = f"{nok_price:.2f}"
-                except (ValueError, TypeError):
-                    pass
+                self.fields['price_input_mode'].initial = 'conversion_rate'
+            else:
+                # If no conversion rate, assume NOK direct input
+                self.fields['price_input_mode'].initial = 'nok_price'
+                self.fields['nok_price_direct'].initial = self.instance.price_in_nok
 
     def clean(self):
         cleaned_data = super().clean()
@@ -225,14 +230,28 @@ class LicenseInstanceForm(NetBoxModelForm):
         # Validate currency conversion fields
         currency_override = cleaned_data.get('currency_override')
         conversion_rate = cleaned_data.get('conversion_rate_to_nok')
+        nok_price_direct = cleaned_data.get('nok_price_direct')
+        price_input_mode = cleaned_data.get('price_input_mode')
+        price_override = cleaned_data.get('price_override')
         
         if currency_override and currency_override != CurrencyChoices.NOK:
-            if not conversion_rate:
-                self.add_error('conversion_rate_to_nok', 
-                              'Conversion rate is required when using a currency other than NOK')
-            elif conversion_rate <= 0:
-                self.add_error('conversion_rate_to_nok', 
-                              'Conversion rate must be greater than 0')
+            if price_input_mode == 'conversion_rate':
+                if not conversion_rate:
+                    self.add_error('conversion_rate_to_nok', 
+                                  'Conversion rate is required when using conversion rate mode')
+                elif conversion_rate <= 0:
+                    self.add_error('conversion_rate_to_nok', 
+                                  'Conversion rate must be greater than 0')
+            elif price_input_mode == 'nok_price':
+                if not nok_price_direct:
+                    self.add_error('nok_price_direct', 
+                                  'NOK price is required when using direct NOK input mode')
+                elif nok_price_direct <= 0:
+                    self.add_error('nok_price_direct', 
+                                  'NOK price must be greater than 0')
+                # Calculate conversion rate from NOK price and foreign currency price
+                if price_override and price_override > 0:
+                    cleaned_data['conversion_rate_to_nok'] = nok_price_direct / price_override
 
         return cleaned_data
 

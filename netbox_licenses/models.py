@@ -116,9 +116,10 @@ class LicenseInstance(NetBoxModel):
     @property
     def effective_conversion_rate(self):
         """Returns the conversion rate to NOK, defaulting to 1.0 for NOK"""
+        from decimal import Decimal
         if self.effective_currency == CurrencyChoices.NOK:
-            return 1.0
-        return self.conversion_rate_to_nok or 1.0
+            return Decimal('1.0')
+        return self.conversion_rate_to_nok or Decimal('1.0')
     
     @property
     def price_in_nok(self):

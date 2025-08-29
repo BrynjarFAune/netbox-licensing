@@ -1,118 +1,104 @@
 /**
- * Currency conversion handling for License Instance forms
+ * Simplified Currency conversion handling for License Instance forms
  */
 
 document.addEventListener('DOMContentLoaded', function() {
     const currencySelector = document.querySelector('.currency-selector');
     const priceField = document.querySelector('.price-field');
+    const modeSelector = document.querySelector('.price-input-mode-selector');
     const conversionField = document.querySelector('.conversion-rate-field');
     const nokPriceField = document.querySelector('.nok-price-field');
     
-    if (!currencySelector || !priceField || !conversionField || !nokPriceField) {
+    if (!currencySelector || !modeSelector || !conversionField || !nokPriceField) {
         return; // Fields not found, exit early
     }
     
-    function updateFields() {
+    function updateFieldVisibility() {
         const selectedCurrency = currencySelector.value;
+        const inputMode = modeSelector.value;
         const isNOK = selectedCurrency === 'NOK' || selectedCurrency === '';
         
-        // Show/hide conversion fields based on currency selection
-        const conversionRow = conversionField.closest('.form-group') || conversionField.closest('tr');
-        const nokRow = nokPriceField.closest('.form-group') || nokPriceField.closest('tr');
-        
-        if (conversionRow) {
-            conversionRow.style.display = isNOK ? 'none' : '';
-        }
-        if (nokRow) {
-            nokRow.style.display = isNOK ? 'none' : '';
-        }
+        // Find field containers
+        const modeRow = modeSelector.closest('.form-group') || modeSelector.closest('tr') || modeSelector.closest('.field');
+        const conversionRow = conversionField.closest('.form-group') || conversionField.closest('tr') || conversionField.closest('.field');
+        const nokRow = nokPriceField.closest('.form-group') || nokPriceField.closest('tr') || nokPriceField.closest('.field');
         
         if (isNOK) {
-            // Clear conversion fields for NOK
-            conversionField.value = '';
-            nokPriceField.value = '';
-            nokPriceField.removeAttribute('readonly');
-            return;
+            // Hide all currency conversion fields for NOK
+            if (modeRow) modeRow.style.display = 'none';
+            if (conversionRow) conversionRow.style.display = 'none';
+            if (nokRow) nokRow.style.display = 'none';
+        } else {
+            // Show mode selector
+            if (modeRow) modeRow.style.display = '';
+            
+            // Show/hide fields based on input mode
+            if (inputMode === 'conversion_rate') {
+                if (conversionRow) conversionRow.style.display = '';
+                if (nokRow) nokRow.style.display = 'none';
+            } else if (inputMode === 'nok_price') {
+                if (conversionRow) conversionRow.style.display = 'none';
+                if (nokRow) nokRow.style.display = '';
+            }
         }
+    }
+    
+    function setDefaultValues() {
+        const selectedCurrency = currencySelector.value;
+        const inputMode = modeSelector.value;
         
-        // Set readonly for NOK field when conversion is active
-        nokPriceField.setAttribute('readonly', true);
-        
-        // Set default conversion rate if empty
-        if (!conversionField.value) {
+        // Set default conversion rates
+        if (inputMode === 'conversion_rate' && !conversionField.value) {
             const defaultRates = {
-                'USD': 10.5,
-                'EUR': 11.2,
-                'SEK': 0.95
+                'USD': '10.5',
+                'EUR': '11.2', 
+                'SEK': '0.95'
             };
             if (defaultRates[selectedCurrency]) {
                 conversionField.value = defaultRates[selectedCurrency];
             }
         }
-        
-        calculateNOKPrice();
-    }
-    
-    function calculateNOKPrice() {
-        const price = parseFloat(priceField.value) || 0;
-        const rate = parseFloat(conversionField.value) || 0;
-        
-        if (price > 0 && rate > 0) {
-            const nokPrice = price * rate;
-            nokPriceField.value = nokPrice.toFixed(2);
-        } else {
-            nokPriceField.value = '';
-        }
-    }
-    
-    function calculateConversionRate() {
-        const price = parseFloat(priceField.value) || 0;
-        const nokPrice = parseFloat(nokPriceField.value) || 0;
-        
-        if (price > 0 && nokPrice > 0) {
-            const rate = nokPrice / price;
-            conversionField.value = rate.toFixed(6);
-        }
     }
     
     // Event listeners
-    currencySelector.addEventListener('change', updateFields);
-    
-    priceField.addEventListener('input', function() {
-        if (currencySelector.value && currencySelector.value !== 'NOK') {
-            calculateNOKPrice();
-        }
+    currencySelector.addEventListener('change', function() {
+        updateFieldVisibility();
+        setDefaultValues();
     });
     
-    conversionField.addEventListener('input', function() {
-        if (currencySelector.value && currencySelector.value !== 'NOK') {
-            calculateNOKPrice();
-        }
-    });
-    
-    nokPriceField.addEventListener('input', function() {
-        if (currencySelector.value && currencySelector.value !== 'NOK' && !nokPriceField.hasAttribute('readonly')) {
-            calculateConversionRate();
-        }
+    modeSelector.addEventListener('change', function() {
+        updateFieldVisibility();
+        setDefaultValues();
     });
     
     // Initialize on page load
-    updateFields();
+    updateFieldVisibility();
+    setDefaultValues();
     
-    // Handle form submission validation
+    // Form validation
     const form = currencySelector.closest('form');
     if (form) {
         form.addEventListener('submit', function(e) {
             const selectedCurrency = currencySelector.value;
+            const inputMode = modeSelector.value;
             
             if (selectedCurrency && selectedCurrency !== 'NOK') {
-                const rate = parseFloat(conversionField.value) || 0;
-                
-                if (rate <= 0) {
-                    e.preventDefault();
-                    alert('Please enter a valid conversion rate for the selected currency.');
-                    conversionField.focus();
-                    return false;
+                if (inputMode === 'conversion_rate') {
+                    const rate = parseFloat(conversionField.value) || 0;
+                    if (rate <= 0) {
+                        e.preventDefault();
+                        alert('Please enter a valid conversion rate.');
+                        conversionField.focus();
+                        return false;
+                    }
+                } else if (inputMode === 'nok_price') {
+                    const nokPrice = parseFloat(nokPriceField.value) || 0;
+                    if (nokPrice <= 0) {
+                        e.preventDefault();
+                        alert('Please enter a valid NOK price.');
+                        nokPriceField.focus();
+                        return false;
+                    }
                 }
             }
         });
