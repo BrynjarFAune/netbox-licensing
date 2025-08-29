@@ -156,10 +156,14 @@ class LicenseInstanceForm(NetBoxModelForm):
             selector = self.cleaned_data.get('assigned_object_selector')
 
             if license:
-                # Always set the content type from the license
-                instance.assigned_object_type = license.assignment_type
-                # Set the object ID from the selector
-                instance.assigned_object_id = selector.pk if selector else None
+                # Only set assignment fields if there's actually an object selected
+                if selector:
+                    instance.assigned_object_type = license.assignment_type
+                    instance.assigned_object_id = selector.pk
+                else:
+                    # No object selected - leave as unassigned
+                    instance.assigned_object_type = None
+                    instance.assigned_object_id = None
 
         if commit:
             instance.save()

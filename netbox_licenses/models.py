@@ -59,8 +59,8 @@ class LicenseInstance(NetBoxModel):
         related_name='instances'
     )
 
-    assigned_object_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
-    assigned_object_id = models.PositiveIntegerField()
+    assigned_object_type = models.ForeignKey(ContentType, on_delete=models.PROTECT, null=True, blank=True)
+    assigned_object_id = models.PositiveIntegerField(null=True, blank=True)
     assigned_object = GenericForeignKey("assigned_object_type", "assigned_object_id")
 
     price_override = models.DecimalField(
@@ -107,10 +107,9 @@ class LicenseInstance(NetBoxModel):
         return reverse('plugins:netbox_licenses:licenseinstance', args=[self.pk])
 
     def save(self, *args, **kwargs):
-        if not self.assigned_object_type_id and self.license:
+        # Only set default assignment type if none is set and there's an assigned object ID
+        if not self.assigned_object_type_id and self.assigned_object_id and self.license:
             self.assigned_object_type = self.license.assignment_type
 
-        if self.price_override is None and not self.pk:
-            self.price_override = self.license.price
-
+        # Don't auto-set price_override anymore - let it remain None to use license price
         super().save(*args, **kwargs)
