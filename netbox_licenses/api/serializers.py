@@ -49,18 +49,27 @@ class LicenseInstanceSerializer(NetBoxModelSerializer):
     assigned_object_type = serializers.PrimaryKeyRelatedField(queryset=ContentType.objects.all())
     assigned_object_id = serializers.IntegerField(required=False, allow_null=True)
     license = serializers.PrimaryKeyRelatedField(queryset=License.objects.all())
-    effective_price = serializers.SerializerMethodField()
-    effective_currency = serializers.SerializerMethodField()
-    price_in_nok = serializers.SerializerMethodField()
+    effective_price = serializers.SerializerMethodField(read_only=True)
+    effective_currency = serializers.SerializerMethodField(read_only=True)
+    price_in_nok = serializers.SerializerMethodField(read_only=True)
 
     def get_effective_price(self, obj):
-        return obj.effective_price
+        try:
+            return float(obj.effective_price)
+        except (ValueError, TypeError, AttributeError):
+            return 0.0
     
     def get_effective_currency(self, obj):
-        return obj.effective_currency
+        try:
+            return obj.effective_currency
+        except (AttributeError):
+            return 'NOK'
     
     def get_price_in_nok(self, obj):
-        return obj.price_in_nok
+        try:
+            return float(obj.price_in_nok)
+        except (ValueError, TypeError, AttributeError):
+            return 0.0
 
     class Meta:
         model = LicenseInstance
