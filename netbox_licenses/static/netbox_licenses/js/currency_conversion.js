@@ -18,6 +18,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const inputMode = modeSelector.value;
         const isNOK = selectedCurrency === 'NOK' || selectedCurrency === '';
         
+        console.log('updateFieldVisibility:', { selectedCurrency, inputMode, isNOK });
+        
         // Find field containers
         const modeRow = modeSelector.closest('.form-group') || modeSelector.closest('tr') || modeSelector.closest('.field');
         const conversionRow = conversionField.closest('.form-group') || conversionField.closest('tr') || conversionField.closest('.field');
@@ -32,14 +34,16 @@ document.addEventListener('DOMContentLoaded', function() {
             // Show mode selector for non-NOK currencies
             if (modeRow) modeRow.style.display = '';
             
+            // Always hide both fields first, then show the correct one
+            if (conversionRow) conversionRow.style.display = 'none';
+            if (nokRow) nokRow.style.display = 'none';
+            
             // Show only the relevant field based on input mode
             if (inputMode === 'conversion_rate') {
                 if (conversionRow) conversionRow.style.display = '';
-                if (nokRow) nokRow.style.display = 'none';
                 // Clear NOK field when switching to conversion rate mode
                 if (nokPriceField) nokPriceField.value = '';
             } else if (inputMode === 'nok_price') {
-                if (conversionRow) conversionRow.style.display = 'none';
                 if (nokRow) nokRow.style.display = '';
                 // Clear conversion rate when switching to NOK price mode
                 if (conversionField) conversionField.value = '';
