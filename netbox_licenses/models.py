@@ -111,7 +111,9 @@ class LicenseInstance(NetBoxModel):
     @property
     def effective_price(self):
         """Returns the price in the instance's effective currency"""
-        return self.price_override or self.license.price
+        from decimal import Decimal
+        price = self.price_override or self.license.price
+        return Decimal(str(price)) if price is not None else Decimal('0.0')
     
     @property
     def effective_conversion_rate(self):
@@ -119,7 +121,8 @@ class LicenseInstance(NetBoxModel):
         from decimal import Decimal
         if self.effective_currency == CurrencyChoices.NOK:
             return Decimal('1.0')
-        return self.conversion_rate_to_nok or Decimal('1.0')
+        rate = self.conversion_rate_to_nok
+        return Decimal(str(rate)) if rate is not None else Decimal('1.0')
     
     @property
     def price_in_nok(self):
