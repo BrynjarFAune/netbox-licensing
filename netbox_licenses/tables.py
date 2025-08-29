@@ -5,6 +5,7 @@ from .models import License, LicenseInstance
 from .choices import LicenseStatusChoices
 
 class LicenseTable(NetBoxTable):
+    pk = tables.CheckBoxColumn()
     name = tables.Column(linkify=True)
     vendor = tables.Column(linkify=True)
     tenant = tables.Column(linkify=True)
@@ -45,6 +46,7 @@ class LicenseTable(NetBoxTable):
         ).count()
 
 class LicenseInstanceTable(NetBoxTable):
+    pk = tables.CheckBoxColumn()
     license = tables.Column(linkify=True)
     assigned_object = tables.Column(linkify=True, verbose_name="Assigned To")
     start_date = tables.DateColumn(format='d/m/Y')
