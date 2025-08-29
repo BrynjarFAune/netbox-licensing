@@ -5,12 +5,14 @@ class CurrencyChoices(ChoiceSet):
     EUR = 'EUR'
     SEK = 'SEK'
     USD = 'USD'
+    DKK = 'DKK'
     
     CHOICES = [
         (NOK, 'Norwegian Krone (NOK)'),
         (EUR, 'Euro (EUR)'),
         (SEK, 'Swedish Krona (SEK)'),
         (USD, 'US Dollar (USD)'),
+        (DKK, 'Danish Krone (DKK)'),
     ]
 
 class LicenseStatusChoices(ChoiceSet):

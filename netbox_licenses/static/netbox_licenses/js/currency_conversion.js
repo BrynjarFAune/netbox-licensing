@@ -52,7 +52,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const defaultRates = {
                 'USD': '10.5',
                 'EUR': '11.2', 
-                'SEK': '0.95'
+                'SEK': '0.95',
+                'DKK': '1.55'
             };
             if (defaultRates[selectedCurrency]) {
                 conversionField.value = defaultRates[selectedCurrency];
