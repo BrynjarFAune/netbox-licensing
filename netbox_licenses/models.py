@@ -9,7 +9,7 @@ from django.db import models
 from netbox.models import NetBoxModel
 from tenancy.models import Contact, Tenant
 from dcim.models import Manufacturer
-from .choices import LicenseStatusChoices
+from .choices import LicenseStatusChoices, CurrencyChoices
 
 
 class License(NetBoxModel):
@@ -35,6 +35,12 @@ class License(NetBoxModel):
         help_text="What object type will the license be assigned to"
     )
     price = models.DecimalField(max_digits=10, decimal_places=2)
+    currency = models.CharField(
+        max_length=3,
+        choices=CurrencyChoices.CHOICES,
+        default=CurrencyChoices.NOK,
+        help_text="Currency for the license price"
+    )
     total_instances = models.PositiveIntegerField(default=0)
     comments = models.TextField(blank=True)
 
@@ -43,7 +49,13 @@ class License(NetBoxModel):
 
     @cached_property
     def total_cost(self):
-        return sum(i.effective_price for i in self.instances.all())
+        """Total cost of all instances in NOK"""
+        return sum(i.price_in_nok for i in self.instances.all())
+    
+    @property 
+    def price_display(self):
+        """Returns formatted price with currency symbol"""
+        return f"{self.price} {self.currency}"
 
     def get_absolute_url(self):
         return reverse('plugins:netbox_licenses:license', args=[self.pk])
@@ -70,6 +82,20 @@ class LicenseInstance(NetBoxModel):
         null=True,
         blank=True
     )
+    currency_override = models.CharField(
+        max_length=3,
+        choices=CurrencyChoices.CHOICES,
+        null=True,
+        blank=True,
+        help_text="Override currency for this specific instance"
+    )
+    conversion_rate_to_nok = models.DecimalField(
+        max_digits=10,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        help_text="Conversion rate from instance currency to NOK (multiplier)"
+    )
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
     comments = models.TextField(blank=True)
@@ -78,8 +104,26 @@ class LicenseInstance(NetBoxModel):
         return f"{self.license.name} (#{self.id})"
 
     @property
+    def effective_currency(self):
+        """Returns the currency used for this instance"""
+        return self.currency_override or self.license.currency
+    
+    @property
     def effective_price(self):
+        """Returns the price in the instance's effective currency"""
         return self.price_override or self.license.price
+    
+    @property
+    def effective_conversion_rate(self):
+        """Returns the conversion rate to NOK, defaulting to 1.0 for NOK"""
+        if self.effective_currency == CurrencyChoices.NOK:
+            return 1.0
+        return self.conversion_rate_to_nok or 1.0
+    
+    @property
+    def price_in_nok(self):
+        """Returns the price converted to NOK"""
+        return self.effective_price * self.effective_conversion_rate
 
     @property
     def derived_status(self):

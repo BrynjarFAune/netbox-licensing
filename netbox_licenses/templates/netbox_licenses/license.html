@@ -8,7 +8,8 @@
       <tr><th>Name</th><td>{{ object.name }}</td></tr>
       <tr><th>Vendor</th><td>{{ object.vendor|linkify }}</td></tr>
       <tr><th>Tenant</th><td>{{ object.tenant|linkify }}</td></tr>
-      <tr><th>Price</th><td>{{ object.price }} NOK</td></tr>
+      <tr><th>Price</th><td>{{ object.price }} {{ object.currency }}</td></tr>
+      <tr><th>Currency</th><td>{{ object.currency }}</td></tr>
       <tr><th>Comments</th><td>{{ object.comments|linebreaksbr }}</td></tr>
     </table>
   </div>

@@ -1,5 +1,6 @@
 {% extends 'generic/object_edit.html' %}
 {% load form_helpers %}
+{% load static %}
 
   {% block content %}
   <form method="post" enctype="multipart/form-data" class="form">
@@ -9,6 +10,9 @@
     <div class="field-group">
       {% render_field form.license %}
       {% render_field form.price_override %}
+      {% render_field form.currency_override %}
+      {% render_field form.conversion_rate_to_nok %}
+      {% render_field form.price_in_nok %}
       {% render_field form.start_date %}
       {% render_field form.end_date %}
       {% render_field form.comments %}
@@ -31,4 +35,9 @@
     </div>
     {% endblock %}
   </form>
+  {% endblock %}
+
+  {% block javascript %}
+    {{ block.super }}
+    <script src="{% static 'netbox_licenses/js/currency_conversion.js' %}"></script>
   {% endblock %}

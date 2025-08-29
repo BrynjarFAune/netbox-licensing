@@ -1,9 +1,10 @@
 from netbox.forms import NetBoxModelForm
 from utilities.forms.fields import CommentField, DynamicModelChoiceField, ContentTypeChoiceField
-from django.forms import DateInput, NumberInput, IntegerField, DateField, ModelChoiceField, HiddenInput, CharField
+from django.forms import DateInput, NumberInput, IntegerField, DateField, ModelChoiceField, HiddenInput, CharField, ChoiceField, DecimalField
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from .models import License, LicenseInstance
+from .choices import CurrencyChoices
 from tenancy.models import Contact, Tenant
 from dcim.models import Manufacturer
 
@@ -24,10 +25,16 @@ class LicenseForm(NetBoxModelForm):
         required=True,
         label="Assignable Object Type"
     )
+    currency = ChoiceField(
+        choices=CurrencyChoices.CHOICES,
+        initial=CurrencyChoices.NOK,
+        required=True,
+        help_text="Currency for the license price"
+    )
 
     class Meta:
         model = License
-        fields = ('name', 'vendor', 'tenant', 'assignment_type', 'price', 'comments', 'tags')
+        fields = ('name', 'vendor', 'tenant', 'assignment_type', 'price', 'currency', 'comments', 'tags')
 
 class LicenseAddForm(LicenseForm):
     quantity = IntegerField(
@@ -51,12 +58,36 @@ class LicenseInstanceForm(NetBoxModelForm):
         label="Assigned Object",
         help_text="Select an object to assign this license to"
     )
+    
+    # Currency override fields
+    currency_override = ChoiceField(
+        choices=[('', 'Use License Currency')] + CurrencyChoices.CHOICES,
+        required=False,
+        label="Currency Override",
+        help_text="Override the currency for this instance"
+    )
+    conversion_rate_to_nok = DecimalField(
+        max_digits=10,
+        decimal_places=6,
+        required=False,
+        label="Conversion Rate to NOK",
+        help_text="Exchange rate to convert from selected currency to NOK"
+    )
+    price_in_nok = DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        required=False,
+        label="Price in NOK",
+        help_text="Calculated price in Norwegian Kroner (read-only when conversion rate is set)",
+        widget=DecimalField().widget
+    )
 
     class Meta:
         model = LicenseInstance
         fields = (
             'license', 'assigned_object_selector',
-            'price_override', 'start_date', 'end_date', 'comments', 'tags'
+            'price_override', 'currency_override', 'conversion_rate_to_nok', 
+            'start_date', 'end_date', 'comments', 'tags'
         )
         widgets = {
             'start_date': DateInput(attrs={'type': 'date', 'format': '%d/%m/%Y'}),
@@ -75,6 +106,29 @@ class LicenseInstanceForm(NetBoxModelForm):
             # No license selected or license has no assignment type
             self.fields['assigned_object_selector'].widget.attrs['disabled'] = True
             self.fields['assigned_object_selector'].help_text = "Select a license first to choose an assigned object"
+        
+        # Setup currency conversion fields
+        self._setup_currency_fields()
+        
+        # Add JavaScript classes for currency conversion
+        self.fields['currency_override'].widget.attrs.update({
+            'class': 'currency-selector',
+            'data-target-price': 'price_override',
+            'data-target-conversion': 'conversion_rate_to_nok',
+            'data-target-nok': 'price_in_nok'
+        })
+        self.fields['price_override'].widget.attrs.update({
+            'class': 'price-field',
+            'step': '0.01'
+        })
+        self.fields['conversion_rate_to_nok'].widget.attrs.update({
+            'class': 'conversion-rate-field',
+            'step': '0.000001'
+        })
+        self.fields['price_in_nok'].widget.attrs.update({
+            'class': 'nok-price-field readonly',
+            'readonly': True
+        })
 
     def _get_license_object(self):
         """Get the license object from form data, initial data, or existing instance"""
@@ -123,6 +177,29 @@ class LicenseInstanceForm(NetBoxModelForm):
                 # Object no longer exists, clear the assignment
                 pass
 
+    def _setup_currency_fields(self):
+        """Setup currency conversion fields based on existing instance"""
+        if self.instance and self.instance.pk:
+            # Populate currency override fields for existing instances
+            if self.instance.currency_override:
+                self.fields['currency_override'].initial = self.instance.currency_override
+            if self.instance.conversion_rate_to_nok:
+                self.fields['conversion_rate_to_nok'].initial = self.instance.conversion_rate_to_nok
+            # Calculate and show NOK price
+            self.fields['price_in_nok'].initial = self.instance.price_in_nok
+        elif hasattr(self, 'data') and self.data:
+            # Handle form submission - calculate NOK price from submitted data
+            currency = self.data.get('currency_override')
+            price = self.data.get('price_override')
+            rate = self.data.get('conversion_rate_to_nok')
+            
+            if price and rate and currency and currency != CurrencyChoices.NOK:
+                try:
+                    nok_price = float(price) * float(rate)
+                    self.fields['price_in_nok'].widget.attrs['value'] = f"{nok_price:.2f}"
+                except (ValueError, TypeError):
+                    pass
+
     def clean(self):
         cleaned_data = super().clean()
 
@@ -144,6 +221,18 @@ class LicenseInstanceForm(NetBoxModelForm):
             if expected_ct.pk != actual_ct.pk:
                 self.add_error('assigned_object_selector', 
                                f"Selected object must be of type {expected_ct.model}, not {actual_ct.model}")
+
+        # Validate currency conversion fields
+        currency_override = cleaned_data.get('currency_override')
+        conversion_rate = cleaned_data.get('conversion_rate_to_nok')
+        
+        if currency_override and currency_override != CurrencyChoices.NOK:
+            if not conversion_rate:
+                self.add_error('conversion_rate_to_nok', 
+                              'Conversion rate is required when using a currency other than NOK')
+            elif conversion_rate <= 0:
+                self.add_error('conversion_rate_to_nok', 
+                              'Conversion rate must be greater than 0')
 
         return cleaned_data
 

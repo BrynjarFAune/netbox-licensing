@@ -38,7 +38,7 @@ class LicenseSerializer(NetBoxModelSerializer):
     class Meta:
         model = License
         fields = (
-            'id', 'url', 'display', 'name', 'vendor', 'tenant', 'assignment_type', 'price', 'comments', 'tags', 'custom_fields', 'created', 'last_updated', 'instance_count'
+            'id', 'url', 'display', 'name', 'vendor', 'tenant', 'assignment_type', 'price', 'currency', 'price_display', 'comments', 'tags', 'custom_fields', 'created', 'last_updated', 'instance_count'
         )
 
 class LicenseInstanceSerializer(NetBoxModelSerializer):
@@ -50,15 +50,24 @@ class LicenseInstanceSerializer(NetBoxModelSerializer):
     assigned_object_id = serializers.IntegerField(required=False, allow_null=True)
     license = serializers.PrimaryKeyRelatedField(queryset=License.objects.all())
     effective_price = serializers.SerializerMethodField()
+    effective_currency = serializers.SerializerMethodField()
+    price_in_nok = serializers.SerializerMethodField()
 
     def get_effective_price(self, obj):
         return obj.effective_price
+    
+    def get_effective_currency(self, obj):
+        return obj.effective_currency
+    
+    def get_price_in_nok(self, obj):
+        return obj.price_in_nok
 
     class Meta:
         model = LicenseInstance
         fields = (
             'id', 'url', 'display_url', 'display', 'assigned_object_type', 'assigned_object_id', 'license',
-            'effective_price', 'price_override', 'start_date', 'end_date', 'comments', 'tags', 
+            'effective_price', 'effective_currency', 'price_in_nok', 'price_override', 'currency_override', 'conversion_rate_to_nok',
+            'start_date', 'end_date', 'comments', 'tags', 
             'custom_fields', 'created', 'last_updated', 'custom_field_data'
         )
 

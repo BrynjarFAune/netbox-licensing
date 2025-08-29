@@ -1,5 +1,18 @@
 from utilities.choices import ChoiceSet
 
+class CurrencyChoices(ChoiceSet):
+    NOK = 'NOK'
+    EUR = 'EUR'
+    SEK = 'SEK'
+    USD = 'USD'
+    
+    CHOICES = [
+        (NOK, 'Norwegian Krone (NOK)'),
+        (EUR, 'Euro (EUR)'),
+        (SEK, 'Swedish Krona (SEK)'),
+        (USD, 'US Dollar (USD)'),
+    ]
+
 class LicenseStatusChoices(ChoiceSet):
     PENDING = 'pending'
     ACTIVE = 'active'

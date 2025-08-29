@@ -18,10 +18,22 @@
           </tr>
           <tr>
             <td>Effective Price</td>
-            <td>{{ object.effective_price|default:"—" }}</td>
+            <td>{{ object.effective_price|default:"—" }} {{ object.effective_currency }}</td>
           </tr>
           <tr>
-            <td>Status</td>
+            <td>Price in NOK</td>
+            <td>{{ object.price_in_nok|floatformat:2 }} NOK</td>
+          </tr>
+          {% if object.currency_override %}
+          <tr>
+            <td>Currency Override</td>
+            <td>{{ object.currency_override }}</td>
+          </tr>
+          <tr>
+            <td>Conversion Rate</td>
+            <td>{{ object.conversion_rate_to_nok|floatformat:6 }} to NOK</td>
+          </tr>
+          {% endif %}
           <tr>
             <td>Status</td>
             <td>
@@ -31,8 +43,6 @@
               -
               {% endif %}
             </td>
-          </tr>
-
           </tr>
         </table>
       </div>
