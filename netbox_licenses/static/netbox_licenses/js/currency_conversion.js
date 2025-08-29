@@ -29,16 +29,20 @@ document.addEventListener('DOMContentLoaded', function() {
             if (conversionRow) conversionRow.style.display = 'none';
             if (nokRow) nokRow.style.display = 'none';
         } else {
-            // Show mode selector
+            // Show mode selector for non-NOK currencies
             if (modeRow) modeRow.style.display = '';
             
-            // Show/hide fields based on input mode
+            // Show only the relevant field based on input mode
             if (inputMode === 'conversion_rate') {
                 if (conversionRow) conversionRow.style.display = '';
                 if (nokRow) nokRow.style.display = 'none';
+                // Clear NOK field when switching to conversion rate mode
+                if (nokPriceField) nokPriceField.value = '';
             } else if (inputMode === 'nok_price') {
                 if (conversionRow) conversionRow.style.display = 'none';
                 if (nokRow) nokRow.style.display = '';
+                // Clear conversion rate when switching to NOK price mode
+                if (conversionField) conversionField.value = '';
             }
         }
     }

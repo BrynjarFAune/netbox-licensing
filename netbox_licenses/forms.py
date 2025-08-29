@@ -76,8 +76,7 @@ class LicenseInstanceForm(NetBoxModelForm):
         initial='conversion_rate',
         required=False,
         label="Price Input Mode",
-        help_text="Choose how to specify the currency conversion",
-        widget=CharField().widget
+        help_text="Choose how to specify the currency conversion"
     )
     
     conversion_rate_to_nok = DecimalField(
