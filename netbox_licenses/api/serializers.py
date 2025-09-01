@@ -52,6 +52,7 @@ class LicenseInstanceSerializer(NetBoxModelSerializer):
     effective_price = serializers.SerializerMethodField(read_only=True)
     effective_currency = serializers.SerializerMethodField(read_only=True)
     price_in_nok = serializers.SerializerMethodField(read_only=True)
+    conversion_rate_to_nok = serializers.SerializerMethodField(read_only=True)
 
     def get_effective_price(self, obj):
         try:
@@ -70,12 +71,19 @@ class LicenseInstanceSerializer(NetBoxModelSerializer):
             return float(obj.price_in_nok)
         except (ValueError, TypeError, AttributeError):
             return 0.0
+    
+    def get_conversion_rate_to_nok(self, obj):
+        try:
+            return float(obj.effective_conversion_rate)
+        except (ValueError, TypeError, AttributeError):
+            return 1.0
 
     class Meta:
         model = LicenseInstance
         fields = (
             'id', 'url', 'display_url', 'display', 'assigned_object_type', 'assigned_object_id', 'license',
-            'effective_price', 'effective_currency', 'price_in_nok', 'price_override', 'currency_override', 'conversion_rate_to_nok',
+            'effective_price', 'effective_currency', 'price_in_nok', 'conversion_rate_to_nok', 
+            'price_override', 'currency_override', 'nok_price_override',
             'start_date', 'end_date', 'comments', 'tags', 
             'custom_fields', 'created', 'last_updated', 'custom_field_data'
         )
