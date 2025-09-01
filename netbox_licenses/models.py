@@ -41,12 +41,52 @@ class License(NetBoxModel):
         default=CurrencyChoices.NOK,
         help_text="Currency for the license price"
     )
+    
+    # NEW ENHANCEMENT FIELDS
+    external_id = models.CharField(
+        max_length=255, 
+        null=True, 
+        blank=True, 
+        help_text="Vendor-specific identifier (SKU ID, subscription ID, license key, etc.)"
+    )
+    
+    total_licenses = models.PositiveIntegerField(
+        default=1,
+        help_text="Total available license slots purchased"
+    )
+    
+    consumed_licenses = models.PositiveIntegerField(
+        default=0,
+        help_text="Currently assigned/consumed licenses"
+    )
+    
+    metadata = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Vendor-specific data (service plans, features, API limits, etc.)"
+    )
+    
+    # LEGACY FIELD - keeping for backward compatibility
     total_instances = models.PositiveIntegerField(default=0)
     comments = models.TextField(blank=True)
 
     def __str__(self):
         return f"{self.name} ({self.vendor.name})"
 
+    # NEW COMPUTED PROPERTIES
+    @property
+    def available_licenses(self):
+        """Calculate remaining available licenses"""
+        return self.total_licenses - self.consumed_licenses
+    
+    @property
+    def utilization_percentage(self):
+        """Calculate utilization percentage"""
+        if self.total_licenses == 0:
+            return 0
+        return (self.consumed_licenses / self.total_licenses) * 100
+    
+    # EXISTING PROPERTIES
     @cached_property
     def total_cost(self):
         """Total cost of all instances in NOK"""
@@ -62,8 +102,24 @@ class License(NetBoxModel):
 
     class Meta:
         constraints = [
-        models.UniqueConstraint(fields=["name", "vendor", "tenant"], name="unique_license_key")
-    ]
+            models.UniqueConstraint(fields=["name", "vendor", "tenant"], name="unique_license_key")
+        ]
+        indexes = [
+            models.Index(fields=['external_id']),
+            models.Index(fields=['vendor', 'external_id']),
+            models.Index(fields=['consumed_licenses', 'total_licenses']),
+        ]
+    
+    def clean(self):
+        """Validate license data"""
+        from django.core.exceptions import ValidationError
+        super().clean()
+        
+        if self.total_licenses < 0:
+            raise ValidationError("Total licenses cannot be negative")
+        
+        if self.consumed_licenses < 0:
+            raise ValidationError("Consumed licenses cannot be negative")
 
 class LicenseInstance(NetBoxModel):
     license = models.ForeignKey(
@@ -177,6 +233,32 @@ class LicenseInstance(NetBoxModel):
     @property
     def is_available(self):
         return self.assigned_object is None and self.derived_status != LicenseStatusChoices.EXPIRED
+    
+    # NEW HELPER METHODS FOR ASSIGNMENT DISPLAY
+    def get_assignment_display(self):
+        """Return human-readable assignment info"""
+        if not self.assigned_object:
+            return "Unassigned"
+        
+        if self.assigned_object_type.model == 'user':
+            return f"User: {self.assigned_object.username}"
+        elif self.assigned_object_type.model == 'device':
+            return f"Device: {self.assigned_object.name}"
+        elif self.assigned_object_type.model == 'contact':
+            return f"Contact: {self.assigned_object.name}"
+        elif self.assigned_object_type.model == 'virtualmachine':
+            return f"VM: {self.assigned_object.name}"
+        elif self.assigned_object_type.model == 'tenant':
+            return f"Tenant: {self.assigned_object.name}"
+        elif self.assigned_object_type.model == 'service':
+            return f"Service: {self.assigned_object.name}"
+        else:
+            return f"{self.assigned_object_type.model.title()}: {str(self.assigned_object)}"
+    
+    @property
+    def assignment_type(self):
+        """Return assignment type for filtering"""
+        return self.assigned_object_type.model if self.assigned_object_type else None
 
     def get_absolute_url(self):
         return reverse('plugins:netbox_licenses:licenseinstance', args=[self.pk])
