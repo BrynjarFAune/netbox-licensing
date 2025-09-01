@@ -270,3 +270,317 @@ class LicenseInstance(NetBoxModel):
 
         # Don't auto-set price_override anymore - let it remain None to use license price
         super().save(*args, **kwargs)
+
+
+# Phase 3: Business Logic & Integration Models
+
+class LicenseRenewal(NetBoxModel):
+    """Track license renewal processes and approvals"""
+    
+    RENEWAL_STATUS_CHOICES = [
+        ('pending', 'Pending Review'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('in_progress', 'In Progress'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    ]
+    
+    license = models.ForeignKey(
+        to=License,
+        on_delete=models.CASCADE,
+        related_name='renewals'
+    )
+    renewal_date = models.DateField(
+        help_text="Date when license needs to be renewed"
+    )
+    new_end_date = models.DateField(
+        null=True, blank=True,
+        help_text="New expiration date after renewal"
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=RENEWAL_STATUS_CHOICES,
+        default='pending'
+    )
+    
+    # Approval workflow
+    requested_by = models.CharField(max_length=100, blank=True)
+    approved_by = models.CharField(max_length=100, blank=True)
+    approval_date = models.DateTimeField(null=True, blank=True)
+    
+    # Cost information
+    renewal_cost = models.DecimalField(
+        max_digits=12, decimal_places=2,
+        null=True, blank=True
+    )
+    currency = models.CharField(
+        max_length=3,
+        choices=CurrencyChoices.CHOICES,
+        default=CurrencyChoices.NOK
+    )
+    
+    # Budget tracking
+    budget_approved = models.BooleanField(default=False)
+    budget_code = models.CharField(max_length=50, blank=True)
+    
+    # Workflow metadata
+    workflow_data = models.JSONField(
+        default=dict, blank=True,
+        help_text="Workflow-specific data and approval history"
+    )
+    
+    notes = models.TextField(blank=True)
+    
+    class Meta:
+        ordering = ['-renewal_date']
+    
+    def __str__(self):
+        return f"{self.license.name} renewal ({self.renewal_date})"
+    
+    @property
+    def is_overdue(self):
+        """Check if renewal is overdue"""
+        return self.renewal_date < timezone.now().date() and self.status != 'completed'
+    
+    @property
+    def days_until_renewal(self):
+        """Days until renewal is due"""
+        return (self.renewal_date - timezone.now().date()).days
+
+
+class VendorIntegration(NetBoxModel):
+    """Vendor API integration configurations"""
+    
+    INTEGRATION_TYPES = [
+        ('microsoft365', 'Microsoft 365 Graph API'),
+        ('generic_api', 'Generic REST API'),
+        ('webhook', 'Webhook Integration'),
+        ('csv_import', 'CSV Import'),
+        ('ldap', 'LDAP/Active Directory'),
+    ]
+    
+    SYNC_SCHEDULES = [
+        ('hourly', 'Every Hour'),
+        ('daily', 'Daily'),
+        ('weekly', 'Weekly'),
+        ('monthly', 'Monthly'),
+        ('manual', 'Manual Only'),
+    ]
+    
+    vendor = models.ForeignKey(
+        to=Manufacturer,
+        on_delete=models.CASCADE,
+        related_name='integrations'
+    )
+    integration_type = models.CharField(
+        max_length=50,
+        choices=INTEGRATION_TYPES
+    )
+    
+    # API Configuration
+    api_endpoint = models.URLField(blank=True)
+    api_credentials = models.JSONField(
+        default=dict, blank=True,
+        help_text="Encrypted API credentials and configuration"
+    )
+    
+    # Sync Configuration
+    sync_schedule = models.CharField(
+        max_length=20,
+        choices=SYNC_SCHEDULES,
+        default='daily'
+    )
+    last_sync = models.DateTimeField(null=True, blank=True)
+    next_sync = models.DateTimeField(null=True, blank=True)
+    
+    # Status and health
+    is_active = models.BooleanField(default=True)
+    sync_errors = models.PositiveIntegerField(default=0)
+    last_error = models.TextField(blank=True)
+    
+    # Mapping configuration
+    field_mappings = models.JSONField(
+        default=dict, blank=True,
+        help_text="Field mapping configuration between vendor and NetBox"
+    )
+    
+    def __str__(self):
+        return f"{self.vendor.name} - {self.get_integration_type_display()}"
+    
+    @property
+    def sync_health(self):
+        """Return sync health status"""
+        if not self.is_active:
+            return 'disabled'
+        elif self.sync_errors > 5:
+            return 'error'
+        elif self.sync_errors > 0:
+            return 'warning'
+        else:
+            return 'healthy'
+
+
+class LicenseAnalytics(models.Model):
+    """Store license analytics and metrics for trend analysis"""
+    
+    METRIC_TYPES = [
+        ('utilization', 'Utilization Percentage'),
+        ('cost', 'Total Cost'),
+        ('instances', 'Instance Count'),
+        ('available', 'Available Licenses'),
+        ('consumed', 'Consumed Licenses'),
+        ('efficiency', 'Cost Efficiency'),
+    ]
+    
+    license = models.ForeignKey(
+        to=License,
+        on_delete=models.CASCADE,
+        related_name='analytics'
+    )
+    metric_type = models.CharField(max_length=20, choices=METRIC_TYPES)
+    metric_value = models.DecimalField(max_digits=12, decimal_places=2)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    
+    # Additional context
+    metadata = models.JSONField(
+        default=dict, blank=True,
+        help_text="Additional metric context and dimensions"
+    )
+    
+    class Meta:
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['license', 'metric_type', '-timestamp']),
+            models.Index(fields=['timestamp']),
+        ]
+    
+    def __str__(self):
+        return f"{self.license.name} - {self.metric_type}: {self.metric_value}"
+
+
+class LicenseAlert(NetBoxModel):
+    """License alerts and notifications"""
+    
+    ALERT_TYPES = [
+        ('expiring', 'License Expiring Soon'),
+        ('expired', 'License Expired'),
+        ('overallocated', 'License Overallocated'),
+        ('underutilized', 'License Underutilized'),
+        ('renewal_due', 'Renewal Due'),
+        ('budget_exceeded', 'Budget Exceeded'),
+        ('compliance_violation', 'Compliance Violation'),
+        ('sync_error', 'Vendor Sync Error'),
+    ]
+    
+    SEVERITY_LEVELS = [
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+        ('critical', 'Critical'),
+    ]
+    
+    ALERT_STATUS = [
+        ('active', 'Active'),
+        ('acknowledged', 'Acknowledged'),
+        ('resolved', 'Resolved'),
+        ('suppressed', 'Suppressed'),
+    ]
+    
+    license = models.ForeignKey(
+        to=License,
+        on_delete=models.CASCADE,
+        related_name='alerts'
+    )
+    alert_type = models.CharField(max_length=30, choices=ALERT_TYPES)
+    severity = models.CharField(max_length=10, choices=SEVERITY_LEVELS)
+    status = models.CharField(max_length=15, choices=ALERT_STATUS, default='active')
+    
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    
+    # Alert timing
+    triggered_at = models.DateTimeField(auto_now_add=True)
+    acknowledged_at = models.DateTimeField(null=True, blank=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    
+    # Alert context
+    alert_data = models.JSONField(
+        default=dict, blank=True,
+        help_text="Alert-specific data and context"
+    )
+    
+    # Notification tracking
+    notifications_sent = models.PositiveIntegerField(default=0)
+    last_notification = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        ordering = ['-triggered_at']
+        indexes = [
+            models.Index(fields=['status', '-triggered_at']),
+            models.Index(fields=['alert_type', 'severity']),
+        ]
+    
+    def __str__(self):
+        return f"{self.title} - {self.license.name}"
+    
+    @property
+    def is_active(self):
+        return self.status == 'active'
+    
+    @property
+    def age_in_hours(self):
+        """How long has this alert been active"""
+        return (timezone.now() - self.triggered_at).total_seconds() / 3600
+
+
+class CostAllocation(NetBoxModel):
+    """License cost allocation to departments/projects"""
+    
+    ALLOCATION_TYPES = [
+        ('department', 'Department'),
+        ('project', 'Project'),
+        ('cost_center', 'Cost Center'),
+        ('business_unit', 'Business Unit'),
+    ]
+    
+    license = models.ForeignKey(
+        to=License,
+        on_delete=models.CASCADE,
+        related_name='cost_allocations'
+    )
+    allocation_type = models.CharField(max_length=20, choices=ALLOCATION_TYPES)
+    allocation_target = models.CharField(
+        max_length=100,
+        help_text="Department/project/cost center identifier"
+    )
+    
+    # Allocation percentages (should sum to 100% per license)
+    percentage = models.DecimalField(
+        max_digits=5, decimal_places=2,
+        help_text="Percentage of license cost allocated (0-100)"
+    )
+    
+    # Time-based allocation
+    effective_from = models.DateField()
+    effective_to = models.DateField(null=True, blank=True)
+    
+    # Additional context
+    allocation_rules = models.JSONField(
+        default=dict, blank=True,
+        help_text="Rules and criteria for this allocation"
+    )
+    
+    class Meta:
+        ordering = ['-effective_from']
+        unique_together = ['license', 'allocation_target', 'effective_from']
+    
+    def __str__(self):
+        return f"{self.license.name} -> {self.allocation_target} ({self.percentage}%)"
+    
+    @property
+    def is_active(self):
+        """Check if allocation is currently active"""
+        today = timezone.now().date()
+        return (self.effective_from <= today and 
+                (self.effective_to is None or self.effective_to >= today))
