@@ -43,6 +43,28 @@ menu = PluginMenu(
                 link_text='Vendor Analysis',
                 icon_class='mdi mdi-domain'
             ),
+        ]),
+        ('analytics', [
+            PluginMenuItem(
+                link='plugins:netbox_licenses:license_analytics',
+                link_text='License Analytics',
+                icon_class='mdi mdi-chart-line'
+            ),
+            PluginMenuItem(
+                link='plugins:netbox_licenses:compliance_monitoring',
+                link_text='Compliance Monitoring',
+                icon_class='mdi mdi-shield-check'
+            ),
+            PluginMenuItem(
+                link='plugins:netbox_licenses:cost_allocation',
+                link_text='Cost Allocation',
+                icon_class='mdi mdi-cash-multiple'
+            ),
+            PluginMenuItem(
+                link='plugins:netbox_licenses:license_renewals',
+                link_text='License Renewals',
+                icon_class='mdi mdi-calendar-clock'
+            ),
         ])
     ],
     icon_class='mdi mdi-certificate'

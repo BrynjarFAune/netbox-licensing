@@ -28,6 +28,17 @@ urlpatterns = [
     # Reporting views
     path('reports/utilization/', views.UtilizationReportView.as_view(), name='utilization_report'),
     path('reports/vendor-utilization/', views.VendorUtilizationView.as_view(), name='vendor_utilization'),
+    
+    # Phase 3: Advanced Analytics and Management Views
+    path('analytics/', views.LicenseAnalyticsView.as_view(), name='license_analytics'),
+    path('compliance/', views.ComplianceMonitoringView.as_view(), name='compliance_monitoring'),
+    path('cost-allocation/', views.CostAllocationView.as_view(), name='cost_allocation'),
+    path('renewals/', views.LicenseRenewalView.as_view(), name='license_renewals'),
 
     path('ajax/assigned-object/', views.AssignedObjectFieldView.as_view(), name='assigned-object-field'),
+    
+    # Phase 3: Vendor Integration Webhooks  
+    path('webhooks/<slug:vendor_slug>/', views.VendorWebhookView.as_view(), name='vendor_webhook'),
+    path('vendor-status/', views.VendorSyncStatusView.as_view(), name='vendor_sync_status'),
+    path('vendor-status/<slug:vendor_slug>/', views.VendorSyncStatusView.as_view(), name='vendor_sync_status_detail'),
 ]

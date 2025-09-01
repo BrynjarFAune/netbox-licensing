@@ -251,3 +251,214 @@ class VendorUtilizationView(View):
         }
         
         return render(request, self.template_name, context)
+
+
+# Phase 3: Advanced Analytics and Trend Analysis Views
+class LicenseAnalyticsView(View):
+    """Advanced license analytics dashboard with trends"""
+    template_name = "netbox_licenses/license_analytics.html"
+    
+    def get(self, request):
+        from .services import AnalyticsService
+        from datetime import timedelta
+        
+        # Get time range from query params (default: 30 days)
+        days = int(request.GET.get('days', 30))
+        
+        licenses = models.License.objects.prefetch_related('analytics', 'vendor')
+        analytics_data = []
+        
+        for license in licenses[:20]:  # Top 20 for performance
+            trend_data = {
+                'license': license,
+                'utilization_trend': AnalyticsService.get_trend_analysis(license, 'utilization', days),
+                'cost_trend': AnalyticsService.get_trend_analysis(license, 'cost', days),
+                'efficiency_trend': AnalyticsService.get_trend_analysis(license, 'efficiency', days),
+                'recent_metrics': license.analytics.filter(
+                    timestamp__gte=timezone.now() - timedelta(days=days)
+                )[:10]
+            }
+            analytics_data.append(trend_data)
+        
+        # Get optimization recommendations
+        recommendations = AnalyticsService.get_cost_optimization_recommendations()
+        
+        context = {
+            'analytics_data': analytics_data,
+            'recommendations': recommendations[:10],  # Top 10
+            'days_analyzed': days,
+            'total_licenses': licenses.count(),
+            'total_potential_savings': sum(r['potential_savings'] for r in recommendations),
+        }
+        
+        return render(request, self.template_name, context)
+
+
+class ComplianceMonitoringView(View):
+    """Real-time compliance monitoring dashboard"""
+    template_name = "netbox_licenses/compliance_monitoring.html"
+    
+    def get(self, request):
+        from .models import LicenseAlert
+        
+        # Get active alerts by type and severity
+        active_alerts = LicenseAlert.objects.filter(status='active').select_related('license', 'license__vendor')
+        
+        alert_summary = {
+            'critical': active_alerts.filter(severity='critical').count(),
+            'high': active_alerts.filter(severity='high').count(),
+            'medium': active_alerts.filter(severity='medium').count(),
+            'low': active_alerts.filter(severity='low').count(),
+        }
+        
+        # Group alerts by type
+        alerts_by_type = {}
+        for alert_type, display_name in LicenseAlert.ALERT_TYPES:
+            alerts_by_type[alert_type] = {
+                'display_name': display_name,
+                'count': active_alerts.filter(alert_type=alert_type).count(),
+                'alerts': active_alerts.filter(alert_type=alert_type)[:5]  # Top 5 per type
+            }
+        
+        # Get overallocated and underutilized licenses
+        overallocated = models.License.objects.filter(
+            consumed_licenses__gt=F('total_licenses')
+        )
+        
+        underutilized = models.License.objects.filter(
+            consumed_licenses__lt=F('total_licenses') * 70 / 100,
+            total_licenses__gt=0
+        )
+        
+        context = {
+            'alert_summary': alert_summary,
+            'alerts_by_type': alerts_by_type,
+            'recent_alerts': active_alerts.order_by('-triggered_at')[:10],
+            'overallocated_licenses': overallocated,
+            'underutilized_licenses': underutilized,
+            'total_active_alerts': active_alerts.count(),
+        }
+        
+        return render(request, self.template_name, context)
+
+
+class CostAllocationView(View):
+    """Cost allocation and chargeback dashboard"""
+    template_name = "netbox_licenses/cost_allocation.html"
+    
+    def get(self, request):
+        from .models import CostAllocation
+        from .services import CostAllocationService
+        from datetime import date
+        
+        # Get current month or specified month
+        month_str = request.GET.get('month')
+        if month_str:
+            year, month = map(int, month_str.split('-'))
+            target_month = date(year, month, 1)
+        else:
+            target_month = timezone.now().date().replace(day=1)
+        
+        # Get all active cost allocations
+        active_allocations = CostAllocation.objects.filter(
+            effective_from__lte=target_month,
+            effective_to__gte=target_month
+        ).select_related('license', 'license__vendor')
+        
+        # Group by allocation target (department/project)
+        allocation_summary = {}
+        for allocation in active_allocations:
+            target = allocation.allocation_target
+            if target not in allocation_summary:
+                allocation_summary[target] = {
+                    'allocation_type': allocation.get_allocation_type_display(),
+                    'total_cost': 0,
+                    'licenses': [],
+                    'allocation_count': 0
+                }
+            
+            license_cost = (allocation.license.total_cost or 0) * (allocation.percentage / 100)
+            allocation_summary[target]['total_cost'] += license_cost
+            allocation_summary[target]['licenses'].append({
+                'license': allocation.license,
+                'percentage': allocation.percentage,
+                'allocated_cost': license_cost
+            })
+            allocation_summary[target]['allocation_count'] += 1
+        
+        # Sort by total cost
+        sorted_allocations = sorted(
+            allocation_summary.items(),
+            key=lambda x: x[1]['total_cost'],
+            reverse=True
+        )
+        
+        # Calculate totals
+        total_allocated_cost = sum(item[1]['total_cost'] for item in sorted_allocations)
+        total_licenses = models.License.objects.count()
+        allocated_licenses = len(set(alloc.license for alloc in active_allocations))
+        unallocated_licenses = total_licenses - allocated_licenses
+        
+        context = {
+            'allocation_summary': sorted_allocations,
+            'target_month': target_month,
+            'total_allocated_cost': total_allocated_cost,
+            'total_licenses': total_licenses,
+            'allocated_licenses': allocated_licenses,
+            'unallocated_licenses': unallocated_licenses,
+            'recent_allocations': active_allocations.order_by('-created')[:10],
+        }
+        
+        return render(request, self.template_name, context)
+
+
+class LicenseRenewalView(View):
+    """License renewal management dashboard"""
+    template_name = "netbox_licenses/license_renewals.html"
+    
+    def get(self, request):
+        from .models import LicenseRenewal
+        
+        renewals = LicenseRenewal.objects.select_related('license', 'license__vendor').all()
+        
+        # Group renewals by status
+        renewals_by_status = {}
+        for status, display_name in LicenseRenewal.RENEWAL_STATUS_CHOICES:
+            renewals_by_status[status] = {
+                'display_name': display_name,
+                'renewals': renewals.filter(status=status).order_by('renewal_date'),
+                'count': renewals.filter(status=status).count()
+            }
+        
+        # Get upcoming renewals (next 60 days)
+        upcoming_date = timezone.now().date() + timedelta(days=60)
+        upcoming_renewals = renewals.filter(
+            renewal_date__lte=upcoming_date,
+            status__in=['pending', 'approved']
+        ).order_by('renewal_date')
+        
+        # Get overdue renewals
+        overdue_renewals = renewals.filter(
+            renewal_date__lt=timezone.now().date(),
+            status__in=['pending', 'approved']
+        )
+        
+        # Calculate renewal costs
+        total_pending_cost = sum(
+            renewal.renewal_cost or 0 
+            for renewal in renewals.filter(status='pending')
+        )
+        
+        context = {
+            'renewals_by_status': renewals_by_status,
+            'upcoming_renewals': upcoming_renewals,
+            'overdue_renewals': overdue_renewals,
+            'total_pending_cost': total_pending_cost,
+            'total_renewals': renewals.count(),
+        }
+        
+        return render(request, self.template_name, context)
+
+
+# Import webhook views from webhooks.py
+from .webhooks import VendorWebhookView, VendorSyncStatusView
