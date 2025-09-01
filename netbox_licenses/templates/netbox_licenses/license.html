@@ -8,16 +8,43 @@
       <tr><th>Name</th><td>{{ object.name }}</td></tr>
       <tr><th>Vendor</th><td>{{ object.vendor|linkify }}</td></tr>
       <tr><th>Tenant</th><td>{{ object.tenant|linkify }}</td></tr>
+      <tr><th>External ID</th><td>{{ object.external_id|default:"—" }}</td></tr>
       <tr><th>Price</th><td>{{ object.price }} {{ object.currency }}</td></tr>
       <tr><th>Currency</th><td>{{ object.currency }}</td></tr>
       <tr><th>Comments</th><td>{{ object.comments|linebreaksbr }}</td></tr>
     </table>
   </div>
 
-  <!-- Cost panel -->
+  <!-- Enhanced Utilization Panel -->
   <div class="col col-md-6">
     <table class="table table-hover attr-table">
-      <tr><th>Instance count</th><td>{{ object.license_count|default:0 }}</td></tr>
+      <tr>
+        <th>License Utilization</th>
+        <td>
+          {% if is_overallocated %}
+            <span class="badge text-bg-danger">{{ utilization_percentage|floatformat:1 }}% ({{ object.consumed_licenses }}/{{ object.total_licenses }})</span>
+          {% elif is_underutilized %}
+            <span class="badge text-bg-success">{{ utilization_percentage|floatformat:1 }}% ({{ object.consumed_licenses }}/{{ object.total_licenses }})</span>
+          {% else %}
+            <span class="badge text-bg-warning">{{ utilization_percentage|floatformat:1 }}% ({{ object.consumed_licenses }}/{{ object.total_licenses }})</span>
+          {% endif %}
+        </td>
+      </tr>
+      <tr><th>Total Licenses</th><td>{{ object.total_licenses }}</td></tr>
+      <tr><th>Consumed Licenses</th><td>{{ object.consumed_licenses }}</td></tr>
+      <tr>
+        <th>Available Licenses</th>
+        <td>
+          {% if available_licenses < 0 %}
+            <span class="text-danger">{{ available_licenses }} (Overallocated)</span>
+          {% elif available_licenses == 0 %}
+            <span class="text-warning">{{ available_licenses }} (Full capacity)</span>
+          {% else %}
+            <span class="text-success">{{ available_licenses }}</span>
+          {% endif %}
+        </td>
+      </tr>
+      <tr><th>Instance count</th><td>{{ instance_count|default:0 }}</td></tr>
       <tr><th>Total cost</th><td>{{ object.total_cost|default:0 }} NOK</td></tr>
     </table>
   </div>

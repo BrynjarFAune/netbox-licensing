@@ -13,6 +13,8 @@ from utilities.forms.fields import DynamicModelChoiceField
 class LicenseListView(generic.ObjectListView):
     queryset = models.License.objects.prefetch_related('vendor', 'tenant', 'instances')
     table = tables.LicenseTable
+    filterset = filtersets.LicenseFilterSet
+    filterset_form = filtersets.LicenseFilterForm
 
 class LicenseView(generic.ObjectView):
     queryset = models.License.objects.prefetch_related('instances', 'instances__assigned_object')
@@ -21,6 +23,11 @@ class LicenseView(generic.ObjectView):
         return {
             'instance_count': instance.instances.count(),
             'total_cost': instance.total_cost,
+            # NEW UTILIZATION CONTEXT
+            'utilization_percentage': instance.utilization_percentage,
+            'available_licenses': instance.available_licenses,
+            'is_underutilized': instance.utilization_percentage < 80,
+            'is_overallocated': instance.consumed_licenses > instance.total_licenses,
             "instance_table": tables.LicenseInstanceTable(
                 instance.instances.all(),
                 user=request.user

@@ -9,6 +9,15 @@ class LicenseTable(NetBoxTable):
     name = tables.Column(linkify=True)
     vendor = tables.Column(linkify=True)
     tenant = tables.Column(linkify=True)
+    external_id = tables.Column(verbose_name="External ID", empty_values=())
+    
+    # ENHANCED UTILIZATION COLUMNS
+    utilization = tables.Column(empty_values=(), verbose_name="Utilization", orderable=False)
+    total_licenses = tables.Column(verbose_name="Total")
+    consumed_licenses = tables.Column(verbose_name="Used")
+    available_licenses = tables.Column(empty_values=(), verbose_name="Available")
+    
+    # EXISTING COLUMNS
     instance_count = tables.Column(empty_values=(), verbose_name="Instances")
     price = tables.Column(verbose_name="Price", empty_values=())
     currency = tables.Column(verbose_name="Currency")
@@ -19,14 +28,45 @@ class LicenseTable(NetBoxTable):
     class Meta(NetBoxTable.Meta):
         model = License
         fields = (
-            "pk", "name", "vendor", "tenant", "price", "currency",
-            "instance_count", "assigned_count", "warning_count", "total_cost",
+            "pk", "name", "vendor", "tenant", "external_id", 
+            "utilization", "total_licenses", "consumed_licenses", "available_licenses",
+            "price", "currency", "instance_count", "assigned_count", "warning_count", "total_cost",
             "tags", "created", "last_updated", "actions"
         )
         default_columns = (
-            "pk", "name", "vendor", "tenant", "price", "currency", "instance_count", "total_cost"
+            "pk", "name", "vendor", "external_id", "utilization", "total_licenses", 
+            "consumed_licenses", "available_licenses", "price", "currency"
         )
 
+    # NEW UTILIZATION RENDERING METHODS
+    def render_external_id(self, record):
+        return record.external_id or "—"
+    
+    def render_utilization(self, record):
+        from django.utils.html import format_html
+        percentage = record.utilization_percentage
+        if percentage < 80:
+            color_class = "success"  # Green
+        elif percentage < 100:
+            color_class = "warning"  # Orange  
+        else:
+            color_class = "danger"   # Red
+            
+        return format_html(
+            '<span class="badge text-bg-{}">{:.1f}%</span>',
+            color_class, percentage
+        )
+    
+    def render_available_licenses(self, record):
+        available = record.available_licenses
+        if available < 0:
+            return format_html('<span class="text-danger">{}</span>', available)
+        elif available == 0:
+            return format_html('<span class="text-warning">{}</span>', available)
+        else:
+            return str(available)
+
+    # EXISTING RENDERING METHODS
     def render_instance_count(self, record):
         return record.instances.count()
 
@@ -53,6 +93,7 @@ class LicenseInstanceTable(NetBoxTable):
     pk = tables.CheckBoxColumn()
     license = tables.Column(linkify=True)
     assigned_object = tables.Column(linkify=True, verbose_name="Assigned To")
+    assignment_display = tables.Column(empty_values=(), verbose_name="Assignment Details", orderable=False)
     start_date = tables.DateColumn(format='d/m/Y')
     end_date = tables.DateColumn(format='d/m/Y')
     status = tables.Column(verbose_name="Status", orderable=False, accessor='derived_status')
@@ -63,13 +104,16 @@ class LicenseInstanceTable(NetBoxTable):
     class Meta(NetBoxTable.Meta):
         model = LicenseInstance
         fields = (
-            'pk', 'id', 'license', 'assigned_object', 'start_date', 'end_date', 'status', 
+            'pk', 'id', 'license', 'assigned_object', 'assignment_display', 'start_date', 'end_date', 'status', 
             'effective_price', 'effective_currency', 'price_in_nok', 'actions'
         )
         default_columns = (
-            'pk', 'id', 'license', 'assigned_object', 'effective_price', 'effective_currency', 'price_in_nok', 'status'
+            'pk', 'id', 'license', 'assignment_display', 'effective_price', 'price_in_nok', 'status'
         )
 
+    def render_assignment_display(self, record):
+        return record.get_assignment_display()
+    
     def render_effective_price(self, record):
         return f"{record.effective_price} {record.effective_currency}"
     

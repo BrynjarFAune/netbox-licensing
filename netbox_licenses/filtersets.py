@@ -9,11 +9,13 @@ from dcim.models import Manufacturer
 
 
 class LicenseFilterSet(NetBoxModelFilterSet):
-    vendor = django_filters.ModelChoiceFilter(queryset=Manufacturer.objects.all())
+    vendor = django_filters.ModelMultipleChoiceFilter(queryset=Manufacturer.objects.all())
     external_id = django_filters.CharFilter(lookup_expr='icontains')
     has_external_id = django_filters.BooleanFilter(method='filter_has_external_id')
     underutilized = django_filters.BooleanFilter(method='filter_underutilized')
     overallocated = django_filters.BooleanFilter(method='filter_overallocated')
+    total_licenses__gte = django_filters.NumberFilter(field_name='total_licenses', lookup_expr='gte')
+    consumed_licenses__gte = django_filters.NumberFilter(field_name='consumed_licenses', lookup_expr='gte')
     
     class Meta:
         model = License
@@ -82,4 +84,47 @@ class LicenseInstanceFilterForm(NetBoxModelFilterSetForm):
 
     class Meta:
         model = LicenseInstance
+        fields = []
+
+
+class LicenseFilterForm(NetBoxModelFilterSetForm):
+    model = License
+    
+    vendor = forms.ModelMultipleChoiceField(
+        queryset=Manufacturer.objects.all(),
+        required=False
+    )
+    external_id = forms.CharField(
+        required=False,
+        label="External ID Contains",
+        help_text="Search for licenses containing this external ID"
+    )
+    has_external_id = forms.NullBooleanField(
+        required=False,
+        label="Has External ID",
+        help_text="Filter licenses with or without external IDs"
+    )
+    underutilized = forms.BooleanField(
+        required=False,
+        label="Underutilized",
+        help_text="Show licenses with usage below total capacity"
+    )
+    overallocated = forms.BooleanField(
+        required=False,
+        label="Overallocated", 
+        help_text="Show licenses with usage exceeding total capacity"
+    )
+    total_licenses__gte = forms.IntegerField(
+        required=False,
+        label="Min Total Licenses",
+        help_text="Minimum number of total licenses"
+    )
+    consumed_licenses__gte = forms.IntegerField(
+        required=False,
+        label="Min Consumed Licenses", 
+        help_text="Minimum number of consumed licenses"
+    )
+    
+    class Meta:
+        model = License
         fields = []
