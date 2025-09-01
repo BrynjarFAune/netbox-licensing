@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+
+{% block title %}Vendor Utilization Analysis{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Vendor Utilization Analysis</h1>
+    <div>
+        <a href="{% url 'plugins:netbox_licenses:utilization_report' %}" class="btn btn-outline-primary">
+            Overall Report
+        </a>
+        <a href="{% url 'plugins:netbox_licenses:license_list' %}" class="btn btn-outline-secondary">
+            All Licenses
+        </a>
+    </div>
+</div>
+
+<!-- Summary -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Vendor Overview</h5>
+                <p class="text-muted">Analyzing {{ total_vendors }} vendors to identify optimization opportunities and compliance risks.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Vendor Statistics Table -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Vendor Utilization Statistics</h5>
+    </div>
+    <div class="card-body">
+        {% if vendor_stats %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Vendor</th>
+                        <th>Licenses</th>
+                        <th>Total Capacity</th>
+                        <th>Used</th>
+                        <th>Available</th>
+                        <th>Utilization</th>
+                        <th>Total Cost</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for vendor in vendor_stats %}
+                    <tr>
+                        <td>
+                            <strong>{{ vendor.vendor_name }}</strong>
+                        </td>
+                        <td>
+                            <a href="{% url 'plugins:netbox_licenses:license_list' %}?vendor={{ vendor.vendor_id }}" class="badge text-bg-info">
+                                {{ vendor.license_count }} licenses
+                            </a>
+                        </td>
+                        <td>{{ vendor.total_licenses }}</td>
+                        <td>{{ vendor.consumed_licenses }}</td>
+                        <td>
+                            {% if vendor.available_licenses < 0 %}
+                                <span class="text-danger">{{ vendor.available_licenses }}</span>
+                            {% elif vendor.available_licenses == 0 %}
+                                <span class="text-warning">{{ vendor.available_licenses }}</span>
+                            {% else %}
+                                <span class="text-success">{{ vendor.available_licenses }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if vendor.utilization_percentage < 80 %}
+                                <span class="badge text-bg-success">{{ vendor.utilization_percentage|floatformat:1 }}%</span>
+                            {% elif vendor.utilization_percentage < 100 %}
+                                <span class="badge text-bg-warning">{{ vendor.utilization_percentage|floatformat:1 }}%</span>
+                            {% else %}
+                                <span class="badge text-bg-danger">{{ vendor.utilization_percentage|floatformat:1 }}%</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ vendor.total_cost|floatformat:2 }} NOK</td>
+                        <td>
+                            {% if vendor.utilization_percentage > 100 %}
+                                <span class="badge text-bg-danger">Overallocated</span>
+                            {% elif vendor.utilization_percentage >= 90 %}
+                                <span class="badge text-bg-warning">Near Capacity</span>
+                            {% elif vendor.utilization_percentage < 50 %}
+                                <span class="badge text-bg-success">Optimize</span>
+                            {% else %}
+                                <span class="badge text-bg-info">Good</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <h5>No vendor data available</h5>
+            <p>No licenses with vendor assignments found. Add vendors to your licenses to see utilization analysis.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Optimization Recommendations -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="mb-0">Optimization Recommendations</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="alert alert-success">
+                    <h6>Cost Optimization</h6>
+                    <p class="small mb-0">Focus on vendors with low utilization (&lt;80%) to reduce licensing costs.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="alert alert-warning">
+                    <h6>Capacity Planning</h6>
+                    <p class="small mb-0">Monitor vendors near capacity (90-100%) for future license needs.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="alert alert-danger">
+                    <h6>Compliance Risk</h6>
+                    <p class="small mb-0">Immediately address overallocated vendors (&gt;100%) to avoid violations.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

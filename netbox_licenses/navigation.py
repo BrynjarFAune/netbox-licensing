@@ -31,8 +31,19 @@ menu = PluginMenu(
                 link_text='License Instances',
                 buttons=licenseinstance_buttons
             ),
-
+        ]),
+        ('reports', [
+            PluginMenuItem(
+                link='plugins:netbox_licenses:utilization_report',
+                link_text='Utilization Report',
+                icon_class='mdi mdi-chart-bar'
+            ),
+            PluginMenuItem(
+                link='plugins:netbox_licenses:vendor_utilization',
+                link_text='Vendor Analysis',
+                icon_class='mdi mdi-domain'
+            ),
         ])
-         ],
+    ],
     icon_class='mdi mdi-certificate'
 )

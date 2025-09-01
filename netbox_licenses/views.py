@@ -3,7 +3,7 @@ from django.views import View
 from django.shortcuts import render
 from netbox.views import generic
 from . import tables, filtersets, models, forms
-from django.db.models import Count
+from django.db.models import Count, Q, F
 from django.contrib import messages
 from django.http import HttpResponseBadRequest
 from utilities.forms.fields import DynamicModelChoiceField
@@ -160,3 +160,94 @@ class AssignedObjectFieldView(View):
 class LicenseInstanceBulkDeleteView(generic.BulkDeleteView):
     queryset = models.LicenseInstance.objects.all()
     table = tables.LicenseInstanceTable
+
+# Utilization Reporting Views
+class UtilizationReportView(View):
+    """Comprehensive utilization report for license optimization"""
+    template_name = "netbox_licenses/utilization_report.html"
+    
+    def get(self, request):
+        # Get all licenses with utilization metrics
+        licenses = models.License.objects.prefetch_related('vendor', 'tenant', 'instances')
+        
+        # Calculate summary statistics
+        total_licenses = licenses.count()
+        underutilized = licenses.filter(consumed_licenses__lt=F('total_licenses')).count()
+        overallocated = licenses.filter(consumed_licenses__gt=F('total_licenses')).count()
+        fully_utilized = licenses.filter(consumed_licenses=F('total_licenses')).count()
+        
+        # Get top underutilized licenses (potential cost savings)
+        top_underutilized = licenses.filter(
+            consumed_licenses__lt=F('total_licenses'),
+            total_licenses__gt=0
+        ).extra(
+            select={'waste_percentage': '(total_licenses - consumed_licenses) * 100.0 / total_licenses'}
+        ).order_by('-waste_percentage')[:10]
+        
+        # Get overallocated licenses (compliance risks)
+        overallocated_licenses = licenses.filter(
+            consumed_licenses__gt=F('total_licenses')
+        ).extra(
+            select={'excess_percentage': '(consumed_licenses - total_licenses) * 100.0 / total_licenses'}
+        ).order_by('-excess_percentage')
+        
+        # Calculate cost impact
+        total_license_value = sum(license.total_cost or 0 for license in licenses)
+        potential_savings = sum(
+            (license.total_licenses - license.consumed_licenses) * (license.price or 0) 
+            for license in top_underutilized
+        )
+        
+        context = {
+            'total_licenses': total_licenses,
+            'underutilized_count': underutilized,
+            'overallocated_count': overallocated,
+            'fully_utilized_count': fully_utilized,
+            'top_underutilized': top_underutilized,
+            'overallocated_licenses': overallocated_licenses,
+            'total_license_value': total_license_value,
+            'potential_savings': potential_savings,
+            'licenses_table': tables.LicenseTable(licenses, user=request.user),
+        }
+        
+        return render(request, self.template_name, context)
+
+class VendorUtilizationView(View):
+    """Vendor-specific utilization analysis"""
+    template_name = "netbox_licenses/vendor_utilization.html"
+    
+    def get(self, request):
+        # Get vendor utilization statistics
+        vendor_stats = []
+        vendors = models.License.objects.values_list('vendor', flat=True).distinct()
+        
+        for vendor_id in vendors:
+            if vendor_id:
+                vendor_licenses = models.License.objects.filter(vendor_id=vendor_id)
+                vendor_name = vendor_licenses.first().vendor.name if vendor_licenses.exists() else 'Unknown'
+                
+                total_licenses = sum(license.total_licenses for license in vendor_licenses)
+                consumed_licenses = sum(license.consumed_licenses for license in vendor_licenses)
+                utilization = (consumed_licenses / total_licenses * 100) if total_licenses > 0 else 0
+                total_cost = sum(license.total_cost or 0 for license in vendor_licenses)
+                
+                vendor_stats.append({
+                    'vendor_id': vendor_id,
+                    'vendor_name': vendor_name,
+                    'license_count': vendor_licenses.count(),
+                    'total_licenses': total_licenses,
+                    'consumed_licenses': consumed_licenses,
+                    'utilization_percentage': utilization,
+                    'total_cost': total_cost,
+                    'available_licenses': total_licenses - consumed_licenses,
+                })
+        
+        # Sort by utilization percentage
+        vendor_stats.sort(key=lambda x: x['utilization_percentage'], reverse=True)
+        
+        context = {
+            'vendor_stats': vendor_stats,
+            'total_vendors': len(vendor_stats),
+        }
+        
+        return render(request, self.template_name, context)

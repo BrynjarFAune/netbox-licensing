@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+{% load render_table from django_tables2 %}
+
+{% block title %}License Utilization Report{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>License Utilization Report</h1>
+    <div>
+        <a href="{% url 'plugins:netbox_licenses:vendor_utilization' %}" class="btn btn-outline-primary">
+            Vendor Analysis
+        </a>
+        <a href="{% url 'plugins:netbox_licenses:license_list' %}" class="btn btn-outline-secondary">
+            All Licenses
+        </a>
+    </div>
+</div>
+
+<!-- Summary Statistics -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-bg-primary">
+            <div class="card-body text-center">
+                <h5 class="card-title">{{ total_licenses }}</h5>
+                <p class="card-text">Total Licenses</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-bg-success">
+            <div class="card-body text-center">
+                <h5 class="card-title">{{ underutilized_count }}</h5>
+                <p class="card-text">Underutilized</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-bg-danger">
+            <div class="card-body text-center">
+                <h5 class="card-title">{{ overallocated_count }}</h5>
+                <p class="card-text">Overallocated</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-bg-warning">
+            <div class="card-body text-center">
+                <h5 class="card-title">{{ fully_utilized_count }}</h5>
+                <p class="card-text">Fully Utilized</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cost Impact -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Financial Impact</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr>
+                        <th>Total License Value</th>
+                        <td>{{ total_license_value|floatformat:2 }} NOK</td>
+                    </tr>
+                    <tr>
+                        <th>Potential Savings</th>
+                        <td class="text-success">{{ potential_savings|floatformat:2 }} NOK</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Optimization Opportunities</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Focus on the underutilized licenses below to reduce costs and improve license efficiency.</p>
+                <div class="d-flex gap-2">
+                    <span class="badge text-bg-success">{{ underutilized_count }} licenses to optimize</span>
+                    <span class="badge text-bg-danger">{{ overallocated_count }} compliance risks</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Top Underutilized Licenses -->
+{% if top_underutilized %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Top 10 Underutilized Licenses (Cost Savings Opportunity)</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>License</th>
+                        <th>Vendor</th>
+                        <th>Total</th>
+                        <th>Used</th>
+                        <th>Available</th>
+                        <th>Waste %</th>
+                        <th>Potential Savings</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for license in top_underutilized %}
+                    <tr>
+                        <td><a href="{% url 'plugins:netbox_licenses:license' pk=license.pk %}">{{ license.name }}</a></td>
+                        <td>{{ license.vendor|default:"—" }}</td>
+                        <td>{{ license.total_licenses }}</td>
+                        <td>{{ license.consumed_licenses }}</td>
+                        <td><span class="text-success">{{ license.available_licenses }}</span></td>
+                        <td><span class="badge text-bg-warning">{{ license.waste_percentage|floatformat:1 }}%</span></td>
+                        <td>{{ license.available_licenses|mul:license.price|floatformat:2 }} {{ license.currency }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Overallocated Licenses -->
+{% if overallocated_licenses %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0 text-danger">Overallocated Licenses (Compliance Risk)</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>License</th>
+                        <th>Vendor</th>
+                        <th>Total</th>
+                        <th>Used</th>
+                        <th>Excess</th>
+                        <th>Over %</th>
+                        <th>Action Required</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for license in overallocated_licenses %}
+                    <tr class="table-danger">
+                        <td><a href="{% url 'plugins:netbox_licenses:license' pk=license.pk %}">{{ license.name }}</a></td>
+                        <td>{{ license.vendor|default:"—" }}</td>
+                        <td>{{ license.total_licenses }}</td>
+                        <td>{{ license.consumed_licenses }}</td>
+                        <td><span class="text-danger">{{ license.consumed_licenses|sub:license.total_licenses }}</span></td>
+                        <td><span class="badge text-bg-danger">{{ license.excess_percentage|floatformat:1 }}%</span></td>
+                        <td><span class="badge text-bg-warning">Purchase {{ license.consumed_licenses|sub:license.total_licenses }} more</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- All Licenses Table -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">All Licenses</h5>
+    </div>
+    <div class="card-body">
+        {% render_table licenses_table 'inc/table.html' %}
+    </div>
+</div>
+
+{% endblock %}

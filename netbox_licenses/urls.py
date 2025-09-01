@@ -25,5 +25,9 @@ urlpatterns = [
     }),
     path('license-instances/delete/', views.LicenseInstanceBulkDeleteView.as_view(), name="licenseinstance_bulk_delete"),
 
+    # Reporting views
+    path('reports/utilization/', views.UtilizationReportView.as_view(), name='utilization_report'),
+    path('reports/vendor-utilization/', views.VendorUtilizationView.as_view(), name='vendor_utilization'),
+
     path('ajax/assigned-object/', views.AssignedObjectFieldView.as_view(), name='assigned-object-field'),
 ]
