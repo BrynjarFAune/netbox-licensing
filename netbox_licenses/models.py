@@ -89,12 +89,12 @@ class LicenseInstance(NetBoxModel):
         blank=True,
         help_text="Override currency for this specific instance"
     )
-    conversion_rate_to_nok = models.DecimalField(
+    nok_price_override = models.DecimalField(
         max_digits=10,
-        decimal_places=6,
+        decimal_places=2,
         null=True,
         blank=True,
-        help_text="Conversion rate from instance currency to NOK (multiplier)"
+        help_text="Override price in NOK for currency conversion calculations"
     )
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
@@ -117,25 +117,40 @@ class LicenseInstance(NetBoxModel):
     
     @property
     def effective_conversion_rate(self):
-        """Returns the conversion rate to NOK, defaulting to 1.0 for NOK"""
+        """Returns the conversion rate to NOK, calculated on demand"""
         from decimal import Decimal
         if self.effective_currency == CurrencyChoices.NOK:
             return Decimal('1.0')
-        rate = self.conversion_rate_to_nok
-        return Decimal(str(rate)) if rate is not None else Decimal('1.0')
+        
+        # Calculate conversion rate from NOK price override and foreign price
+        nok_price = self.nok_price_override
+        foreign_price = self.effective_price
+        
+        if nok_price and foreign_price and foreign_price > 0:
+            try:
+                return Decimal(str(nok_price)) / Decimal(str(foreign_price))
+            except (ValueError, TypeError, ZeroDivisionError):
+                pass
+        
+        return Decimal('1.0')  # Default fallback
     
     @property
     def price_in_nok(self):
-        """Returns the price converted to NOK"""
+        """Returns the price in NOK - either direct NOK price or converted from override"""
         from decimal import Decimal
+        
+        # If we have a NOK price override, use it directly
+        if self.nok_price_override:
+            return Decimal(str(self.nok_price_override))
+        
+        # If currency is NOK, use the effective price directly
+        if self.effective_currency == CurrencyChoices.NOK:
+            return self.effective_price
+        
+        # For non-NOK currencies, calculate from conversion rate
         try:
             price = self.effective_price
             rate = self.effective_conversion_rate
-            # Ensure both are Decimal types
-            if not isinstance(price, Decimal):
-                price = Decimal(str(price)) if price is not None else Decimal('0.0')
-            if not isinstance(rate, Decimal):
-                rate = Decimal(str(rate)) if rate is not None else Decimal('1.0')
             return price * rate
         except (ValueError, TypeError, AttributeError):
             return Decimal('0.0')

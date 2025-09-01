@@ -67,8 +67,8 @@ class LicenseInstanceForm(NetBoxModelForm):
         help_text="Override the currency for this instance"
     )
     
-    # Simplified: Only NOK price input for non-NOK currencies
-    nok_price_direct = DecimalField(
+    # NOK price override for currency conversion
+    nok_price_override = DecimalField(
         max_digits=10,
         decimal_places=2,
         required=False,
@@ -80,7 +80,7 @@ class LicenseInstanceForm(NetBoxModelForm):
         model = LicenseInstance
         fields = (
             'license', 'assigned_object_selector',
-            'price_override', 'currency_override', 'nok_price_direct',
+            'price_override', 'currency_override', 'nok_price_override',
             'start_date', 'end_date', 'comments', 'tags'
         )
         widgets = {
@@ -112,7 +112,7 @@ class LicenseInstanceForm(NetBoxModelForm):
             'class': 'price-field',
             'step': '0.01'
         })
-        self.fields['nok_price_direct'].widget.attrs.update({
+        self.fields['nok_price_override'].widget.attrs.update({
             'class': 'nok-price-field',
             'step': '0.01'
         })
@@ -170,8 +170,9 @@ class LicenseInstanceForm(NetBoxModelForm):
             # Populate currency override fields for existing instances
             if self.instance.currency_override:
                 self.fields['currency_override'].initial = self.instance.currency_override
-            # Always show the NOK price for editing
-            self.fields['nok_price_direct'].initial = self.instance.price_in_nok
+            # Always show the NOK price override for editing
+            if self.instance.nok_price_override:
+                self.fields['nok_price_override'].initial = self.instance.nok_price_override
 
     def clean(self):
         cleaned_data = super().clean()
@@ -197,21 +198,16 @@ class LicenseInstanceForm(NetBoxModelForm):
 
         # Validate currency conversion fields
         currency_override = cleaned_data.get('currency_override')
-        nok_price_direct = cleaned_data.get('nok_price_direct')
-        price_override = cleaned_data.get('price_override')
+        nok_price_override = cleaned_data.get('nok_price_override')
         
         if currency_override and currency_override != CurrencyChoices.NOK:
             # For non-NOK currencies, require NOK price for conversion
-            if not nok_price_direct:
-                self.add_error('nok_price_direct', 
+            if not nok_price_override:
+                self.add_error('nok_price_override', 
                               'NOK price is required when using a currency override')
-            elif nok_price_direct <= 0:
-                self.add_error('nok_price_direct', 
+            elif nok_price_override <= 0:
+                self.add_error('nok_price_override', 
                               'NOK price must be greater than 0')
-            # Calculate conversion rate from NOK price and foreign currency price
-            if price_override and price_override > 0 and nok_price_direct:
-                from decimal import Decimal
-                cleaned_data['conversion_rate_to_nok'] = Decimal(str(nok_price_direct)) / Decimal(str(price_override))
 
         return cleaned_data
 
