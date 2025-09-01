@@ -9,6 +9,9 @@ class NetBoxLicensesConfig(PluginConfig):
     author_email = 'BrynjarFAune@gmail.com'
     base_url = 'licenses'
     
+    # Explicitly define navigation menu
+    navigation = 'navigation.menu'
+    
     def ready(self):
         # Import signal handlers to ensure they're registered
         from . import signals
