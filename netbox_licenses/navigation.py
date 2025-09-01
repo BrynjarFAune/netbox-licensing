@@ -35,35 +35,29 @@ menu = PluginMenu(
         ('reports', [
             PluginMenuItem(
                 link='plugins:netbox_licenses:utilization_report',
-                link_text='Utilization Report',
-                icon_class='mdi mdi-chart-bar'
+                link_text='Utilization Report'
             ),
             PluginMenuItem(
                 link='plugins:netbox_licenses:vendor_utilization',
-                link_text='Vendor Analysis',
-                icon_class='mdi mdi-domain'
+                link_text='Vendor Analysis'
             ),
         ]),
         ('analytics', [
             PluginMenuItem(
                 link='plugins:netbox_licenses:license_analytics',
-                link_text='License Analytics',
-                icon_class='mdi mdi-chart-line'
+                link_text='License Analytics'
             ),
             PluginMenuItem(
                 link='plugins:netbox_licenses:compliance_monitoring',
-                link_text='Compliance Monitoring',
-                icon_class='mdi mdi-shield-check'
+                link_text='Compliance Monitoring'
             ),
             PluginMenuItem(
                 link='plugins:netbox_licenses:cost_allocation',
-                link_text='Cost Allocation',
-                icon_class='mdi mdi-cash-multiple'
+                link_text='Cost Allocation'
             ),
             PluginMenuItem(
                 link='plugins:netbox_licenses:license_renewals',
-                link_text='License Renewals',
-                icon_class='mdi mdi-calendar-clock'
+                link_text='License Renewals'
             ),
         ])
     ],
