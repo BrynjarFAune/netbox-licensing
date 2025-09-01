@@ -30,15 +30,27 @@ class LicenseSerializer(NetBoxModelSerializer):
     url = serializers.HyperlinkedIdentityField(
         view_name='plugins-api:netbox_licenses-api:license-detail'
     )
-    instance_count = serializers.IntegerField(read_only=True)
+    # Computed fields for utilization tracking
+    available_licenses = serializers.ReadOnlyField()
+    utilization_percentage = serializers.ReadOnlyField()
+    instance_count = serializers.SerializerMethodField(read_only=True)
 
     vendor = ManufacturerSerializer(nested=True)
     tenant = TenantSerializer(nested=True)
 
+    def get_instance_count(self, obj):
+        return obj.instances.count()
+
     class Meta:
         model = License
         fields = (
-            'id', 'url', 'display', 'name', 'vendor', 'tenant', 'assignment_type', 'price', 'currency', 'price_display', 'comments', 'tags', 'custom_fields', 'created', 'last_updated', 'instance_count'
+            'id', 'url', 'display', 'name', 'vendor', 'tenant', 'assignment_type', 
+            'price', 'currency', 'price_display',
+            # NEW ENHANCEMENT FIELDS
+            'external_id', 'total_licenses', 'consumed_licenses', 'available_licenses',
+            'utilization_percentage', 'metadata',
+            # EXISTING FIELDS
+            'comments', 'tags', 'custom_fields', 'created', 'last_updated', 'instance_count'
         )
 
 class LicenseInstanceSerializer(NetBoxModelSerializer):

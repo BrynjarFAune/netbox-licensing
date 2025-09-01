@@ -1,6 +1,6 @@
 from netbox.forms import NetBoxModelForm
 from utilities.forms.fields import CommentField, DynamicModelChoiceField, ContentTypeChoiceField
-from django.forms import DateInput, NumberInput, IntegerField, DateField, ModelChoiceField, HiddenInput, CharField, ChoiceField, DecimalField
+from django.forms import DateInput, NumberInput, IntegerField, DateField, ModelChoiceField, HiddenInput, CharField, ChoiceField, DecimalField, Textarea
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from .models import License, LicenseInstance
@@ -31,10 +31,42 @@ class LicenseForm(NetBoxModelForm):
         required=True,
         help_text="Currency for the license price"
     )
+    
+    # NEW ENHANCEMENT FIELDS
+    external_id = CharField(
+        max_length=255,
+        required=False,
+        label="External ID",
+        help_text="Vendor-specific identifier (SKU ID, subscription ID, license key, etc.)"
+    )
+    
+    total_licenses = IntegerField(
+        min_value=1,
+        initial=1,
+        label="Total Licenses",
+        help_text="Total available license slots purchased"
+    )
+    
+    consumed_licenses = IntegerField(
+        min_value=0,
+        initial=0,
+        label="Consumed Licenses", 
+        help_text="Currently assigned/consumed licenses (automatically calculated)"
+    )
+    
+    metadata = CharField(
+        required=False,
+        widget=Textarea(attrs={'rows': 4, 'placeholder': 'Enter JSON metadata for vendor-specific data'}),
+        help_text="Vendor-specific data in JSON format (service plans, features, API limits, etc.)"
+    )
 
     class Meta:
         model = License
-        fields = ('name', 'vendor', 'tenant', 'assignment_type', 'price', 'currency', 'comments', 'tags')
+        fields = (
+            'name', 'vendor', 'tenant', 'assignment_type', 'price', 'currency',
+            'external_id', 'total_licenses', 'consumed_licenses', 'metadata',
+            'comments', 'tags'
+        )
 
 class LicenseAddForm(LicenseForm):
     quantity = IntegerField(
