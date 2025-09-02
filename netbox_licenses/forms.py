@@ -47,13 +47,6 @@ class LicenseForm(NetBoxModelForm):
         help_text="Total available license slots purchased"
     )
     
-    consumed_licenses = IntegerField(
-        min_value=0,
-        initial=0,
-        label="Consumed Licenses", 
-        help_text="Currently assigned/consumed licenses (automatically calculated)"
-    )
-    
     metadata = CharField(
         required=False,
         widget=Textarea(attrs={'rows': 4, 'placeholder': 'Enter JSON metadata for vendor-specific data'}),
@@ -64,17 +57,32 @@ class LicenseForm(NetBoxModelForm):
         model = License
         fields = (
             'name', 'vendor', 'tenant', 'assignment_type', 'price', 'currency',
-            'external_id', 'total_licenses', 'consumed_licenses', 'metadata',
+            'external_id', 'total_licenses', 'metadata',
             'comments', 'tags'
         )
 
 class LicenseAddForm(LicenseForm):
     quantity = IntegerField(
         required=False,
-        label="Quantity",
+        label="Initial Instance Quantity",
         min_value=0,
-        help_text="Number of instances to create"
+        help_text="Number of initial instances to create (cannot exceed total licenses)"
     )
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        
+        if not cleaned_data:
+            return cleaned_data
+        
+        quantity = cleaned_data.get('quantity', 0) or 0
+        total_licenses = cleaned_data.get('total_licenses', 0) or 0
+        
+        if quantity > total_licenses:
+            self.add_error('quantity', 
+                f"Cannot create {quantity} instances. Only {total_licenses} total licenses available.")
+        
+        return cleaned_data
 
 class LicenseInstanceForm(NetBoxModelForm):
     comments = CommentField()
@@ -218,6 +226,16 @@ class LicenseInstanceForm(NetBoxModelForm):
         if not license:
             # This should be caught by the required validation, but just in case
             return cleaned_data
+        
+        # Check license availability for new instances
+        if not self.instance.pk:  # New instance
+            current_instances = license.instances.count()
+            available_licenses = license.total_licenses - current_instances
+            
+            if available_licenses <= 0:
+                self.add_error('license', 
+                    f"No available licenses. License has {license.total_licenses} total slots "
+                    f"with {current_instances} already consumed.")
 
         # Validate that if a selector is provided, it matches the license's assignment type
         if selector:

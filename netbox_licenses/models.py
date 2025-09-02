@@ -57,7 +57,7 @@ class License(NetBoxModel):
     
     consumed_licenses = models.PositiveIntegerField(
         default=0,
-        help_text="Currently assigned/consumed licenses"
+        help_text="Currently assigned/consumed licenses (automatically calculated from instances)"
     )
     
     metadata = models.JSONField(
@@ -85,6 +85,21 @@ class License(NetBoxModel):
         if self.total_licenses == 0:
             return 0
         return (self.consumed_licenses / self.total_licenses) * 100
+    
+    def can_create_instance(self):
+        """Check if a new instance can be created without exceeding total licenses"""
+        return self.available_licenses > 0
+    
+    def get_availability_status(self):
+        """Get human-readable availability status"""
+        if self.available_licenses == 0:
+            return "fully_allocated"
+        elif self.available_licenses < 0:
+            return "overallocated"
+        elif self.utilization_percentage >= 90:
+            return "nearly_full"
+        else:
+            return "available"
     
     # EXISTING PROPERTIES
     @cached_property
@@ -118,8 +133,12 @@ class License(NetBoxModel):
         if self.total_licenses < 0:
             raise ValidationError("Total licenses cannot be negative")
         
-        if self.consumed_licenses < 0:
-            raise ValidationError("Consumed licenses cannot be negative")
+        # consumed_licenses should be managed by signals, not manually edited
+        # But we can validate if it's being set incorrectly
+        actual_consumed = self.instances.count() if self.pk else 0
+        if hasattr(self, '_state') and not self._state.adding and self.consumed_licenses != actual_consumed:
+            # Auto-correct instead of raising error - this is managed by signals
+            self.consumed_licenses = actual_consumed
 
 class LicenseInstance(NetBoxModel):
     license = models.ForeignKey(
@@ -263,10 +282,33 @@ class LicenseInstance(NetBoxModel):
     def get_absolute_url(self):
         return reverse('plugins:netbox_licenses:licenseinstance', args=[self.pk])
 
+    def clean(self):
+        """Validate license instance allocation"""
+        from django.core.exceptions import ValidationError
+        super().clean()
+        
+        if self.license:
+            # Check if creating a new instance would exceed total licenses
+            current_count = self.license.instances.count()
+            
+            # If this is a new instance (no pk), increment the count
+            if not self.pk:
+                current_count += 1
+            
+            if current_count > self.license.total_licenses:
+                raise ValidationError(
+                    f"Cannot create license instance. This would exceed the total "
+                    f"available licenses ({self.license.total_licenses}). "
+                    f"Current instances: {self.license.instances.count()}"
+                )
+
     def save(self, *args, **kwargs):
         # Only set default assignment type if none is set and there's an assigned object ID
         if not self.assigned_object_type_id and self.assigned_object_id and self.license:
             self.assigned_object_type = self.license.assignment_type
+
+        # Validate allocation limits before saving
+        self.full_clean()
 
         # Don't auto-set price_override anymore - let it remain None to use license price
         super().save(*args, **kwargs)
