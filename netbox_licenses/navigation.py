@@ -1,25 +1,25 @@
 from netbox.plugins import PluginMenuItem, PluginMenuButton, PluginMenu
 
-license_buttons = [
+license_buttons = (
     PluginMenuButton(
         link='plugins:netbox_licenses:license_add',
         title='Add',
         icon_class='mdi mdi-plus-thick',
-    )
-]
+    ),
+)
 
-licenseinstance_buttons = [
+licenseinstance_buttons = (
     PluginMenuButton(
         link='plugins:netbox_licenses:licenseinstance_add',
         title='Add',
         icon_class='mdi mdi-plus-thick',
-    )
-]
+    ),
+)
 
 menu = PluginMenu(
     label='licenses',
-    groups=[
-        ('licenses', [
+    groups=(
+        ('licenses', (
             PluginMenuItem(
                 link='plugins:netbox_licenses:license_list',
                 link_text='Licenses',
@@ -30,8 +30,8 @@ menu = PluginMenu(
                 link_text='License Instances',
                 buttons=licenseinstance_buttons
             ),
-        ]),
-        ('reports', [
+        )),
+        ('reports', (
             PluginMenuItem(
                 link='plugins:netbox_licenses:utilization_report',
                 link_text='Utilization Report'
@@ -40,8 +40,8 @@ menu = PluginMenu(
                 link='plugins:netbox_licenses:vendor_utilization',
                 link_text='Vendor Analysis'
             ),
-        ]),
-        ('analytics', [
+        )),
+        ('analytics', (
             PluginMenuItem(
                 link='plugins:netbox_licenses:license_analytics',
                 link_text='License Analytics'
@@ -58,7 +58,7 @@ menu = PluginMenu(
                 link='plugins:netbox_licenses:license_renewals',
                 link_text='License Renewals'
             ),
-        ])
-    ],
+        ))
+    ),
     icon_class='mdi mdi-certificate'
 )
