@@ -146,15 +146,25 @@ class License(NetBoxModel):
         return self.monthly_equivalent_price * 12
 
     @property
-    def total_monthly_commitment(self):
-        """Total monthly recurring cost for all consumed licenses"""
+    def total_monthly_consumed_cost(self):
+        """Total monthly recurring cost for consumed licenses only"""
         return self.monthly_equivalent_price * self.consumed_licenses
 
     @property
-    def total_annual_commitment(self):
-        """Total annual cost for all consumed licenses"""
+    def total_annual_consumed_cost(self):
+        """Total annual cost for consumed licenses only"""
         return self.annual_equivalent_price * self.consumed_licenses
-    
+
+    @property
+    def total_monthly_commitment(self):
+        """Total monthly commitment for all license slots (purchased capacity)"""
+        return self.monthly_equivalent_price * self.total_licenses
+
+    @property
+    def total_yearly_commitment(self):
+        """Total yearly commitment for all license slots (purchased capacity)"""
+        return self.annual_equivalent_price * self.total_licenses
+
     # EXISTING PROPERTIES
     @cached_property
     def total_cost(self):
