@@ -154,7 +154,8 @@
                                 <th class="text-center">Total Slots</th>
                                 <th class="text-center">Used Slots</th>
                                 <th class="text-end">Cost per Slot</th>
-                                <th class="text-end">Total Value (NOK)</th>
+                                <th class="text-end">Total Investment</th>
+                                <th class="text-end">Wasted Cost</th>
                                 <th class="text-center">Utilization</th>
                             </tr>
                         </thead>
@@ -178,7 +179,14 @@
                                     {% endif %}
                                 </td>
                                 <td class="text-end">
-                                    <strong>{{ license.total_value_nok|floatformat:2 }}</strong>
+                                    <strong>{{ license.total_value_nok|floatformat:2 }} NOK</strong>
+                                </td>
+                                <td class="text-end">
+                                    {% if license.wasted_value > 0 %}
+                                        <span class="text-danger"><strong>{{ license.wasted_value|floatformat:2 }} NOK</strong></span>
+                                    {% else %}
+                                        <span class="text-success">—</span>
+                                    {% endif %}
                                 </td>
                                 <td class="text-center">
                                     <span class="badge text-bg-{% if license.utilization_percentage >= 90 %}success{% elif license.utilization_percentage >= 70 %}warning{% else %}danger{% endif %}">

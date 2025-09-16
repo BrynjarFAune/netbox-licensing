@@ -483,13 +483,26 @@ class CostAllocationView(View):
             vendor = license.vendor
             vendor_key = vendor.name if vendor else 'Unknown'
 
-            # Calculate license cost (total instances * price)
+            # Calculate license cost - total potential value vs actual usage
             instance_count = license.instances.count()
             license_cost = Decimal('0')
 
+            # Calculate based on total licensed capacity, not just used instances
+            # This shows the full investment including unutilized slots
+            license_price = license.price or Decimal('0')
+            total_license_value = Decimal(str(license_price)) * license.total_licenses
+
+            # Add to total system cost (full investment)
+            license_cost = total_license_value
+
+            # However, if there are instances with custom pricing, factor those in
+            custom_pricing_adjustment = Decimal('0')
             for instance in license.instances.all():
-                instance_price = instance.nok_price_override or license.price or Decimal('0')
-                license_cost += Decimal(str(instance_price))
+                if instance.nok_price_override:
+                    # Replace the base license price with custom price for this instance
+                    custom_pricing_adjustment += Decimal(str(instance.nok_price_override)) - Decimal(str(license_price))
+
+            license_cost += custom_pricing_adjustment
 
             # Update vendor stats
             vendor_stats[vendor_key]['vendor_id'] = vendor.id if vendor else 0
@@ -511,12 +524,20 @@ class CostAllocationView(View):
         license_details = []
         for license in licenses:
             consumed = license.instances.count()
-            total_value_nok = Decimal('0')
 
-            # Calculate total value based on instances
+            # Calculate full license investment (all purchased slots)
+            license_price = license.price or Decimal('0')
+            total_invested_value = Decimal(str(license_price)) * license.total_licenses
+
+            # Calculate actual usage value (only consumed slots)
+            actual_usage_value = Decimal('0')
             for instance in license.instances.all():
-                instance_price = instance.nok_price_override or license.price or Decimal('0')
-                total_value_nok += Decimal(str(instance_price))
+                instance_price = instance.nok_price_override or license_price
+                actual_usage_value += Decimal(str(instance_price))
+
+            # Calculate wasted money (unutilized slots)
+            unutilized_slots = license.total_licenses - consumed
+            wasted_value = Decimal(str(license_price)) * unutilized_slots
 
             utilization_percentage = 0
             if license.total_licenses > 0:
@@ -530,7 +551,9 @@ class CostAllocationView(View):
                 'price': license.price,
                 'total_licenses': license.total_licenses,
                 'consumed_licenses': consumed,
-                'total_value_nok': total_value_nok,
+                'total_value_nok': total_invested_value,  # Full investment
+                'actual_usage_value': actual_usage_value,  # Only used slots
+                'wasted_value': wasted_value,  # Money wasted on unused slots
                 'utilization_percentage': utilization_percentage,
             })
 
@@ -595,10 +618,10 @@ class LicenseRenewalView(View):
             if instance.end_date:
                 days_until = (instance.end_date - today).days
                 instance.days_until_expiry = days_until
-                instance.instance_price_nok = instance.nok_price_override or instance.license.price
+                instance.instance_price_nok = instance.nok_price_override or instance.license.price or 0
             else:
                 instance.days_until_expiry = None
-                instance.instance_price_nok = instance.license.price
+                instance.instance_price_nok = instance.license.price or 0
 
             renewal_instances.append(instance)
 

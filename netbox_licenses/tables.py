@@ -71,10 +71,10 @@ class LicenseTable(NetBoxTable):
         return record.instances.count()
 
     def render_price(self, record):
-        return f"{record.price} {record.currency}"
-    
+        return "{} {}".format(record.price or 0, record.currency)
+
     def render_total_cost(self, record):
-        return f"{record.total_cost:.2f} NOK"
+        return "{:.2f} NOK".format(record.total_cost or 0)
 
     def render_assigned_count(self, record):
         return sum(1 for i in record.instances.all() if i.assigned_object is not None)
@@ -115,7 +115,7 @@ class LicenseInstanceTable(NetBoxTable):
         return record.get_assignment_display()
 
     def render_license_price(self, record):
-        return f"{record.license.price} {record.license.currency}"
+        return "{} {}".format(record.license.price or 0, record.license.currency)
 
     def render_license_currency(self, record):
         from .choices import CurrencyChoices
@@ -124,7 +124,7 @@ class LicenseInstanceTable(NetBoxTable):
     def render_instance_price_nok(self, record):
         price = record.instance_price_nok
         if price:
-            return f"{price:.2f} NOK"
+            return "{:.2f} NOK".format(float(price))
         return "—"
 
     def render_status(self, record):

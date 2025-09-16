@@ -77,6 +77,59 @@
             </table>
         </div>
     </div>
+    <div class="col col-md-6">
+        <div class="card">
+            <h5 class="card-header">Recent Instances</h5>
+            <div class="card-body">
+                {% if object.instances.all %}
+                    <div class="list-group list-group-flush">
+                        {% for instance in object.instances.all|slice:":5" %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <div>
+                                <a href="{% url 'plugins:netbox_licenses:licenseinstance' pk=instance.pk %}" class="text-decoration-none">
+                                    {% if instance.assigned_object %}
+                                        {{ instance.assigned_object }}
+                                    {% else %}
+                                        <em>Unassigned Instance #{{ instance.pk }}</em>
+                                    {% endif %}
+                                </a>
+                                {% if instance.end_date %}
+                                    <br><small class="text-muted">Expires: {{ instance.end_date }}</small>
+                                {% endif %}
+                            </div>
+                            {% if instance.end_date %}
+                                {% with days_until_expiry=instance.end_date|timeuntil %}
+                                    {% if "ago" in days_until_expiry %}
+                                        <span class="badge text-bg-danger">Expired</span>
+                                    {% elif "day" in days_until_expiry and "30" not in days_until_expiry %}
+                                        <span class="badge text-bg-warning">Soon</span>
+                                    {% else %}
+                                        <span class="badge text-bg-success">Active</span>
+                                    {% endif %}
+                                {% endwith %}
+                            {% else %}
+                                <span class="badge text-bg-secondary">No End Date</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% if object.instances.count > 5 %}
+                        <div class="text-center mt-2">
+                            <a href="{% url 'plugins:netbox_licenses:licenseinstance_list' %}?license={{ object.pk }}" class="btn btn-sm btn-outline-primary">
+                                View All {{ object.instances.count }} Instances
+                            </a>
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="text-center text-muted">
+                        <i class="mdi mdi-license" style="font-size: 2rem;"></i>
+                        <p>No instances created</p>
+                        <small>Create your first instance to start tracking usage.</small>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 </div>
 
 {% if object.metadata %}
