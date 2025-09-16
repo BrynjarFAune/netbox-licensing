@@ -19,14 +19,14 @@ licenseinstance_buttons = [
 
 menu = PluginMenu(
     label='licenses',
-    groups=[
-        ('overview', [
+    groups=(
+        ('overview', (
             PluginMenuItem(
                 link='plugins:netbox_licenses:dashboard',
                 link_text='Dashboard'
             ),
-        ]),
-        ('licenses', [
+        )),
+        ('licenses', (
             PluginMenuItem(
                 link='plugins:netbox_licenses:license_list',
                 link_text='Licenses',
@@ -37,8 +37,8 @@ menu = PluginMenu(
                 link_text='License Instances',
                 buttons=licenseinstance_buttons
             ),
-        ]),
-        ('reports', [
+        )),
+        ('reports', (
             PluginMenuItem(
                 link='plugins:netbox_licenses:utilization_report',
                 link_text='Utilization Report'
@@ -47,8 +47,8 @@ menu = PluginMenu(
                 link='plugins:netbox_licenses:vendor_utilization',
                 link_text='Vendor Analysis'
             ),
-        ]),
-        ('analytics', [
+        )),
+        ('analytics', (
             PluginMenuItem(
                 link='plugins:netbox_licenses:license_analytics',
                 link_text='License Analytics'
@@ -69,7 +69,7 @@ menu = PluginMenu(
                 link='plugins:netbox_licenses:license_renewals',
                 link_text='License Renewals'
             ),
-        ])
-    ],
+        ))
+    ),
     icon_class='mdi mdi-certificate'
 )
