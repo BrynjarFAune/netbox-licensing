@@ -105,6 +105,18 @@ class LicenseInstanceForm(NetBoxModelForm):
         help_text="Override the price for this specific instance in Norwegian Kroner"
     )
 
+    # Auto-renew field with explicit choices for clarity
+    auto_renew = ChoiceField(
+        choices=(
+            ('', 'Use License Default'),
+            (True, 'Yes - Auto-Renew'),
+            (False, 'No - Manual Renewal')
+        ),
+        required=False,
+        label="Auto-Renew Override",
+        help_text="Override auto-renew setting for this instance (leave blank to inherit from license)"
+    )
+
     class Meta:
         model = LicenseInstance
         fields = (
@@ -142,9 +154,22 @@ class LicenseInstanceForm(NetBoxModelForm):
             auto_renew_default = "Yes" if license_obj.auto_renew else "No"
             self.fields['auto_renew'].help_text = (
                 f"License default: {auto_renew_default}. "
-                f"Leave blank to use license default, or select to override for this instance only."
+                f"Select 'Use License Default' to inherit, or choose a specific setting to override."
             )
-            self.fields['auto_renew'].widget.attrs['placeholder'] = f'License default: {auto_renew_default}'
+
+            # Update the choices to show the license default value
+            self.fields['auto_renew'].choices = (
+                ('', f'Use License Default ({auto_renew_default})'),
+                (True, 'Yes - Auto-Renew'),
+                (False, 'No - Manual Renewal')
+            )
+
+            # If editing an existing instance, set the current value
+            if self.instance and self.instance.pk:
+                if self.instance.auto_renew is None:
+                    self.fields['auto_renew'].initial = ''
+                else:
+                    self.fields['auto_renew'].initial = self.instance.auto_renew
 
     def _get_license_object(self):
         """Get the license object from form data, initial data, or existing instance"""
@@ -169,6 +194,19 @@ class LicenseInstanceForm(NetBoxModelForm):
                 pass
 
         return None
+
+    def clean_auto_renew(self):
+        """Convert auto_renew choice to proper boolean/None value"""
+        auto_renew = self.cleaned_data.get('auto_renew')
+
+        if auto_renew == '':
+            return None  # Use license default
+        elif auto_renew == 'True' or auto_renew is True:
+            return True
+        elif auto_renew == 'False' or auto_renew is False:
+            return False
+        else:
+            return None  # Default fallback
 
     def _setup_assignment_fields(self, license_obj):
         """Setup the assignment fields based on the license's assignment type"""
