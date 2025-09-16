@@ -30,4 +30,10 @@ class NetBoxLicensesConfig(PluginConfig):
         # Import signal handlers to ensure they're registered
         from . import signals
 
+    @property
+    def navigation(self):
+        """Return the plugin's navigation menu"""
+        from .navigation import menu
+        return menu
+
 config = NetBoxLicensesConfig
