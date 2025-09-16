@@ -58,9 +58,8 @@
                     <th scope="row">Utilization</th>
                     <td>
                         {% if object.total_licenses > 0 %}
-                            {% widthratio object.consumed_licenses object.total_licenses 100 as utilization %}
-                            <span class="badge text-bg-{% if utilization >= 90 %}success{% elif utilization >= 70 %}warning{% else %}danger{% endif %}">
-                                {{ utilization }}%
+                            <span class="badge text-bg-{% if object.utilization_percentage >= 90 %}success{% elif object.utilization_percentage >= 70 %}warning{% else %}danger{% endif %}">
+                                {{ object.utilization_percentage|floatformat:1 }}%
                             </span>
                         {% else %}
                             —
