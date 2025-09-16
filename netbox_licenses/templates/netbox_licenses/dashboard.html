@@ -243,6 +243,32 @@ document.addEventListener('DOMContentLoaded', function() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            onClick: function(event, activeElements) {
+                if (activeElements.length > 0) {
+                    const elementIndex = activeElements[0].index;
+                    let filterUrl = '';
+
+                    // Map chart segments to filter URLs
+                    switch(elementIndex) {
+                        case 0: // Expired
+                            filterUrl = "{% url 'plugins:netbox_licenses:licenseinstance_list' %}?expiry_status=expired";
+                            break;
+                        case 1: // Expiring Soon (≤30d)
+                            filterUrl = "{% url 'plugins:netbox_licenses:licenseinstance_list' %}?expiry_status=expiring_soon";
+                            break;
+                        case 2: // Expiring (≤90d)
+                            filterUrl = "{% url 'plugins:netbox_licenses:licenseinstance_list' %}?expiry_status=expiring_medium";
+                            break;
+                        case 3: // Healthy (>90d)
+                            filterUrl = "{% url 'plugins:netbox_licenses:licenseinstance_list' %}?expiry_status=healthy";
+                            break;
+                    }
+
+                    if (filterUrl) {
+                        window.location.href = filterUrl;
+                    }
+                }
+            },
             plugins: {
                 legend: {
                     position: 'bottom',
@@ -258,10 +284,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         label: function(context) {
                             let total = context.dataset.data.reduce((a, b) => a + b, 0);
                             let percentage = ((context.parsed / total) * 100).toFixed(1);
-                            return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                            return context.label + ': ' + context.parsed + ' (' + percentage + '%) - Click to view';
                         }
                     }
                 }
+            },
+            interaction: {
+                mode: 'point'
             }
         }
     });

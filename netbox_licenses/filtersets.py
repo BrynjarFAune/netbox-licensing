@@ -47,9 +47,21 @@ class LicenseInstanceFilterSet(NetBoxModelFilterSet):
         label='Status',
     )
 
+    expiry_status = django_filters.ChoiceFilter(
+        choices=[
+            ('expired', 'Expired'),
+            ('expiring_soon', 'Expiring Soon (≤30d)'),
+            ('expiring_medium', 'Expiring (≤90d)'),
+            ('healthy', 'Healthy (>90d)'),
+            ('no_end_date', 'No End Date'),
+        ],
+        method='filter_expiry_status',
+        label='Expiry Status',
+    )
+
     class Meta:
         model = LicenseInstance
-        fields = ('id', 'license', 'start_date', 'end_date', 'start_date__gte', 'end_date__lte', 'derived_status')
+        fields = ('id', 'license', 'start_date', 'end_date', 'start_date__gte', 'end_date__lte', 'derived_status', 'expiry_status')
 
     def search(self, queryset, name, value):
         return queryset.filter(description_icontains=value)
@@ -58,6 +70,24 @@ class LicenseInstanceFilterSet(NetBoxModelFilterSet):
         return queryset.filter(
             pk__in=[obj.pk for obj in queryset if obj.derived_status in values]
         )
+
+    def filter_expiry_status(self, queryset, name, value):
+        from datetime import datetime, timedelta
+
+        today = datetime.now().date()
+
+        if value == 'expired':
+            return queryset.filter(end_date__lt=today)
+        elif value == 'expiring_soon':
+            return queryset.filter(end_date__gte=today, end_date__lte=today + timedelta(days=30))
+        elif value == 'expiring_medium':
+            return queryset.filter(end_date__gt=today + timedelta(days=30), end_date__lte=today + timedelta(days=90))
+        elif value == 'healthy':
+            return queryset.filter(end_date__gt=today + timedelta(days=90))
+        elif value == 'no_end_date':
+            return queryset.filter(end_date__isnull=True)
+
+        return queryset
 
 class LicenseInstanceFilterForm(NetBoxModelFilterSetForm):
     model = LicenseInstance
@@ -80,6 +110,18 @@ class LicenseInstanceFilterForm(NetBoxModelFilterSetForm):
         required=False,
         label="End date (Before)",
         widget=forms.DateInput(attrs={'type': 'date'}),
+    )
+    expiry_status = forms.ChoiceField(
+        choices=[
+            ('', '-------'),
+            ('expired', 'Expired'),
+            ('expiring_soon', 'Expiring Soon (≤30d)'),
+            ('expiring_medium', 'Expiring (≤90d)'),
+            ('healthy', 'Healthy (>90d)'),
+            ('no_end_date', 'No End Date'),
+        ],
+        required=False,
+        label="Expiry Status",
     )
 
     class Meta:
