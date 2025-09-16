@@ -45,16 +45,19 @@ class LicenseTable(NetBoxTable):
     def render_utilization(self, record):
         from django.utils.html import format_html
         percentage = record.utilization_percentage
-        if percentage < 80:
+        # Ensure we have a raw numeric value, not a SafeString
+        percentage_value = float(str(percentage)) if percentage is not None else 0.0
+
+        if percentage_value < 80:
             color_class = "success"  # Green
-        elif percentage < 100:
-            color_class = "warning"  # Orange  
+        elif percentage_value < 100:
+            color_class = "warning"  # Orange
         else:
             color_class = "danger"   # Red
-            
+
         return format_html(
             '<span class="badge text-bg-{}">{:.1f}%</span>',
-            color_class, float(percentage)
+            color_class, percentage_value
         )
     
     def render_available_licenses(self, record):
@@ -127,7 +130,9 @@ class LicenseInstanceTable(NetBoxTable):
     def render_instance_price_nok(self, record):
         price = record.instance_price_nok
         if price:
-            return "{:.2f} NOK".format(float(price))
+            # Ensure we have a raw numeric value, not a SafeString
+            price_value = float(str(price))
+            return "{:.2f} NOK".format(price_value)
         return "—"
 
     def render_status(self, record):
