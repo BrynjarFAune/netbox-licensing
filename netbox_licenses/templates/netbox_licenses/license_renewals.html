@@ -169,7 +169,7 @@
                                         <span class="badge text-bg-secondary">No Date</span>
                                     {% endif %}
                                 </td>
-                                <td>{{ instance.instance_price_nok|floatformat:2 }}</td>
+                                <td>{{ instance.display_price_nok|floatformat:2 }}</td>
                                 <td>
                                     <a href="{% url 'plugins:netbox_licenses:licenseinstance_edit' pk=instance.pk %}" class="btn btn-sm btn-primary">
                                         <i class="mdi mdi-pencil"></i> Update
@@ -249,7 +249,7 @@
                                         <br><small class="text-muted">License default</small>
                                     {% endif %}
                                 </td>
-                                <td>{{ instance.instance_price_nok|floatformat:2 }}</td>
+                                <td>{{ instance.display_price_nok|floatformat:2 }}</td>
                                 <td>
                                     <a href="{% url 'plugins:netbox_licenses:licenseinstance' pk=instance.pk %}" class="btn btn-sm btn-outline-info">
                                         <i class="mdi mdi-eye"></i> View

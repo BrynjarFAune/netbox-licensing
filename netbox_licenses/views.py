@@ -724,10 +724,10 @@ class LicenseRenewalView(View):
             if instance.end_date:
                 days_until = (instance.end_date - today).days
                 instance.days_until_expiry = days_until
-                instance.instance_price_nok = instance.nok_price_override or instance.license.price or 0
+                instance.display_price_nok = instance.nok_price_override or instance.license.price or 0
             else:
                 instance.days_until_expiry = None
-                instance.instance_price_nok = instance.license.price or 0
+                instance.display_price_nok = instance.license.price or 0
 
             # Separate based on effective auto-renew setting (instance override or license default)
             if instance.effective_auto_renew:
@@ -750,8 +750,8 @@ class LicenseRenewalView(View):
         auto_expiring_medium = sum(1 for i in auto_renewal_instances if i.days_until_expiry is not None and 31 <= i.days_until_expiry <= 90)
 
         # Calculate total renewal values (NOK)
-        manual_renewal_value = sum(float(i.instance_price_nok or 0) for i in manual_renewal_instances)
-        auto_renewal_value = sum(float(i.instance_price_nok or 0) for i in auto_renewal_instances)
+        manual_renewal_value = sum(float(i.display_price_nok or 0) for i in manual_renewal_instances)
+        auto_renewal_value = sum(float(i.display_price_nok or 0) for i in auto_renewal_instances)
 
         summary = {
             # Manual renewal stats (action required)

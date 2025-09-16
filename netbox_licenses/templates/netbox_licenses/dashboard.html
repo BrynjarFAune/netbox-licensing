@@ -49,7 +49,7 @@
             <div class="card-body">
                 <h5 class="card-title text-muted">Portfolio Value</h5>
                 <h2 class="text-warning">{{ summary.total_value_nok|floatformat:0|default:"0" }}</h2>
-                <small class="text-muted">NOK investment</small>
+                <small class="text-muted">Total license investment (NOK)</small>
             </div>
         </div>
     </div>
@@ -139,6 +139,7 @@
     <div class="row align-items-center">
         <div class="col-md-9">
             <h5><i class="mdi mdi-chart-line"></i> <strong>Monthly Recurring Revenue (MRR) Overview</strong></h5>
+            <p class="mb-2 text-muted">Portfolio Value = total license investment. MRR = recurring monthly costs from active subscriptions.</p>
             <div class="row">
                 <div class="col-md-4">
                     <p class="mb-1"><strong>Current MRR:</strong> {{ summary.current_mrr|floatformat:0|default:"0" }} NOK/month</p>
