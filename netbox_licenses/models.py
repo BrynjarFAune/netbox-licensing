@@ -129,16 +129,24 @@ class License(NetBoxModel):
         """Validate license data"""
         from django.core.exceptions import ValidationError
         super().clean()
-        
+
         if self.total_licenses < 0:
             raise ValidationError("Total licenses cannot be negative")
-        
+
         # consumed_licenses should be managed by signals, not manually edited
         # But we can validate if it's being set incorrectly
         actual_consumed = self.instances.count() if self.pk else 0
         if hasattr(self, '_state') and not self._state.adding and self.consumed_licenses != actual_consumed:
             # Auto-correct instead of raising error - this is managed by signals
             self.consumed_licenses = actual_consumed
+
+        # CRITICAL: Prevent reducing total_licenses below consumed_licenses
+        if self.pk and self.total_licenses < actual_consumed:
+            raise ValidationError(
+                f"Cannot reduce total licenses to {self.total_licenses}. "
+                f"There are currently {actual_consumed} licenses in use. "
+                f"Please remove {actual_consumed - self.total_licenses} license instances first."
+            )
 
 class LicenseInstance(NetBoxModel):
     license = models.ForeignKey(

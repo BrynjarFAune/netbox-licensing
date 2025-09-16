@@ -119,4 +119,5 @@ netbox_licenses/migrations/__pycache__/
 netbox_licenses/models.py.backup
 
 # Claude Code Reference Documents  
+../CLAUDE.md
 ../../NAVIGATION_DEBUG_REPORT.md

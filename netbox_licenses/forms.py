@@ -61,6 +61,22 @@ class LicenseForm(NetBoxModelForm):
             'comments', 'tags'
         )
 
+    def clean_total_licenses(self):
+        """Validate total_licenses cannot be reduced below consumed licenses"""
+        total_licenses = self.cleaned_data.get('total_licenses')
+
+        if self.instance and self.instance.pk:
+            # Existing license - check consumed instances
+            consumed = self.instance.instances.count()
+            if total_licenses < consumed:
+                raise ValidationError(
+                    f"Cannot reduce total licenses to {total_licenses}. "
+                    f"There are currently {consumed} licenses in use. "
+                    f"Please remove {consumed - total_licenses} license instances first."
+                )
+
+        return total_licenses
+
 class LicenseAddForm(LicenseForm):
     quantity = IntegerField(
         required=False,

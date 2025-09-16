@@ -41,6 +41,18 @@ class LicenseSerializer(NetBoxModelSerializer):
     def get_instance_count(self, obj):
         return obj.instances.count()
 
+    def validate_total_licenses(self, value):
+        """Validate total_licenses cannot be reduced below consumed licenses"""
+        if self.instance and self.instance.pk:
+            consumed = self.instance.instances.count()
+            if value < consumed:
+                raise serializers.ValidationError(
+                    f"Cannot reduce total licenses to {value}. "
+                    f"There are currently {consumed} licenses in use. "
+                    f"Please remove {consumed - value} license instances first."
+                )
+        return value
+
     class Meta:
         model = License
         fields = (
