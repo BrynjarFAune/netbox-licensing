@@ -61,6 +61,7 @@ class LicenseTable(NetBoxTable):
         )
     
     def render_available_licenses(self, record):
+        from django.utils.html import format_html
         available = record.available_licenses
         if available < 0:
             return format_html('<span class="text-danger">{}</span>', available)
