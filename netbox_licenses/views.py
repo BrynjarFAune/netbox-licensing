@@ -458,118 +458,176 @@ class ComplianceMonitoringView(View):
 class CostAllocationView(View):
     """Cost allocation and chargeback dashboard"""
     template_name = "netbox_licenses/cost_allocation.html"
-    
+
     def get(self, request):
-        from .models import CostAllocation
-        from .services import CostAllocationService
-        from datetime import date
-        
-        # Get current month or specified month
-        month_str = request.GET.get('month')
-        if month_str:
-            year, month = map(int, month_str.split('-'))
-            target_month = date(year, month, 1)
-        else:
-            target_month = timezone.now().date().replace(day=1)
-        
-        # Get all active cost allocations
-        active_allocations = CostAllocation.objects.filter(
-            effective_from__lte=target_month,
-            effective_to__gte=target_month
-        ).select_related('license', 'license__vendor')
-        
-        # Group by allocation target (department/project)
-        allocation_summary = {}
-        for allocation in active_allocations:
-            target = allocation.allocation_target
-            if target not in allocation_summary:
-                allocation_summary[target] = {
-                    'allocation_type': allocation.get_allocation_type_display(),
-                    'total_cost': 0,
-                    'licenses': [],
-                    'allocation_count': 0
-                }
-            
-            license_cost = (allocation.license.total_cost or 0) * (allocation.percentage / 100)
-            allocation_summary[target]['total_cost'] += license_cost
-            allocation_summary[target]['licenses'].append({
-                'license': allocation.license,
-                'percentage': allocation.percentage,
-                'allocated_cost': license_cost
-            })
-            allocation_summary[target]['allocation_count'] += 1
-        
+        from decimal import Decimal
+        from collections import defaultdict
+
+        # Get all licenses with their instances
+        licenses = models.License.objects.select_related('vendor').prefetch_related('instances')
+        all_instances = models.LicenseInstance.objects.select_related('license', 'license__vendor')
+
+        # Calculate vendor costs
+        vendor_stats = defaultdict(lambda: {
+            'vendor_id': 0,
+            'vendor_name': '',
+            'license_count': 0,
+            'instance_count': 0,
+            'total_cost': Decimal('0'),
+            'percentage': 0,
+        })
+
+        total_system_cost = Decimal('0')
+
+        for license in licenses:
+            vendor = license.vendor
+            vendor_key = vendor.name if vendor else 'Unknown'
+
+            # Calculate license cost (total instances * price)
+            instance_count = license.instances.count()
+            license_cost = Decimal('0')
+
+            for instance in license.instances.all():
+                instance_price = instance.nok_price_override or license.price or Decimal('0')
+                license_cost += Decimal(str(instance_price))
+
+            # Update vendor stats
+            vendor_stats[vendor_key]['vendor_id'] = vendor.id if vendor else 0
+            vendor_stats[vendor_key]['vendor_name'] = vendor_key
+            vendor_stats[vendor_key]['license_count'] += 1
+            vendor_stats[vendor_key]['instance_count'] += instance_count
+            vendor_stats[vendor_key]['total_cost'] += license_cost
+            total_system_cost += license_cost
+
+        # Calculate percentages
+        for vendor_data in vendor_stats.values():
+            if total_system_cost > 0:
+                vendor_data['percentage'] = float((vendor_data['total_cost'] / total_system_cost) * 100)
+
         # Sort by total cost
-        sorted_allocations = sorted(
-            allocation_summary.items(),
-            key=lambda x: x[1]['total_cost'],
-            reverse=True
-        )
-        
-        # Calculate totals
-        total_allocated_cost = sum(item[1]['total_cost'] for item in sorted_allocations)
-        total_licenses = models.License.objects.count()
-        allocated_licenses = len(set(alloc.license for alloc in active_allocations))
-        unallocated_licenses = total_licenses - allocated_licenses
-        
-        context = {
-            'allocation_summary': sorted_allocations,
-            'target_month': target_month,
-            'total_allocated_cost': total_allocated_cost,
-            'total_licenses': total_licenses,
-            'allocated_licenses': allocated_licenses,
-            'unallocated_licenses': unallocated_licenses,
-            'recent_allocations': active_allocations.order_by('-created')[:10],
+        vendor_costs = sorted(vendor_stats.values(), key=lambda x: x['total_cost'], reverse=True)
+
+        # Calculate license details with costs and utilization
+        license_details = []
+        for license in licenses:
+            consumed = license.instances.count()
+            total_value_nok = Decimal('0')
+
+            # Calculate total value based on instances
+            for instance in license.instances.all():
+                instance_price = instance.nok_price_override or license.price or Decimal('0')
+                total_value_nok += Decimal(str(instance_price))
+
+            utilization_percentage = 0
+            if license.total_licenses > 0:
+                utilization_percentage = (consumed / license.total_licenses) * 100
+
+            license_details.append({
+                'id': license.id,
+                'name': license.name,
+                'vendor': license.vendor,
+                'currency': license.currency,
+                'price': license.price,
+                'total_licenses': license.total_licenses,
+                'consumed_licenses': consumed,
+                'total_value_nok': total_value_nok,
+                'utilization_percentage': utilization_percentage,
+            })
+
+        # Sort by total value
+        license_details.sort(key=lambda x: x['total_value_nok'], reverse=True)
+
+        # Calculate summary
+        active_instances = all_instances.count()
+        avg_cost_per_instance = float(total_system_cost / active_instances) if active_instances > 0 else 0
+        vendor_count = len([v for v in vendor_costs if v['total_cost'] > 0])
+
+        summary = {
+            'total_value_nok': float(total_system_cost),
+            'active_instances': active_instances,
+            'avg_cost_per_instance': avg_cost_per_instance,
+            'vendor_count': vendor_count,
         }
-        
+
+        # Generate optimization recommendations
+        optimization_recommendations = []
+        underutilized = [l for l in license_details if l['utilization_percentage'] < 70]
+        if underutilized:
+            optimization_recommendations.append(
+                f"Consider reducing or reassigning {len(underutilized)} underutilized licenses"
+            )
+
+        overallocated = [l for l in license_details if l['utilization_percentage'] > 100]
+        if overallocated:
+            optimization_recommendations.append(
+                f"Purchase additional slots for {len(overallocated)} overallocated licenses"
+            )
+
+        context = {
+            'vendor_costs': vendor_costs,
+            'license_details': license_details,
+            'summary': summary,
+            'optimization_recommendations': optimization_recommendations,
+        }
+
         return render(request, self.template_name, context)
 
 
 class LicenseRenewalView(View):
     """License renewal management dashboard"""
     template_name = "netbox_licenses/license_renewals.html"
-    
+
     def get(self, request):
-        from .models import LicenseRenewal
-        
-        renewals = LicenseRenewal.objects.select_related('license', 'license__vendor').all()
-        
-        # Group renewals by status
-        renewals_by_status = {}
-        for status, display_name in LicenseRenewal.RENEWAL_STATUS_CHOICES:
-            renewals_by_status[status] = {
-                'display_name': display_name,
-                'renewals': renewals.filter(status=status).order_by('renewal_date'),
-                'count': renewals.filter(status=status).count()
-            }
-        
-        # Get upcoming renewals (next 60 days)
-        upcoming_date = timezone.now().date() + timedelta(days=60)
-        upcoming_renewals = renewals.filter(
-            renewal_date__lte=upcoming_date,
-            status__in=['pending', 'approved']
-        ).order_by('renewal_date')
-        
-        # Get overdue renewals
-        overdue_renewals = renewals.filter(
-            renewal_date__lt=timezone.now().date(),
-            status__in=['pending', 'approved']
+        from datetime import datetime, timedelta
+
+        # Get all instances with end dates
+        instances_with_dates = models.LicenseInstance.objects.filter(
+            end_date__isnull=False
+        ).select_related('license', 'license__vendor').prefetch_related(
+            'assigned_object_type', 'assigned_object'
         )
-        
-        # Calculate renewal costs
-        total_pending_cost = sum(
-            renewal.renewal_cost or 0 
-            for renewal in renewals.filter(status='pending')
+
+        today = datetime.now().date()
+
+        # Add days_until_expiry and instance_price_nok for each instance
+        renewal_instances = []
+        for instance in instances_with_dates:
+            if instance.end_date:
+                days_until = (instance.end_date - today).days
+                instance.days_until_expiry = days_until
+                instance.instance_price_nok = instance.nok_price_override or instance.license.price
+            else:
+                instance.days_until_expiry = None
+                instance.instance_price_nok = instance.license.price
+
+            renewal_instances.append(instance)
+
+        # Sort by expiry date (earliest first)
+        renewal_instances.sort(key=lambda x: x.end_date if x.end_date else datetime.max.date())
+
+        # Calculate summary statistics
+        expired_count = sum(1 for i in renewal_instances if i.days_until_expiry is not None and i.days_until_expiry < 0)
+        expiring_soon_count = sum(1 for i in renewal_instances if i.days_until_expiry is not None and 0 <= i.days_until_expiry <= 30)
+        expiring_medium_count = sum(1 for i in renewal_instances if i.days_until_expiry is not None and 31 <= i.days_until_expiry <= 90)
+
+        # Calculate total renewal value (NOK)
+        total_renewal_value = sum(
+            float(instance.instance_price_nok or 0)
+            for instance in renewal_instances
         )
-        
-        context = {
-            'renewals_by_status': renewals_by_status,
-            'upcoming_renewals': upcoming_renewals,
-            'overdue_renewals': overdue_renewals,
-            'total_pending_cost': total_pending_cost,
-            'total_renewals': renewals.count(),
+
+        summary = {
+            'expired_count': expired_count,
+            'expiring_soon_count': expiring_soon_count,
+            'expiring_medium_count': expiring_medium_count,
+            'total_renewal_value': total_renewal_value,
         }
-        
+
+        context = {
+            'renewal_instances': renewal_instances,
+            'summary': summary,
+        }
+
         return render(request, self.template_name, context)
 
 
