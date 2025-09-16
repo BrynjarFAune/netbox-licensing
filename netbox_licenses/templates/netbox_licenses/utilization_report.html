@@ -118,7 +118,7 @@
                         <td>{{ license.consumed_licenses }}</td>
                         <td><span class="text-success">{{ license.available_licenses }}</span></td>
                         <td><span class="badge text-bg-warning">{{ license.waste_percentage|floatformat:1 }}%</span></td>
-                        <td>{{ license.available_licenses|mul:license.price|floatformat:2 }} {{ license.currency }}</td>
+                        <td>{{ license.potential_savings|floatformat:2 }} {{ license.currency }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>

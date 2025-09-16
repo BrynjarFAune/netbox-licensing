@@ -1,0 +1,294 @@
+{% extends 'base/layout.html' %}
+
+{% block title %}License Cost Allocation{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>License Cost Allocation</h1>
+    <div>
+        <a href="{% url 'plugins:netbox_licenses:dashboard' %}" class="btn btn-outline-primary">
+            <i class="mdi mdi-view-dashboard"></i> Dashboard
+        </a>
+        <a href="{% url 'plugins:netbox_licenses:vendor_utilization' %}" class="btn btn-outline-info">
+            <i class="mdi mdi-domain"></i> Vendor Analysis
+        </a>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Total License Value</h5>
+                <h2 class="text-primary">{{ summary.total_value_nok|floatformat:2|default:"0" }}</h2>
+                <small class="text-muted">NOK</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Active Instances</h5>
+                <h2 class="text-success">{{ summary.active_instances|default:"0" }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Average Cost per Instance</h5>
+                <h3 class="text-info">{{ summary.avg_cost_per_instance|floatformat:2|default:"0" }}</h3>
+                <small class="text-muted">NOK</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Unique Vendors</h5>
+                <h3>{{ summary.vendor_count|default:"0" }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cost Breakdown by Vendor -->
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">Cost Allocation by Vendor</h5>
+            </div>
+            <div class="card-body">
+                {% if vendor_costs %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Vendor</th>
+                                <th class="text-center">Licenses</th>
+                                <th class="text-center">Instances</th>
+                                <th class="text-end">Total Cost (NOK)</th>
+                                <th class="text-center">% of Total</th>
+                                <th class="text-end">Avg per Instance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for vendor in vendor_costs %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'plugins:netbox_licenses:license_list' %}?vendor={{ vendor.vendor_id }}" class="text-decoration-none">
+                                        <strong>{{ vendor.vendor_name }}</strong>
+                                    </a>
+                                </td>
+                                <td class="text-center">{{ vendor.license_count }}</td>
+                                <td class="text-center">{{ vendor.instance_count }}</td>
+                                <td class="text-end">
+                                    <strong>{{ vendor.total_cost|floatformat:2 }}</strong>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge text-bg-primary">{{ vendor.percentage|floatformat:1 }}%</span>
+                                </td>
+                                <td class="text-end">{{ vendor.avg_per_instance|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="mdi mdi-currency-usd" style="font-size: 3rem;"></i>
+                    <h4>No Cost Data Available</h4>
+                    <p>Add license instances with NOK pricing to see cost allocation.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Cost Distribution Chart -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">Cost Distribution</h5>
+            </div>
+            <div class="card-body">
+                {% if vendor_costs %}
+                <canvas id="costChart" style="max-height: 300px;"></canvas>
+                <div class="mt-3">
+                    {% for vendor in vendor_costs|slice:":5" %}
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <small>{{ vendor.vendor_name }}</small>
+                        <span class="badge text-bg-secondary">{{ vendor.percentage|floatformat:1 }}%</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center text-muted">
+                    <i class="mdi mdi-chart-pie" style="font-size: 4rem;"></i>
+                    <p>Chart will appear when cost data is available</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- License Details with Costs -->
+{% if license_details %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">License Cost Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>License</th>
+                                <th>Vendor</th>
+                                <th>Currency</th>
+                                <th class="text-center">Total Slots</th>
+                                <th class="text-center">Used Slots</th>
+                                <th class="text-end">Cost per Slot</th>
+                                <th class="text-end">Total Value (NOK)</th>
+                                <th class="text-center">Utilization</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for license in license_details %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'plugins:netbox_licenses:license' pk=license.id %}">
+                                        {{ license.name }}
+                                    </a>
+                                </td>
+                                <td>{{ license.vendor.name }}</td>
+                                <td>{{ license.currency }}</td>
+                                <td class="text-center">{{ license.total_licenses }}</td>
+                                <td class="text-center">{{ license.consumed_licenses }}</td>
+                                <td class="text-end">
+                                    {% if license.currency == 'NOK' %}
+                                        {{ license.price|floatformat:2 }}
+                                    {% else %}
+                                        {{ license.price|floatformat:2 }} {{ license.currency }}
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <strong>{{ license.total_value_nok|floatformat:2 }}</strong>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge text-bg-{% if license.utilization_percentage < 80 %}success{% elif license.utilization_percentage < 100 %}warning{% else %}danger{% endif %}">
+                                        {{ license.utilization_percentage|floatformat:1 }}%
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Cost Optimization Recommendations -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">Cost Optimization Opportunities</h5>
+            </div>
+            <div class="card-body">
+                {% if optimization_recommendations %}
+                <div class="alert alert-info">
+                    <i class="mdi mdi-lightbulb"></i>
+                    <strong>Recommendations:</strong>
+                    <ul class="mb-0 mt-2">
+                        {% for rec in optimization_recommendations %}
+                        <li>{{ rec }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% else %}
+                <div class="alert alert-success">
+                    <i class="mdi mdi-check-circle"></i>
+                    <strong>License portfolio is well optimized!</strong>
+                    No immediate cost optimization opportunities identified.
+                </div>
+                {% endif %}
+
+                <div class="d-flex gap-2 mt-3">
+                    <a href="{% url 'plugins:netbox_licenses:utilization_report' %}" class="btn btn-info">
+                        <i class="mdi mdi-chart-line"></i> Detailed Utilization Report
+                    </a>
+                    <a href="{% url 'plugins:netbox_licenses:license_renewals' %}" class="btn btn-warning">
+                        <i class="mdi mdi-refresh"></i> Renewal Management
+                    </a>
+                    <a href="{% url 'plugins:netbox_licenses:license_add' %}" class="btn btn-success">
+                        <i class="mdi mdi-plus"></i> Add New License
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    {% if vendor_costs %}
+    // Cost Distribution Pie Chart
+    const ctx = document.getElementById('costChart').getContext('2d');
+    const costChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: [
+                {% for vendor in vendor_costs|slice:":6" %}
+                '{{ vendor.vendor_name }}'{% if not forloop.last %},{% endif %}
+                {% endfor %}
+            ],
+            datasets: [{
+                data: [
+                    {% for vendor in vendor_costs|slice:":6" %}
+                    {{ vendor.total_cost }}{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ],
+                backgroundColor: [
+                    'rgba(54, 162, 235, 0.8)',
+                    'rgba(255, 99, 132, 0.8)',
+                    'rgba(255, 205, 86, 0.8)',
+                    'rgba(75, 192, 192, 0.8)',
+                    'rgba(153, 102, 255, 0.8)',
+                    'rgba(255, 159, 64, 0.8)'
+                ],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': ' + context.parsed.toFixed(2) + ' NOK';
+                        }
+                    }
+                }
+            }
+        }
+    });
+    {% endif %}
+});
+</script>
+
+{% endblock %}

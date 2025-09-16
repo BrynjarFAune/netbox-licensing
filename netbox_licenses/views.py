@@ -288,7 +288,10 @@ class UtilizationReportView(View):
             consumed_licenses__lt=F('total_licenses'),
             total_licenses__gt=0
         ).extra(
-            select={'waste_percentage': '(total_licenses - consumed_licenses) * 100.0 / total_licenses'}
+            select={
+                'waste_percentage': '(total_licenses - consumed_licenses) * 100.0 / total_licenses',
+                'potential_savings': '(total_licenses - consumed_licenses) * price'
+            }
         ).order_by('-waste_percentage')[:10]
         
         # Get overallocated licenses (compliance risks)

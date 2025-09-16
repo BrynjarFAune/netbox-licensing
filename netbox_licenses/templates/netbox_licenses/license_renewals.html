@@ -1,0 +1,186 @@
+{% extends 'base/layout.html' %}
+
+{% block title %}License Renewal Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>License Renewal Management</h1>
+    <div>
+        <a href="{% url 'plugins:netbox_licenses:dashboard' %}" class="btn btn-outline-primary">
+            <i class="mdi mdi-view-dashboard"></i> Dashboard
+        </a>
+        <a href="{% url 'plugins:netbox_licenses:license_list' %}" class="btn btn-outline-secondary">
+            <i class="mdi mdi-view-list"></i> All Licenses
+        </a>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Expired</h5>
+                <h2 class="text-danger">{{ summary.expired_count|default:"0" }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Expiring Soon (≤30d)</h5>
+                <h2 class="text-warning">{{ summary.expiring_soon_count|default:"0" }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Expiring (≤90d)</h5>
+                <h2 class="text-info">{{ summary.expiring_medium_count|default:"0" }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Total Renewal Value</h5>
+                <h3 class="text-primary">{{ summary.total_renewal_value|floatformat:2|default:"0" }} NOK</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Renewal Timeline -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">License Renewal Timeline</h5>
+            </div>
+            <div class="card-body">
+                {% if renewal_instances %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>License</th>
+                                <th>Vendor</th>
+                                <th>Assigned To</th>
+                                <th>End Date</th>
+                                <th>Days Until Expiry</th>
+                                <th>Status</th>
+                                <th>Price (NOK)</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for instance in renewal_instances %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'plugins:netbox_licenses:license' pk=instance.license.pk %}">
+                                        {{ instance.license.name }}
+                                    </a>
+                                </td>
+                                <td>{{ instance.license.vendor.name }}</td>
+                                <td>{{ instance.assigned_object|default:"—" }}</td>
+                                <td>{{ instance.end_date|default:"—" }}</td>
+                                <td>
+                                    {% if instance.days_until_expiry != None %}
+                                        {% if instance.days_until_expiry < 0 %}
+                                            <span class="badge text-bg-danger">{{ instance.days_until_expiry|abs }} days overdue</span>
+                                        {% elif instance.days_until_expiry <= 30 %}
+                                            <span class="badge text-bg-warning">{{ instance.days_until_expiry }} days</span>
+                                        {% elif instance.days_until_expiry <= 90 %}
+                                            <span class="badge text-bg-info">{{ instance.days_until_expiry }} days</span>
+                                        {% else %}
+                                            <span class="badge text-bg-success">{{ instance.days_until_expiry }} days</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">No end date</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if instance.days_until_expiry != None %}
+                                        {% if instance.days_until_expiry < 0 %}
+                                            <span class="badge text-bg-danger">Expired</span>
+                                        {% elif instance.days_until_expiry <= 30 %}
+                                            <span class="badge text-bg-warning">Critical</span>
+                                        {% elif instance.days_until_expiry <= 90 %}
+                                            <span class="badge text-bg-info">Upcoming</span>
+                                        {% else %}
+                                            <span class="badge text-bg-success">Healthy</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge text-bg-secondary">No Date</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ instance.instance_price_nok|floatformat:2 }}</td>
+                                <td>
+                                    <a href="{% url 'plugins:netbox_licenses:licenseinstance_edit' pk=instance.pk %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="mdi mdi-pencil"></i> Update
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="mdi mdi-calendar-check" style="font-size: 3rem;"></i>
+                    <h4>No License Instances with End Dates</h4>
+                    <p>Add end dates to license instances to track renewals.</p>
+                    <a href="{% url 'plugins:netbox_licenses:license_list' %}" class="btn btn-primary">
+                        <i class="mdi mdi-view-list"></i> View All Licenses
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if renewal_instances %}
+<!-- Actions Section -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">Renewal Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="mdi mdi-information"></i>
+                    <strong>Renewal Recommendations:</strong>
+                    <ul class="mb-0 mt-2">
+                        {% if summary.expired_count > 0 %}
+                        <li>{{ summary.expired_count }} license(s) have already expired - immediate action required</li>
+                        {% endif %}
+                        {% if summary.expiring_soon_count > 0 %}
+                        <li>{{ summary.expiring_soon_count }} license(s) expiring within 30 days - contact vendors for renewal</li>
+                        {% endif %}
+                        {% if summary.expiring_medium_count > 0 %}
+                        <li>{{ summary.expiring_medium_count }} license(s) expiring within 90 days - start renewal planning</li>
+                        {% endif %}
+                    </ul>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <a href="{% url 'plugins:netbox_licenses:license_add' %}" class="btn btn-success">
+                        <i class="mdi mdi-plus"></i> Add New License
+                    </a>
+                    <a href="{% url 'plugins:netbox_licenses:utilization_report' %}" class="btn btn-info">
+                        <i class="mdi mdi-chart-line"></i> View Utilization Report
+                    </a>
+                    <a href="{% url 'plugins:netbox_licenses:cost_allocation' %}" class="btn btn-secondary">
+                        <i class="mdi mdi-currency-usd"></i> Cost Analysis
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
