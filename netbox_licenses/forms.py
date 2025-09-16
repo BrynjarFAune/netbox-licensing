@@ -57,6 +57,7 @@ class LicenseForm(NetBoxModelForm):
         model = License
         fields = (
             'name', 'vendor', 'tenant', 'assignment_type', 'price', 'currency',
+            'billing_cycle', 'auto_renew',
             'external_id', 'total_licenses', 'metadata',
             'comments', 'tags'
         )

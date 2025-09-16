@@ -65,7 +65,28 @@ class License(NetBoxModel):
         blank=True,
         help_text="Vendor-specific data (service plans, features, API limits, etc.)"
     )
-    
+
+    # SUBSCRIPTION LIFECYCLE FIELDS
+    BILLING_CYCLE_CHOICES = [
+        ('monthly', 'Monthly'),
+        ('quarterly', 'Quarterly'),
+        ('yearly', 'Yearly'),
+        ('one_time', 'One-time Purchase'),
+        ('custom', 'Custom Period')
+    ]
+
+    billing_cycle = models.CharField(
+        max_length=20,
+        choices=BILLING_CYCLE_CHOICES,
+        default='monthly',
+        help_text="How frequently this license is billed"
+    )
+
+    auto_renew = models.BooleanField(
+        default=False,
+        help_text="Automatically renew instances when they expire"
+    )
+
     # LEGACY FIELD - keeping for backward compatibility
     total_instances = models.PositiveIntegerField(default=0)
     comments = models.TextField(blank=True)
@@ -100,6 +121,39 @@ class License(NetBoxModel):
             return "nearly_full"
         else:
             return "available"
+
+    # SUBSCRIPTION COST PROPERTIES
+    @property
+    def monthly_equivalent_price(self):
+        """Normalize all pricing to monthly for comparison"""
+        if not self.price:
+            return 0
+
+        if self.billing_cycle == 'monthly':
+            return float(self.price)
+        elif self.billing_cycle == 'quarterly':
+            return float(self.price) / 3
+        elif self.billing_cycle == 'yearly':
+            return float(self.price) / 12
+        elif self.billing_cycle == 'one_time':
+            return 0  # No recurring cost
+        else:  # custom
+            return float(self.price)  # Assume monthly for custom
+
+    @property
+    def annual_equivalent_price(self):
+        """Annual cost per license slot"""
+        return self.monthly_equivalent_price * 12
+
+    @property
+    def total_monthly_commitment(self):
+        """Total monthly recurring cost for all consumed licenses"""
+        return self.monthly_equivalent_price * self.consumed_licenses
+
+    @property
+    def total_annual_commitment(self):
+        """Total annual cost for all consumed licenses"""
+        return self.annual_equivalent_price * self.consumed_licenses
     
     # EXISTING PROPERTIES
     @cached_property
@@ -274,6 +328,46 @@ class LicenseInstance(NetBoxModel):
         """Return assignment type for filtering"""
         return self.assigned_object_type.model if self.assigned_object_type else None
 
+    # SUBSCRIPTION LIFECYCLE PROPERTIES
+    @property
+    def renewal_status(self):
+        """Smart status considering auto-renew and billing cycles"""
+        from django.utils import timezone
+
+        if self.license.auto_renew:
+            if not self.end_date:
+                return 'perpetual'
+            return 'auto_renewing'
+
+        # Manual renewal logic
+        if not self.end_date:
+            return 'no_expiry'
+
+        today = timezone.now().date()
+        days_until = (self.end_date - today).days
+
+        if days_until < 0:
+            return 'expired'
+        elif days_until <= 7:
+            return 'critical'
+        elif days_until <= 30:
+            return 'warning'
+        else:
+            return 'active'
+
+    @property
+    def monthly_cost_contribution(self):
+        """How much this instance contributes to monthly costs"""
+        # Use NOK price override if available, otherwise use license monthly equivalent
+        if self.nok_price_override:
+            return float(self.nok_price_override)
+        return self.license.monthly_equivalent_price
+
+    @property
+    def is_auto_renewing(self):
+        """Check if this instance auto-renews"""
+        return self.license.auto_renew
+
     def get_absolute_url(self):
         return reverse('plugins:netbox_licenses:licenseinstance', args=[self.pk])
 
@@ -302,11 +396,38 @@ class LicenseInstance(NetBoxModel):
         if not self.assigned_object_type_id and self.assigned_object_id and self.license:
             self.assigned_object_type = self.license.assignment_type
 
+        # Smart end date calculation based on license billing cycle
+        if self.start_date and not self.end_date and self.license:
+            self._calculate_end_date()
+
         # Validate allocation limits before saving
         self.full_clean()
 
         # Don't auto-set price_override anymore - let it remain None to use license price
         super().save(*args, **kwargs)
+
+    def _calculate_end_date(self):
+        """Calculate end date based on license billing cycle"""
+        from datetime import timedelta
+        from dateutil.relativedelta import relativedelta
+
+        cycle = self.license.billing_cycle
+
+        if cycle == 'monthly':
+            # Add 1 month using relativedelta for accurate month calculation
+            self.end_date = self.start_date + relativedelta(months=1) - timedelta(days=1)
+        elif cycle == 'quarterly':
+            # Add 3 months
+            self.end_date = self.start_date + relativedelta(months=3) - timedelta(days=1)
+        elif cycle == 'yearly':
+            # Add 1 year
+            self.end_date = self.start_date + relativedelta(years=1) - timedelta(days=1)
+        elif cycle == 'one_time':
+            # No expiry for one-time purchases
+            self.end_date = None
+        else:  # custom
+            # Default to 1 month for custom cycles
+            self.end_date = self.start_date + relativedelta(months=1) - timedelta(days=1)
 
 
 # Phase 3: Business Logic & Integration Models
