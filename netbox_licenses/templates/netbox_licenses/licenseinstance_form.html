@@ -9,12 +9,6 @@
 
     <div class="field-group">
       {% render_field form.license %}
-      {% render_field form.assigned_object_selector %}
-      {% render_field form.nok_price_override %}
-      {% render_field form.start_date %}
-      {% render_field form.end_date %}
-      {% render_field form.comments %}
-      {% render_field form.tags %}
 
       <div
         id="assigned-object-container"
@@ -25,6 +19,12 @@
       >
         {% include 'netbox_licenses/assigned_object_field.html' %}
       </div>
+
+      {% render_field form.nok_price_override %}
+      {% render_field form.start_date %}
+      {% render_field form.end_date %}
+      {% render_field form.comments %}
+      {% render_field form.tags %}
 
     {% block buttons %}
     <div class="form-group text-end noprint">
