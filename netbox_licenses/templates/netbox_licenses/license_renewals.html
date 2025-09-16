@@ -88,7 +88,7 @@
                                 <td>
                                     {% if instance.days_until_expiry != None %}
                                         {% if instance.days_until_expiry < 0 %}
-                                            <span class="badge text-bg-danger">{{ instance.days_until_expiry|abs }} days overdue</span>
+                                            <span class="badge text-bg-danger">{{ instance.days_until_expiry|floatformat:0|cut:"-" }} days overdue</span>
                                         {% elif instance.days_until_expiry <= 30 %}
                                             <span class="badge text-bg-warning">{{ instance.days_until_expiry }} days</span>
                                         {% elif instance.days_until_expiry <= 90 %}

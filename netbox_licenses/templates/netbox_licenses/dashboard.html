@@ -46,7 +46,7 @@
             <div class="card-body">
                 <h5 class="card-title text-muted">Overall Utilization</h5>
                 <h2>
-                    <span class="badge text-bg-{% if summary.overall_utilization < 80 %}success{% elif summary.overall_utilization < 100 %}warning{% else %}danger{% endif %}">
+                    <span class="badge text-bg-{% if summary.overall_utilization >= 90 %}success{% elif summary.overall_utilization >= 70 %}warning{% else %}danger{% endif %}">
                         {{ summary.overall_utilization|floatformat:1 }}%
                     </span>
                 </h2>
@@ -151,7 +151,7 @@
                                 </a>
                                 <br>
                                 <small class="text-muted">
-                                    <span class="badge text-bg-{% if vendor.utilization_percentage < 80 %}success{% elif vendor.utilization_percentage < 100 %}warning{% else %}danger{% endif %}">
+                                    <span class="badge text-bg-{% if vendor.utilization_percentage >= 90 %}success{% elif vendor.utilization_percentage >= 70 %}warning{% else %}danger{% endif %}">
                                         {{ vendor.utilization_percentage|floatformat:1 }}% utilized
                                     </span>
                                 </small>

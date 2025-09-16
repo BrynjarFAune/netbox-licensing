@@ -155,9 +155,9 @@
                         <td>{{ license.vendor|default:"—" }}</td>
                         <td>{{ license.total_licenses }}</td>
                         <td>{{ license.consumed_licenses }}</td>
-                        <td><span class="text-danger">{{ license.consumed_licenses|sub:license.total_licenses }}</span></td>
+                        <td><span class="text-danger">{{ license.excess_licenses }}</span></td>
                         <td><span class="badge text-bg-danger">{{ license.excess_percentage|floatformat:1 }}%</span></td>
-                        <td><span class="badge text-bg-warning">Purchase {{ license.consumed_licenses|sub:license.total_licenses }} more</span></td>
+                        <td><span class="badge text-bg-warning">Purchase {{ license.excess_licenses }} more</span></td>
                     </tr>
                     {% endfor %}
                 </tbody>

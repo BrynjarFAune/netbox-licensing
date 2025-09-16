@@ -59,7 +59,7 @@
                     <td>
                         {% if object.total_licenses > 0 %}
                             {% widthratio object.consumed_licenses object.total_licenses 100 as utilization %}
-                            <span class="badge text-bg-{% if utilization < 80 %}success{% elif utilization < 100 %}warning{% else %}danger{% endif %}">
+                            <span class="badge text-bg-{% if utilization >= 90 %}success{% elif utilization >= 70 %}warning{% else %}danger{% endif %}">
                                 {{ utilization }}%
                             </span>
                         {% else %}

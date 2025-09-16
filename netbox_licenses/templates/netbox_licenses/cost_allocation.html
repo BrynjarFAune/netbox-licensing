@@ -181,7 +181,7 @@
                                     <strong>{{ license.total_value_nok|floatformat:2 }}</strong>
                                 </td>
                                 <td class="text-center">
-                                    <span class="badge text-bg-{% if license.utilization_percentage < 80 %}success{% elif license.utilization_percentage < 100 %}warning{% else %}danger{% endif %}">
+                                    <span class="badge text-bg-{% if license.utilization_percentage >= 90 %}success{% elif license.utilization_percentage >= 70 %}warning{% else %}danger{% endif %}">
                                         {{ license.utilization_percentage|floatformat:1 }}%
                                     </span>
                                 </td>

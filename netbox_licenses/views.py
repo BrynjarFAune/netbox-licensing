@@ -298,7 +298,10 @@ class UtilizationReportView(View):
         overallocated_licenses = licenses.filter(
             consumed_licenses__gt=F('total_licenses')
         ).extra(
-            select={'excess_percentage': '(consumed_licenses - total_licenses) * 100.0 / total_licenses'}
+            select={
+                'excess_percentage': '(consumed_licenses - total_licenses) * 100.0 / total_licenses',
+                'excess_licenses': 'consumed_licenses - total_licenses'
+            }
         ).order_by('-excess_percentage')
         
         # Calculate cost impact
