@@ -189,27 +189,6 @@ class LicenseInstanceForm(NetBoxModelForm):
 
         return None
 
-    def save(self, commit=True):
-        """Override save to handle auto_renew checkbox properly"""
-        instance = super().save(commit=False)
-
-        # If checkbox matches the license default, set to None to inherit
-        if hasattr(instance, 'license') and instance.license:
-            license_default = instance.license.auto_renew
-            form_value = self.cleaned_data.get('auto_renew', False)
-
-            if form_value == license_default:
-                # User didn't override - use license default
-                instance.auto_renew = None
-            else:
-                # User overrode the default
-                instance.auto_renew = form_value
-
-        if commit:
-            instance.save()
-            self.save_m2m()
-
-        return instance
 
     def _setup_assignment_fields(self, license_obj):
         """Setup the assignment fields based on the license's assignment type"""
@@ -288,6 +267,17 @@ class LicenseInstanceForm(NetBoxModelForm):
                 instance.assigned_object_type = license.assignment_type
                 # Set the object ID from the selector (can be None)
                 instance.assigned_object_id = selector.pk if selector else None
+
+                # Handle auto_renew checkbox logic
+                license_default = license.auto_renew
+                form_value = self.cleaned_data.get('auto_renew', False)
+
+                if form_value == license_default:
+                    # User didn't override - use license default
+                    instance.auto_renew = None
+                else:
+                    # User overrode the default
+                    instance.auto_renew = form_value
 
         if commit:
             instance.save()
