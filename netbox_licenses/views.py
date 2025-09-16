@@ -706,8 +706,10 @@ class LicenseRenewalView(View):
 
         today = datetime.now().date()
 
-        # Add days_until_expiry and instance_price_nok for each instance
-        renewal_instances = []
+        # Separate auto-renew and manual renewal instances
+        manual_renewal_instances = []
+        auto_renewal_instances = []
+
         for instance in instances_with_dates:
             if instance.end_date:
                 days_until = (instance.end_date - today).days
@@ -717,31 +719,53 @@ class LicenseRenewalView(View):
                 instance.days_until_expiry = None
                 instance.instance_price_nok = instance.license.price or 0
 
-            renewal_instances.append(instance)
+            # Separate based on auto-renew setting
+            if instance.license.auto_renew:
+                auto_renewal_instances.append(instance)
+            else:
+                manual_renewal_instances.append(instance)
 
-        # Sort by expiry date (earliest first)
-        renewal_instances.sort(key=lambda x: x.end_date if x.end_date else datetime.max.date())
+        # Sort both lists by expiry date (earliest first)
+        manual_renewal_instances.sort(key=lambda x: x.end_date if x.end_date else datetime.max.date())
+        auto_renewal_instances.sort(key=lambda x: x.end_date if x.end_date else datetime.max.date())
 
-        # Calculate summary statistics
-        expired_count = sum(1 for i in renewal_instances if i.days_until_expiry is not None and i.days_until_expiry < 0)
-        expiring_soon_count = sum(1 for i in renewal_instances if i.days_until_expiry is not None and 0 <= i.days_until_expiry <= 30)
-        expiring_medium_count = sum(1 for i in renewal_instances if i.days_until_expiry is not None and 31 <= i.days_until_expiry <= 90)
+        # Calculate summary statistics for MANUAL renewals only
+        manual_expired = sum(1 for i in manual_renewal_instances if i.days_until_expiry is not None and i.days_until_expiry < 0)
+        manual_expiring_soon = sum(1 for i in manual_renewal_instances if i.days_until_expiry is not None and 0 <= i.days_until_expiry <= 30)
+        manual_expiring_medium = sum(1 for i in manual_renewal_instances if i.days_until_expiry is not None and 31 <= i.days_until_expiry <= 90)
 
-        # Calculate total renewal value (NOK)
-        total_renewal_value = sum(
-            float(instance.instance_price_nok or 0)
-            for instance in renewal_instances
-        )
+        # Calculate statistics for AUTO renewals (for informational purposes)
+        auto_expired = sum(1 for i in auto_renewal_instances if i.days_until_expiry is not None and i.days_until_expiry < 0)
+        auto_expiring_soon = sum(1 for i in auto_renewal_instances if i.days_until_expiry is not None and 0 <= i.days_until_expiry <= 30)
+        auto_expiring_medium = sum(1 for i in auto_renewal_instances if i.days_until_expiry is not None and 31 <= i.days_until_expiry <= 90)
+
+        # Calculate total renewal values (NOK)
+        manual_renewal_value = sum(float(i.instance_price_nok or 0) for i in manual_renewal_instances)
+        auto_renewal_value = sum(float(i.instance_price_nok or 0) for i in auto_renewal_instances)
 
         summary = {
-            'expired_count': expired_count,
-            'expiring_soon_count': expiring_soon_count,
-            'expiring_medium_count': expiring_medium_count,
-            'total_renewal_value': total_renewal_value,
+            # Manual renewal stats (action required)
+            'manual_expired': manual_expired,
+            'manual_expiring_soon': manual_expiring_soon,
+            'manual_expiring_medium': manual_expiring_medium,
+            'manual_renewal_value': manual_renewal_value,
+            'manual_total_count': len(manual_renewal_instances),
+
+            # Auto renewal stats (informational)
+            'auto_expired': auto_expired,
+            'auto_expiring_soon': auto_expiring_soon,
+            'auto_expiring_medium': auto_expiring_medium,
+            'auto_renewal_value': auto_renewal_value,
+            'auto_total_count': len(auto_renewal_instances),
+
+            # Combined totals
+            'total_instances': len(instances_with_dates),
+            'total_renewal_value': manual_renewal_value + auto_renewal_value,
         }
 
         context = {
-            'renewal_instances': renewal_instances,
+            'manual_renewal_instances': manual_renewal_instances,
+            'auto_renewal_instances': auto_renewal_instances,
             'summary': summary,
         }
 
