@@ -57,7 +57,7 @@ class LicenseForm(NetBoxModelForm):
         model = License
         fields = (
             'name', 'vendor', 'tenant', 'assignment_type', 'price', 'currency',
-            'external_id', 'total_licenses', 'total_instances', 'metadata',
+            'external_id', 'total_licenses', 'metadata',
             'comments', 'tags'
         )
 
@@ -78,27 +78,7 @@ class LicenseForm(NetBoxModelForm):
         return total_licenses
 
 class LicenseAddForm(LicenseForm):
-    quantity = IntegerField(
-        required=False,
-        label="Initial Instance Quantity",
-        min_value=0,
-        help_text="Number of initial instances to create (cannot exceed total licenses)"
-    )
-    
-    def clean(self):
-        cleaned_data = super().clean()
-        
-        if not cleaned_data:
-            return cleaned_data
-        
-        quantity = cleaned_data.get('quantity', 0) or 0
-        total_licenses = cleaned_data.get('total_licenses', 0) or 0
-        
-        if quantity > total_licenses:
-            self.add_error('quantity', 
-                f"Cannot create {quantity} instances. Only {total_licenses} total licenses available.")
-        
-        return cleaned_data
+    pass
 
 class LicenseInstanceForm(NetBoxModelForm):
     comments = CommentField()
