@@ -97,31 +97,35 @@ class LicenseInstanceTable(NetBoxTable):
     start_date = tables.DateColumn(format='d/m/Y')
     end_date = tables.DateColumn(format='d/m/Y')
     status = tables.Column(verbose_name="Status", orderable=False, accessor='derived_status')
-    effective_price = tables.Column(empty_values=(), verbose_name="Price")
-    effective_currency = tables.Column(empty_values=(), verbose_name="Currency")
-    price_in_nok = tables.Column(empty_values=(), verbose_name="Price (NOK)")
+    license_price = tables.Column(empty_values=(), verbose_name="License Price", accessor='license.price')
+    license_currency = tables.Column(empty_values=(), verbose_name="Currency", accessor='license.currency')
+    instance_price_nok = tables.Column(empty_values=(), verbose_name="Instance Price (NOK)")
 
     class Meta(NetBoxTable.Meta):
         model = LicenseInstance
         fields = (
-            'pk', 'id', 'license', 'assigned_object', 'assignment_display', 'start_date', 'end_date', 'status', 
-            'effective_price', 'effective_currency', 'price_in_nok', 'actions'
+            'pk', 'id', 'license', 'assigned_object', 'assignment_display', 'start_date', 'end_date', 'status',
+            'license_price', 'license_currency', 'instance_price_nok', 'actions'
         )
         default_columns = (
-            'pk', 'id', 'license', 'assignment_display', 'effective_price', 'price_in_nok', 'status'
+            'pk', 'id', 'license', 'assignment_display', 'license_currency', 'instance_price_nok', 'status'
         )
 
     def render_assignment_display(self, record):
         return record.get_assignment_display()
-    
-    def render_effective_price(self, record):
-        return f"{record.effective_price} {record.effective_currency}"
-    
-    def render_effective_currency(self, record):
-        return record.effective_currency
-    
-    def render_price_in_nok(self, record):
-        return f"{record.price_in_nok:.2f} NOK"
+
+    def render_license_price(self, record):
+        return f"{record.license.price} {record.license.currency}"
+
+    def render_license_currency(self, record):
+        from .choices import CurrencyChoices
+        return dict(CurrencyChoices.CHOICES).get(record.license.currency, record.license.currency)
+
+    def render_instance_price_nok(self, record):
+        price = record.instance_price_nok
+        if price:
+            return f"{price:.2f} NOK"
+        return "—"
 
     def render_status(self, record):
         from .choices import LicenseStatusChoices

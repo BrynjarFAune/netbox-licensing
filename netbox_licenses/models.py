@@ -105,7 +105,7 @@ class License(NetBoxModel):
     @cached_property
     def total_cost(self):
         """Total cost of all instances in NOK"""
-        return sum(i.price_in_nok for i in self.instances.all())
+        return sum(i.instance_price_nok for i in self.instances.all())
     
     @property 
     def price_display(self):
@@ -187,56 +187,43 @@ class LicenseInstance(NetBoxModel):
         return f"{self.license.name} (#{self.id})"
 
     @property
-    def effective_currency(self):
-        """Returns the currency used for this instance"""
-        return self.currency_override or self.license.currency
-    
+    def license_currency(self):
+        """Returns the currency from the parent license"""
+        return self.license.currency
+
     @property
-    def effective_price(self):
-        """Returns the price in the instance's effective currency"""
+    def license_price(self):
+        """Returns the base price from the parent license"""
         from decimal import Decimal
-        price = self.price_override or self.license.price
-        return Decimal(str(price)) if price is not None else Decimal('0.0')
-    
+        return Decimal(str(self.license.price)) if self.license.price is not None else Decimal('0.0')
+
     @property
-    def effective_conversion_rate(self):
-        """Returns the conversion rate to NOK, calculated on demand"""
+    def instance_price_nok(self):
+        """Returns the NOK price for this instance - either override or license default"""
         from decimal import Decimal
-        if self.effective_currency == CurrencyChoices.NOK:
-            return Decimal('1.0')
-        
-        # Calculate conversion rate from NOK price override and foreign price
-        nok_price = self.nok_price_override
-        foreign_price = self.effective_price
-        
-        if nok_price and foreign_price and foreign_price > 0:
-            try:
-                return Decimal(str(nok_price)) / Decimal(str(foreign_price))
-            except (ValueError, TypeError, ZeroDivisionError):
-                pass
-        
-        return Decimal('1.0')  # Default fallback
-    
-    @property
-    def price_in_nok(self):
-        """Returns the price in NOK - either direct NOK price or converted from override"""
-        from decimal import Decimal
-        
-        # If we have a NOK price override, use it directly
+
+        # If we have a NOK price override for this instance, use it
         if self.nok_price_override:
             return Decimal(str(self.nok_price_override))
-        
-        # If currency is NOK, use the effective price directly
-        if self.effective_currency == CurrencyChoices.NOK:
-            return self.effective_price
-        
-        # For non-NOK currencies, calculate from conversion rate
-        try:
-            price = self.effective_price
-            rate = self.effective_conversion_rate
-            return price * rate
-        except (ValueError, TypeError, AttributeError):
-            return Decimal('0.0')
+
+        # If the license is already in NOK, use its price
+        if self.license_currency == CurrencyChoices.NOK:
+            return self.license_price
+
+        # For other currencies, we'd need a conversion rate
+        # Since we're simplifying, instances must specify NOK price if license isn't in NOK
+        return Decimal('0.0')
+
+    @property
+    def display_price(self):
+        """Returns a formatted price display string"""
+        if self.nok_price_override:
+            return f"{self.nok_price_override} NOK (instance override)"
+        elif self.license_currency == CurrencyChoices.NOK:
+            return f"{self.license_price} NOK"
+        else:
+            currency_display = dict(CurrencyChoices.CHOICES).get(self.license_currency, self.license_currency)
+            return f"{self.license_price} {currency_display} (NOK price required)"
 
     @property
     def derived_status(self):

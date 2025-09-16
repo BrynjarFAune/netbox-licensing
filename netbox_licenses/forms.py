@@ -114,29 +114,21 @@ class LicenseInstanceForm(NetBoxModelForm):
         label="Assigned Object",
         help_text="Select an object to assign this license to"
     )
-    
-    # Currency override fields
-    currency_override = ChoiceField(
-        choices=[('', 'Use License Currency')] + CurrencyChoices.CHOICES,
-        required=False,
-        label="Currency Override",
-        help_text="Override the currency for this instance"
-    )
-    
-    # NOK price override for currency conversion
+
+    # Simplified: Only NOK price for this instance
     nok_price_override = DecimalField(
         max_digits=10,
         decimal_places=2,
         required=False,
-        label="Price in NOK",
-        help_text="Enter the price in Norwegian Kroner for currency conversion"
+        label="Instance Price (NOK)",
+        help_text="Override the price for this specific instance in Norwegian Kroner"
     )
 
     class Meta:
         model = LicenseInstance
         fields = (
             'license', 'assigned_object_selector',
-            'price_override', 'currency_override', 'nok_price_override',
+            'nok_price_override',
             'start_date', 'end_date', 'comments', 'tags'
         )
         widgets = {
@@ -156,22 +148,14 @@ class LicenseInstanceForm(NetBoxModelForm):
             # No license selected or license has no assignment type
             self.fields['assigned_object_selector'].widget.attrs['disabled'] = True
             self.fields['assigned_object_selector'].help_text = "Select a license first to choose an assigned object"
-        
-        # Setup currency conversion fields
-        self._setup_currency_fields()
-        
-        # Add JavaScript classes for currency conversion
-        self.fields['currency_override'].widget.attrs.update({
-            'class': 'currency-selector'
-        })
-        self.fields['price_override'].widget.attrs.update({
-            'class': 'price-field',
-            'step': '0.01'
-        })
-        self.fields['nok_price_override'].widget.attrs.update({
-            'class': 'nok-price-field',
-            'step': '0.01'
-        })
+
+        # Add helpful display of license currency and price
+        if license_obj:
+            currency_display = dict(CurrencyChoices.CHOICES).get(license_obj.currency, license_obj.currency)
+            self.fields['nok_price_override'].help_text = (
+                f"License base price: {license_obj.price} {currency_display}. "
+                f"Enter NOK price for this specific instance (leave blank to use default)."
+            )
 
     def _get_license_object(self):
         """Get the license object from form data, initial data, or existing instance"""
@@ -219,16 +203,6 @@ class LicenseInstanceForm(NetBoxModelForm):
             except model_class.DoesNotExist:
                 # Object no longer exists, clear the assignment
                 pass
-
-    def _setup_currency_fields(self):
-        """Setup currency conversion fields based on existing instance"""
-        if self.instance and self.instance.pk:
-            # Populate currency override fields for existing instances
-            if self.instance.currency_override:
-                self.fields['currency_override'].initial = self.instance.currency_override
-            # Always show the NOK price override for editing
-            if self.instance.nok_price_override:
-                self.fields['nok_price_override'].initial = self.instance.nok_price_override
 
     def clean(self):
         cleaned_data = super().clean()
