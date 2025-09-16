@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('netbox_licenses', '0004_license_external_id_license_metadata_and_more'),
+        ('netbox_licenses', '0006_phase3_business_logic_models'),
     ]
 
     operations = [
