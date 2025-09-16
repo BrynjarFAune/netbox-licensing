@@ -163,13 +163,23 @@ class LicenseInstanceForm(NetBoxModelForm):
                 (True, 'Yes - Auto-Renew'),
                 (False, 'No - Manual Renewal')
             )
+        else:
+            # No license selected - show generic choices
+            self.fields['auto_renew'].help_text = (
+                "Select a license first to see its default auto-renew setting."
+            )
+            self.fields['auto_renew'].choices = (
+                ('', 'Use License Default'),
+                (True, 'Yes - Auto-Renew'),
+                (False, 'No - Manual Renewal')
+            )
 
-            # If editing an existing instance, set the current value
-            if self.instance and self.instance.pk:
-                if self.instance.auto_renew is None:
-                    self.fields['auto_renew'].initial = ''
-                else:
-                    self.fields['auto_renew'].initial = self.instance.auto_renew
+        # If editing an existing instance, set the current value
+        if self.instance and self.instance.pk:
+            if self.instance.auto_renew is None:
+                self.fields['auto_renew'].initial = ''
+            else:
+                self.fields['auto_renew'].initial = self.instance.auto_renew
 
     def _get_license_object(self):
         """Get the license object from form data, initial data, or existing instance"""
