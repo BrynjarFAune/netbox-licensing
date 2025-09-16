@@ -92,23 +92,56 @@
     </div>
 </div>
 {% endif %}
+
+<!-- Quick Actions -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card">
+            <h5 class="card-header">Quick Actions</h5>
+            <div class="card-body">
+                <div class="d-flex gap-2 align-items-center">
+                    <a href="{% url 'plugins:netbox_licenses:licenseinstance_add' %}?license={{ object.pk }}" class="btn btn-success">
+                        <i class="mdi mdi-plus-thick"></i> Add License Instance
+                    </a>
+                    {% if object.available_licenses > 0 %}
+                        <span class="badge text-bg-success">{{ object.available_licenses }} slot(s) available</span>
+                    {% else %}
+                        <span class="badge text-bg-danger">No available slots</span>
+                    {% endif %}
+                </div>
+                <small class="text-muted mt-2 d-block">Create a new instance of this license and assign it to a contact, device, or service.</small>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_tabs %}
 <!-- License Instances Table Tab -->
-{% if instance_table.rows %}
 <div class="tab-pane" id="instances">
   <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-      <h5 class="mb-0">License Instances</h5>
+      <h5 class="mb-0">License Instances ({{ object.consumed_licenses }})</h5>
       <a href="{% url 'plugins:netbox_licenses:licenseinstance_add' %}?license={{ object.pk }}" class="btn btn-sm btn-primary">
         <i class="mdi mdi-plus-thick"></i> Add Instance
       </a>
     </div>
-    <div class="card-body table-responsive">
-      {% render_table instance_table 'inc/table.html' %}
+    <div class="card-body">
+      {% if instance_table.rows %}
+        <div class="table-responsive">
+          {% render_table instance_table 'inc/table.html' %}
+        </div>
+      {% else %}
+        <div class="text-center text-muted py-4">
+          <i class="mdi mdi-license" style="font-size: 3rem;"></i>
+          <h4>No License Instances</h4>
+          <p>This license has no active instances. Create your first instance to start tracking usage.</p>
+          <a href="{% url 'plugins:netbox_licenses:licenseinstance_add' %}?license={{ object.pk }}" class="btn btn-primary">
+            <i class="mdi mdi-plus-thick"></i> Create First Instance
+          </a>
+        </div>
+      {% endif %}
     </div>
   </div>
 </div>
-{% endif %}
 {% endblock extra_tabs %}
