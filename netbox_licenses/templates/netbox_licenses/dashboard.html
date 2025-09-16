@@ -15,13 +15,54 @@
     </div>
 </div>
 
-<!-- Summary Cards Row -->
+<!-- Financial Commitment Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Monthly Commitment</h5>
+                <h2 class="text-success">{{ summary.total_monthly_commitment|floatformat:0|default:"0" }}</h2>
+                <small class="text-muted">NOK/month</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Yearly Commitment</h5>
+                <h2 class="text-info">{{ summary.total_yearly_commitment|floatformat:0|default:"0" }}</h2>
+                <small class="text-muted">NOK/year</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Auto-Renewing</h5>
+                <h2 class="text-primary">{{ summary.auto_renewing_count|default:"0" }}/{{ summary.unique_licenses|default:"0" }}</h2>
+                <small class="text-muted">{{ summary.auto_renewing_monthly|floatformat:0|default:"0" }} NOK/month</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Portfolio Value</h5>
+                <h2 class="text-warning">{{ summary.total_value_nok|floatformat:0|default:"0" }}</h2>
+                <small class="text-muted">NOK investment</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- License Utilization Cards -->
 <div class="row mb-4">
     <div class="col-md-3">
         <div class="card text-center">
             <div class="card-body">
                 <h5 class="card-title text-muted">Total Licenses</h5>
                 <h2 class="text-primary">{{ summary.total_licenses|default:"0" }}</h2>
+                <small class="text-muted">{{ summary.unique_vendors|default:"0" }} vendors</small>
             </div>
         </div>
     </div>
@@ -30,6 +71,7 @@
             <div class="card-body">
                 <h5 class="card-title text-muted">Consumed</h5>
                 <h2 class="text-warning">{{ summary.total_consumed|default:"0" }}</h2>
+                <small class="text-muted">{{ summary.total_instances|default:"0" }} instances</small>
             </div>
         </div>
     </div>
@@ -38,6 +80,7 @@
             <div class="card-body">
                 <h5 class="card-title text-muted">Available</h5>
                 <h2 class="text-success">{{ summary.total_available|default:"0" }}</h2>
+                <small class="text-muted">slots remaining</small>
             </div>
         </div>
     </div>

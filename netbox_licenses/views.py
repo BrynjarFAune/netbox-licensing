@@ -88,6 +88,12 @@ class LicenseDashboardView(View):
         # Calculate total value in NOK
         total_value_nok = sum(stat['total_price_nok'] for stat in vendor_stats)
 
+        # Calculate subscription commitments
+        total_monthly_commitment = sum(l.total_monthly_commitment for l in licenses)
+        total_yearly_commitment = sum(l.total_yearly_commitment for l in licenses)
+        auto_renewing_licenses = licenses.filter(auto_renew=True)
+        auto_renewing_monthly = sum(l.monthly_equivalent_price * l.total_licenses for l in auto_renewing_licenses)
+
         context = {
             # Pie chart data for expiration status
             'expiration_chart_data': {
@@ -110,6 +116,12 @@ class LicenseDashboardView(View):
                 'unique_licenses': licenses.count(),
                 'total_instances': instances.count(),
                 'overall_utilization': (total_consumed / total_licenses_count * 100) if total_licenses_count > 0 else 0,
+                # NEW: Subscription commitments
+                'total_monthly_commitment': total_monthly_commitment,
+                'total_yearly_commitment': total_yearly_commitment,
+                'auto_renewing_monthly': auto_renewing_monthly,
+                'auto_renewing_count': auto_renewing_licenses.count(),
+                'manual_renewal_count': licenses.filter(auto_renew=False).count(),
             }
         }
 
