@@ -18,7 +18,7 @@ licenseinstance_buttons = [
 ]
 
 menu = PluginMenu(
-    label='licenses',
+    label='License Management',
     groups=(
         ('overview', (
             PluginMenuItem(
