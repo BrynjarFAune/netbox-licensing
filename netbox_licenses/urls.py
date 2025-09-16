@@ -3,6 +3,9 @@ from netbox.views.generic import ObjectChangeLogView
 from . import models, views
 
 urlpatterns = [
+    # Dashboard
+    path('', views.LicenseDashboardView.as_view(), name='dashboard'),
+
     # Licenses
     path('licenses/', views.LicenseListView.as_view(), name='license_list'),
     path('licenses/add/', views.LicenseAddView.as_view(), name='license_add'),

@@ -20,6 +20,12 @@ licenseinstance_buttons = [
 menu = PluginMenu(
     label='licenses',
     groups=[
+        ('overview', [
+            PluginMenuItem(
+                link='plugins:netbox_licenses:dashboard',
+                link_text='Dashboard'
+            ),
+        ]),
         ('licenses', [
             PluginMenuItem(
                 link='plugins:netbox_licenses:license_list',

@@ -3,10 +3,116 @@ from django.views import View
 from django.shortcuts import render
 from netbox.views import generic
 from . import tables, filtersets, models, forms
-from django.db.models import Count, Q, F
+from django.db.models import Count, Q, F, Sum
 from django.contrib import messages
 from django.http import HttpResponseBadRequest
 from utilities.forms.fields import DynamicModelChoiceField
+from django.utils import timezone
+from datetime import timedelta
+from dcim.models import Manufacturer
+
+
+# Dashboard view
+class LicenseDashboardView(View):
+    """Comprehensive dashboard showing license overview with charts and statistics"""
+    template_name = "netbox_licenses/dashboard.html"
+
+    def get(self, request):
+        # Get all licenses
+        licenses = models.License.objects.all()
+        instances = models.LicenseInstance.objects.all()
+
+        # Calculate expiration status for pie chart
+        today = timezone.now().date()
+        expired = 0
+        expiring_soon = 0  # Within 30 days
+        expiring_medium = 0  # Within 90 days
+        healthy = 0  # More than 90 days or no end date
+
+        for instance in instances:
+            if instance.end_date:
+                days_until = (instance.end_date - today).days
+                if days_until < 0:
+                    expired += 1
+                elif days_until <= 30:
+                    expiring_soon += 1
+                elif days_until <= 90:
+                    expiring_medium += 1
+                else:
+                    healthy += 1
+            else:
+                healthy += 1  # No end date = healthy
+
+        # Vendor summary statistics
+        vendor_stats = []
+        vendors = Manufacturer.objects.filter(licenses__isnull=False).distinct()
+
+        for vendor in vendors:
+            vendor_licenses = licenses.filter(vendor=vendor)
+            total_licenses = sum(l.total_licenses for l in vendor_licenses)
+            consumed_licenses = sum(l.consumed_licenses for l in vendor_licenses)
+            available_licenses = total_licenses - consumed_licenses
+
+            # Calculate total price in NOK
+            total_price_nok = 0
+            for license in vendor_licenses:
+                if license.currency == 'NOK':
+                    total_price_nok += float(license.price) * license.total_licenses
+                else:
+                    # For non-NOK, we need instance prices
+                    for instance in license.instances.all():
+                        if instance.nok_price_override:
+                            total_price_nok += float(instance.nok_price_override)
+                        elif license.currency == 'NOK':
+                            total_price_nok += float(license.price)
+
+            vendor_stats.append({
+                'vendor': vendor.name,
+                'license_count': vendor_licenses.count(),
+                'total_licenses': total_licenses,
+                'consumed_licenses': consumed_licenses,
+                'available_licenses': available_licenses,
+                'total_price_nok': total_price_nok,
+                'utilization_percentage': (consumed_licenses / total_licenses * 100) if total_licenses > 0 else 0
+            })
+
+        # Sort vendor stats by total licenses descending
+        vendor_stats.sort(key=lambda x: x['total_licenses'], reverse=True)
+
+        # Overall statistics
+        total_licenses_count = sum(l.total_licenses for l in licenses)
+        total_consumed = sum(l.consumed_licenses for l in licenses)
+        total_available = total_licenses_count - total_consumed
+
+        # Calculate total value in NOK
+        total_value_nok = sum(stat['total_price_nok'] for stat in vendor_stats)
+
+        context = {
+            # Pie chart data for expiration status
+            'expiration_chart_data': {
+                'expired': expired,
+                'expiring_soon': expiring_soon,
+                'expiring_medium': expiring_medium,
+                'healthy': healthy,
+            },
+
+            # Vendor statistics table
+            'vendor_stats': vendor_stats,
+
+            # Overall summary cards
+            'summary': {
+                'total_licenses': total_licenses_count,
+                'total_consumed': total_consumed,
+                'total_available': total_available,
+                'total_value_nok': total_value_nok,
+                'unique_vendors': len(vendor_stats),
+                'unique_licenses': licenses.count(),
+                'total_instances': instances.count(),
+                'overall_utilization': (total_consumed / total_licenses_count * 100) if total_licenses_count > 0 else 0,
+            }
+        }
+
+        return render(request, self.template_name, context)
 
 
 # License views
