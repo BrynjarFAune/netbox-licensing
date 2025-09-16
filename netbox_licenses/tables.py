@@ -56,8 +56,8 @@ class LicenseTable(NetBoxTable):
             color_class = "danger"   # Red
 
         return format_html(
-            '<span class="badge text-bg-{}">{:.1f}%</span>',
-            color_class, percentage_value
+            '<span class="badge text-bg-{}">{}</span>',
+            color_class, f"{percentage_value:.1f}%"
         )
     
     def render_available_licenses(self, record):
@@ -78,8 +78,8 @@ class LicenseTable(NetBoxTable):
         return "{} {}".format(price_value, record.currency)
 
     def render_total_cost(self, record):
-        cost_value = float(record.total_cost) if record.total_cost else 0
-        return "{:.2f} NOK".format(cost_value)
+        cost_value = float(str(record.total_cost)) if record.total_cost else 0
+        return f"{cost_value:.2f} NOK"
 
     def render_assigned_count(self, record):
         return sum(1 for i in record.instances.all() if i.assigned_object is not None)
@@ -132,7 +132,7 @@ class LicenseInstanceTable(NetBoxTable):
         if price:
             # Ensure we have a raw numeric value, not a SafeString
             price_value = float(str(price))
-            return "{:.2f} NOK".format(price_value)
+            return f"{price_value:.2f} NOK"
         return "—"
 
     def render_status(self, record):
