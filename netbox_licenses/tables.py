@@ -54,7 +54,7 @@ class LicenseTable(NetBoxTable):
             
         return format_html(
             '<span class="badge text-bg-{}">{:.1f}%</span>',
-            color_class, percentage
+            color_class, float(percentage)
         )
     
     def render_available_licenses(self, record):

@@ -84,51 +84,38 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+</div>
+
+<!-- Additional Statistics Row -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Unique Vendors</h5>
+                <h3 class="text-info">{{ summary.unique_vendors|default:"0" }}</h3>
+                <small class="text-muted">{{ summary.unique_licenses|default:"0" }} unique licenses</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Total Instances</h5>
+                <h3 class="text-primary">{{ summary.total_instances|default:"0" }}</h3>
+                <small class="text-muted">license assignments</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
         <div class="card text-center">
             <div class="card-body">
                 <h5 class="card-title text-muted">Overall Utilization</h5>
                 <h2>
                     <span class="badge text-bg-{% if summary.overall_utilization >= 90 %}success{% elif summary.overall_utilization >= 70 %}warning{% else %}danger{% endif %}">
-                        {{ summary.overall_utilization|floatformat:1 }}%
+                        {{ summary.overall_utilization|floatformat:1|default:"0" }}%
                     </span>
                 </h2>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Second Summary Row -->
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h5 class="card-title text-muted">Total Value (NOK)</h5>
-                <h3 class="text-info">{{ summary.total_value_nok|floatformat:2|default:"0" }}</h3>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h5 class="card-title text-muted">Unique Vendors</h5>
-                <h3>{{ summary.unique_vendors|default:"0" }}</h3>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h5 class="card-title text-muted">Unique Licenses</h5>
-                <h3>{{ summary.unique_licenses|default:"0" }}</h3>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h5 class="card-title text-muted">Total Instances</h5>
-                <h3>{{ summary.total_instances|default:"0" }}</h3>
+                <small class="text-muted">license slots used</small>
             </div>
         </div>
     </div>

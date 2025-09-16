@@ -203,7 +203,7 @@
                 {% if auto_renewal_instances %}
                 <div class="table-responsive">
                     <table class="table table-hover">
-                        <thead class="table-success">
+                        <thead class="table-light">
                             <tr>
                                 <th>License</th>
                                 <th>Vendor</th>
@@ -217,7 +217,7 @@
                         </thead>
                         <tbody>
                             {% for instance in auto_renewal_instances %}
-                            <tr class="table-success">
+                            <tr>
                                 <td>
                                     <a href="{% url 'plugins:netbox_licenses:license' pk=instance.license.pk %}">
                                         {{ instance.license.name }}
