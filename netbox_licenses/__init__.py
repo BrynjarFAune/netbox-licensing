@@ -1,5 +1,8 @@
 from netbox.plugins import PluginConfig
 
+# Import navigation at module level for NetBox discovery
+from .navigation import menu
+
 class NetBoxLicensesConfig(PluginConfig):
     name = 'netbox_licenses'  # Must match Python module name
     verbose_name = 'License Management'
@@ -29,11 +32,8 @@ class NetBoxLicensesConfig(PluginConfig):
     def ready(self):
         # Import signal handlers to ensure they're registered
         from . import signals
-
-    @property
-    def navigation(self):
-        """Return the plugin's navigation menu"""
+        # Set navigation as a direct attribute
         from .navigation import menu
-        return menu
+        self.navigation = menu
 
 config = NetBoxLicensesConfig
