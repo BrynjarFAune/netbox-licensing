@@ -103,6 +103,7 @@ class LicenseInstanceTable(NetBoxTable):
     start_date = tables.DateColumn(format='d/m/Y')
     end_date = tables.DateColumn(format='d/m/Y')
     status = tables.Column(verbose_name="Status", orderable=False, accessor='derived_status')
+    auto_renew_status = tables.Column(empty_values=(), verbose_name="Auto-Renew", orderable=False)
     license_price = tables.Column(empty_values=(), verbose_name="License Price", accessor='license.price')
     license_currency = tables.Column(empty_values=(), verbose_name="Currency", accessor='license.currency')
     instance_price_nok = tables.Column(empty_values=(), verbose_name="Instance Price (NOK)")
@@ -111,14 +112,30 @@ class LicenseInstanceTable(NetBoxTable):
         model = LicenseInstance
         fields = (
             'pk', 'id', 'license', 'assigned_object', 'assignment_display', 'start_date', 'end_date', 'status',
-            'license_price', 'license_currency', 'instance_price_nok', 'actions'
+            'auto_renew_status', 'license_price', 'license_currency', 'instance_price_nok', 'actions'
         )
         default_columns = (
-            'pk', 'id', 'license', 'assignment_display', 'license_currency', 'instance_price_nok', 'status'
+            'pk', 'id', 'license', 'assignment_display', 'auto_renew_status', 'status'
         )
 
     def render_assignment_display(self, record):
         return record.get_assignment_display()
+
+    def render_auto_renew_status(self, record):
+        from django.utils.html import format_html
+
+        if record.auto_renew is None:
+            # Using license default
+            license_default = record.license.auto_renew if record.license else False
+            default_text = "Yes" if license_default else "No"
+            return format_html(
+                '<span class="badge text-bg-secondary">Default ({})</span>',
+                default_text
+            )
+        elif record.auto_renew:
+            return format_html('<span class="badge text-bg-success">Yes</span>')
+        else:
+            return format_html('<span class="badge text-bg-warning">No</span>')
 
     def render_license_price(self, record):
         price_value = float(record.license.price) if record.license.price else 0
