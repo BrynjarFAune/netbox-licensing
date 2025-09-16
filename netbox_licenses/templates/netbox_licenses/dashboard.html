@@ -146,7 +146,9 @@
                         {% for vendor in vendor_stats %}
                         <tr>
                             <td>
-                                <strong>{{ vendor.vendor }}</strong>
+                                <a href="{% url 'plugins:netbox_licenses:license_list' %}?vendor={{ vendor.vendor_id }}" class="text-decoration-none">
+                                    <strong>{{ vendor.vendor }}</strong>
+                                </a>
                                 <br>
                                 <small class="text-muted">
                                     <span class="badge text-bg-{% if vendor.utilization_percentage < 80 %}success{% elif vendor.utilization_percentage < 100 %}warning{% else %}danger{% endif %}">

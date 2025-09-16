@@ -68,6 +68,7 @@ class LicenseDashboardView(View):
 
             vendor_stats.append({
                 'vendor': vendor.name,
+                'vendor_id': vendor.id,
                 'license_count': vendor_licenses.count(),
                 'total_licenses': total_licenses,
                 'consumed_licenses': consumed_licenses,
