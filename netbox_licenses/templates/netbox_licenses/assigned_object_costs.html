@@ -1,0 +1,201 @@
+{% extends 'base/layout.html' %}
+
+{% block title %}Assigned Object Cost Attribution{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>License Cost Attribution by Assigned Object</h1>
+    <div>
+        <a href="{% url 'plugins:netbox_licenses:dashboard' %}" class="btn btn-outline-primary">
+            <i class="mdi mdi-view-dashboard"></i> Dashboard
+        </a>
+        <a href="{% url 'plugins:netbox_licenses:cost_allocation' %}" class="btn btn-outline-info">
+            <i class="mdi mdi-chart-pie"></i> Cost Allocation
+        </a>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Objects with Licenses</h5>
+                <h2 class="text-primary">{{ summary.total_objects|default:"0" }}</h2>
+                <small class="text-muted">assigned objects</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Total Monthly Cost</h5>
+                <h2 class="text-success">{{ summary.total_monthly_cost|floatformat:0|default:"0" }}</h2>
+                <small class="text-muted">NOK/month</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Total Yearly Cost</h5>
+                <h2 class="text-info">{{ summary.total_yearly_cost|floatformat:0|default:"0" }}</h2>
+                <small class="text-muted">NOK/year</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Total License Instances</h5>
+                <h3>{{ summary.total_licenses|default:"0" }}</h3>
+                <small class="text-muted">instances</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cost Attribution Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">License Costs by Assigned Object</h5>
+            </div>
+            <div class="card-body">
+                {% if cost_attribution %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Object Type</th>
+                                <th>Object Name</th>
+                                <th class="text-center">License Count</th>
+                                <th class="text-end">Monthly Cost (NOK)</th>
+                                <th class="text-end">Yearly Cost (NOK)</th>
+                                <th class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for attribution in cost_attribution %}
+                            <tr>
+                                <td>
+                                    <span class="badge text-bg-secondary">{{ attribution.content_type.model|title }}</span>
+                                </td>
+                                <td>
+                                    <strong>{{ attribution.object }}</strong>
+                                    {% if attribution.object.get_absolute_url %}
+                                    <a href="{{ attribution.object.get_absolute_url }}" class="ms-2">
+                                        <i class="mdi mdi-open-in-new"></i>
+                                    </a>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">{{ attribution.license_count }}</td>
+                                <td class="text-end">
+                                    <strong>{{ attribution.total_monthly_cost|floatformat:2 }}</strong>
+                                </td>
+                                <td class="text-end">
+                                    <strong>{{ attribution.total_yearly_cost|floatformat:0 }}</strong>
+                                </td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-outline-info" onclick="toggleDetails('object-{{ attribution.object.pk }}-{{ attribution.content_type.id }}')">
+                                        <i class="mdi mdi-eye"></i> Details
+                                    </button>
+                                </td>
+                            </tr>
+                            <!-- License Details Row (Hidden by default) -->
+                            <tr id="object-{{ attribution.object.pk }}-{{ attribution.content_type.id }}" class="collapse">
+                                <td colspan="6" class="bg-light">
+                                    <div class="p-3">
+                                        <h6>License Details for {{ attribution.object }}</h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm">
+                                                <thead>
+                                                    <tr>
+                                                        <th>License</th>
+                                                        <th>Vendor</th>
+                                                        <th>Billing Cycle</th>
+                                                        <th class="text-end">Monthly Cost</th>
+                                                        <th>Expiry Date</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for instance in attribution.instances %}
+                                                    <tr>
+                                                        <td>
+                                                            <a href="{% url 'plugins:netbox_licenses:license' pk=instance.license.pk %}">
+                                                                {{ instance.license.name }}
+                                                            </a>
+                                                        </td>
+                                                        <td>{{ instance.license.vendor.name }}</td>
+                                                        <td>{{ instance.license.get_billing_cycle_display }}</td>
+                                                        <td class="text-end">
+                                                            {% if instance.nok_price_override %}
+                                                                {{ instance.nok_price_override|floatformat:2 }} NOK
+                                                            {% else %}
+                                                                {{ instance.license.monthly_equivalent_price|floatformat:2 }} NOK
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>
+                                                            {% if instance.end_date %}
+                                                                {{ instance.end_date }}
+                                                                {% if instance.license.auto_renew %}
+                                                                    <span class="badge text-bg-success">Auto-Renew</span>
+                                                                {% endif %}
+                                                            {% else %}
+                                                                <span class="text-muted">No expiry</span>
+                                                            {% endif %}
+                                                        </td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="mdi mdi-currency-usd" style="font-size: 3rem;"></i>
+                    <h4>No License Assignments Found</h4>
+                    <p>Assign licenses to objects to see cost attribution.</p>
+                    <a href="{% url 'plugins:netbox_licenses:licenseinstance_add' %}" class="btn btn-primary">
+                        <i class="mdi mdi-plus"></i> Create License Instance
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleDetails(elementId) {
+    const element = document.getElementById(elementId);
+    if (element.classList.contains('show')) {
+        element.classList.remove('show');
+    } else {
+        // Hide all other details first
+        document.querySelectorAll('tr.collapse.show').forEach(el => {
+            el.classList.remove('show');
+        });
+        // Show the selected one
+        element.classList.add('show');
+    }
+}
+</script>
+
+<style>
+tr.collapse {
+    display: none;
+}
+tr.collapse.show {
+    display: table-row;
+}
+</style>
+
+{% endblock %}

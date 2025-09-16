@@ -62,6 +62,10 @@ menu = PluginMenu(
                 link_text='Cost Allocation'
             ),
             PluginMenuItem(
+                link='plugins:netbox_licenses:assigned_object_costs',
+                link_text='Object Cost Attribution'
+            ),
+            PluginMenuItem(
                 link='plugins:netbox_licenses:license_renewals',
                 link_text='License Renewals'
             ),

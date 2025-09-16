@@ -128,6 +128,88 @@ class LicenseDashboardView(View):
         return render(request, self.template_name, context)
 
 
+# Assigned Object Cost Attribution View
+class AssignedObjectCostView(View):
+    """Show license costs attributed to specific objects (devices, contacts, etc.)"""
+    template_name = "netbox_licenses/assigned_object_costs.html"
+
+    def get(self, request):
+        # Get all license instances grouped by assigned object
+        instances = models.LicenseInstance.objects.select_related(
+            'license', 'license__vendor', 'assigned_object_type'
+        ).filter(assigned_object_id__isnull=False)
+
+        # Group by content type and object
+        object_costs = {}
+        for instance in instances:
+            content_type = instance.assigned_object_type
+            object_id = instance.assigned_object_id
+
+            if content_type.id not in object_costs:
+                object_costs[content_type.id] = {
+                    'content_type': content_type,
+                    'objects': {}
+                }
+
+            if object_id not in object_costs[content_type.id]['objects']:
+                # Get the actual object
+                try:
+                    obj = content_type.get_object_for_this_type(pk=object_id)
+                    object_costs[content_type.id]['objects'][object_id] = {
+                        'object': obj,
+                        'instances': [],
+                        'total_monthly_cost': 0,
+                        'license_count': 0
+                    }
+                except:
+                    continue  # Skip if object no longer exists
+
+            obj_data = object_costs[content_type.id]['objects'][object_id]
+            obj_data['instances'].append(instance)
+            obj_data['license_count'] += 1
+
+            # Calculate monthly cost for this instance
+            monthly_cost = instance.license.monthly_equivalent_price
+            if instance.nok_price_override:
+                # Convert NOK price to monthly equivalent if needed
+                if instance.license.billing_cycle == 'yearly':
+                    monthly_cost = float(instance.nok_price_override) / 12
+                elif instance.license.billing_cycle == 'quarterly':
+                    monthly_cost = float(instance.nok_price_override) / 3
+                else:
+                    monthly_cost = float(instance.nok_price_override)
+
+            obj_data['total_monthly_cost'] += monthly_cost
+
+        # Convert to list and sort by cost
+        cost_attribution = []
+        for content_type_data in object_costs.values():
+            for obj_data in content_type_data['objects'].values():
+                cost_attribution.append({
+                    'content_type': content_type_data['content_type'],
+                    'object': obj_data['object'],
+                    'license_count': obj_data['license_count'],
+                    'total_monthly_cost': obj_data['total_monthly_cost'],
+                    'total_yearly_cost': obj_data['total_monthly_cost'] * 12,
+                    'instances': obj_data['instances']
+                })
+
+        # Sort by monthly cost descending
+        cost_attribution.sort(key=lambda x: x['total_monthly_cost'], reverse=True)
+
+        context = {
+            'cost_attribution': cost_attribution,
+            'summary': {
+                'total_objects': len(cost_attribution),
+                'total_monthly_cost': sum(x['total_monthly_cost'] for x in cost_attribution),
+                'total_yearly_cost': sum(x['total_yearly_cost'] for x in cost_attribution),
+                'total_licenses': sum(x['license_count'] for x in cost_attribution),
+            }
+        }
+
+        return render(request, self.template_name, context)
+
+
 # License views
 class LicenseListView(generic.ObjectListView):
     queryset = models.License.objects.prefetch_related('vendor', 'tenant', 'instances')
