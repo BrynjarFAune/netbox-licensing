@@ -1,6 +1,6 @@
 from netbox.forms import NetBoxModelForm
 from utilities.forms.fields import CommentField, DynamicModelChoiceField, ContentTypeChoiceField
-from django.forms import DateInput, NumberInput, IntegerField, DateField, ModelChoiceField, HiddenInput, CharField, ChoiceField, DecimalField, Textarea, BooleanField, TypedChoiceField, RadioSelect
+from django.forms import DateInput, NumberInput, IntegerField, DateField, ModelChoiceField, HiddenInput, CharField, ChoiceField, DecimalField, Textarea, BooleanField
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from .models import License, LicenseInstance
@@ -105,18 +105,11 @@ class LicenseInstanceForm(NetBoxModelForm):
         help_text="Override the price for this specific instance in Norwegian Kroner"
     )
 
-    # Auto-renew field with radio buttons for clear three-state selection
-    auto_renew = TypedChoiceField(
-        choices=[
-            (None, 'Use License Default'),
-            (True, 'Enable Auto-Renew'),
-            (False, 'Disable Auto-Renew')
-        ],
-        coerce=lambda x: None if x == 'None' or x == '' or x is None else (True if x == 'True' or x is True else False),
-        widget=RadioSelect(),
+    # Simple auto-renew checkbox
+    auto_renew = BooleanField(
         required=False,
-        label="Auto-Renew Setting",
-        help_text="Choose auto-renew setting for this instance"
+        label="Auto-Renew",
+        help_text="Enable auto-renew for this license instance"
     )
 
     class Meta:
@@ -152,28 +145,25 @@ class LicenseInstanceForm(NetBoxModelForm):
                 f"Enter NOK price for this specific instance (leave blank to use default)."
             )
 
-            # Update auto-renew field with license default information
+            # Show license default in help text and set checkbox to effective value
             auto_renew_default = "enabled" if license_obj.auto_renew else "disabled"
             self.fields['auto_renew'].help_text = (
-                f"License default: auto-renew is <strong>{auto_renew_default}</strong>. "
-                f"Select 'Use License Default' to inherit this setting, or choose to override."
+                f"License default: <strong>{auto_renew_default}</strong>. "
+                f"Check to enable auto-renew for this instance."
             )
 
-            # Update choices to show the license default
-            self.fields['auto_renew'].choices = [
-                (None, f'Use License Default ({auto_renew_default})'),
-                (True, 'Enable Auto-Renew'),
-                (False, 'Disable Auto-Renew')
-            ]
+            # Set checkbox to show the effective auto-renew value
+            if self.instance and self.instance.pk:
+                # For existing instances, show the actual effective value
+                self.fields['auto_renew'].initial = self.instance.effective_auto_renew
+            else:
+                # For new instances, default to the license setting
+                self.fields['auto_renew'].initial = license_obj.auto_renew
         else:
-            # No license selected - show generic help text
+            # No license selected
             self.fields['auto_renew'].help_text = (
                 "Select a license first to see its default auto-renew setting."
             )
-
-        # Set initial value when editing an existing instance
-        if self.instance and self.instance.pk:
-            self.fields['auto_renew'].initial = self.instance.auto_renew
 
     def _get_license_object(self):
         """Get the license object from form data, initial data, or existing instance"""
@@ -198,6 +188,28 @@ class LicenseInstanceForm(NetBoxModelForm):
                 pass
 
         return None
+
+    def save(self, commit=True):
+        """Override save to handle auto_renew checkbox properly"""
+        instance = super().save(commit=False)
+
+        # If checkbox matches the license default, set to None to inherit
+        if hasattr(instance, 'license') and instance.license:
+            license_default = instance.license.auto_renew
+            form_value = self.cleaned_data.get('auto_renew', False)
+
+            if form_value == license_default:
+                # User didn't override - use license default
+                instance.auto_renew = None
+            else:
+                # User overrode the default
+                instance.auto_renew = form_value
+
+        if commit:
+            instance.save()
+            self.save_m2m()
+
+        return instance
 
     def _setup_assignment_fields(self, license_obj):
         """Setup the assignment fields based on the license's assignment type"""
