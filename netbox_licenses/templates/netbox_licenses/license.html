@@ -1,6 +1,99 @@
 {% extends 'generic/object.html' %}
 {% load render_table from django_tables2 %}
 
+{% block content %}
+<div class="row mb-3">
+    <div class="col col-md-6">
+        <div class="card">
+            <h5 class="card-header">License Details</h5>
+            <table class="table table-hover attr-table">
+                <tr>
+                    <th scope="row">Name</th>
+                    <td>{{ object.name }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Vendor</th>
+                    <td>{{ object.vendor }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Tenant</th>
+                    <td>{{ object.tenant }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Assignment Type</th>
+                    <td>{{ object.assignment_type.model|title|default:"—" }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Price</th>
+                    <td>{{ object.price }} {{ object.currency }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">External ID</th>
+                    <td>{{ object.external_id|default:"—" }}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    <div class="col col-md-6">
+        <div class="card">
+            <h5 class="card-header">License Utilization</h5>
+            <table class="table table-hover attr-table">
+                <tr>
+                    <th scope="row">Total Licenses</th>
+                    <td>{{ object.total_licenses }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Consumed Licenses</th>
+                    <td>{{ object.consumed_licenses }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Available Licenses</th>
+                    <td>
+                        <span class="{% if object.available_licenses > 0 %}text-success{% else %}text-danger{% endif %}">
+                            {{ object.available_licenses }}
+                        </span>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Utilization</th>
+                    <td>
+                        {% if object.total_licenses > 0 %}
+                            {% widthratio object.consumed_licenses object.total_licenses 100 as utilization %}
+                            <span class="badge text-bg-{% if utilization < 80 %}success{% elif utilization < 100 %}warning{% else %}danger{% endif %}">
+                                {{ utilization }}%
+                            </span>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Created</th>
+                    <td>{{ object.created }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Last Modified</th>
+                    <td>{{ object.last_updated }}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if object.metadata %}
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card">
+            <h5 class="card-header">Metadata</h5>
+            <div class="card-body">
+                <pre class="text-muted">{{ object.metadata }}</pre>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
 {% block extra_tabs %}
 <!-- License Instances Table Tab -->
 {% if instance_table.rows %}
