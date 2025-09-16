@@ -71,24 +71,20 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% if vendor.utilization_percentage < 80 %}
-                                <span class="badge text-bg-success">{{ vendor.utilization_percentage|floatformat:1 }}%</span>
-                            {% elif vendor.utilization_percentage < 100 %}
-                                <span class="badge text-bg-warning">{{ vendor.utilization_percentage|floatformat:1 }}%</span>
-                            {% else %}
-                                <span class="badge text-bg-danger">{{ vendor.utilization_percentage|floatformat:1 }}%</span>
-                            {% endif %}
+                            <span class="badge text-bg-{% if vendor.utilization_percentage >= 90 %}success{% elif vendor.utilization_percentage >= 70 %}warning{% else %}danger{% endif %}">
+                                {{ vendor.utilization_percentage|floatformat:1 }}%
+                            </span>
                         </td>
                         <td>{{ vendor.total_cost|floatformat:2 }} NOK</td>
                         <td>
                             {% if vendor.utilization_percentage > 100 %}
                                 <span class="badge text-bg-danger">Overallocated</span>
                             {% elif vendor.utilization_percentage >= 90 %}
-                                <span class="badge text-bg-warning">Near Capacity</span>
-                            {% elif vendor.utilization_percentage < 50 %}
-                                <span class="badge text-bg-success">Optimize</span>
+                                <span class="badge text-bg-success">Excellent</span>
+                            {% elif vendor.utilization_percentage >= 70 %}
+                                <span class="badge text-bg-warning">Good</span>
                             {% else %}
-                                <span class="badge text-bg-info">Good</span>
+                                <span class="badge text-bg-danger">Underutilized</span>
                             {% endif %}
                         </td>
                     </tr>

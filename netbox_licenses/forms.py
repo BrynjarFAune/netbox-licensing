@@ -216,18 +216,12 @@ class LicenseInstanceForm(NetBoxModelForm):
                 self.add_error('assigned_object_selector', 
                                f"Selected object must be of type {expected_ct.model}, not {actual_ct.model}")
 
-        # Validate currency conversion fields
-        currency_override = cleaned_data.get('currency_override')
+        # Validate NOK price override
         nok_price_override = cleaned_data.get('nok_price_override')
-        
-        if currency_override and currency_override != CurrencyChoices.NOK:
-            # For non-NOK currencies, require NOK price for conversion
-            if not nok_price_override:
-                self.add_error('nok_price_override', 
-                              'NOK price is required when using a currency override')
-            elif nok_price_override <= 0:
-                self.add_error('nok_price_override', 
-                              'NOK price must be greater than 0')
+
+        if nok_price_override is not None and nok_price_override <= 0:
+            self.add_error('nok_price_override',
+                          'NOK price must be greater than 0')
 
         return cleaned_data
 
