@@ -1,8 +1,5 @@
 from netbox.plugins import PluginConfig
 
-# Import navigation at module level for NetBox discovery
-from .navigation import menu
-
 class NetBoxLicensesConfig(PluginConfig):
     name = 'netbox_licenses'  # Must match Python module name
     verbose_name = 'License Management'
@@ -12,9 +9,6 @@ class NetBoxLicensesConfig(PluginConfig):
     author_email = 'contact@example.com'
     base_url = 'licenses'
     required_settings = []
-
-    # Navigation configuration
-    menu = 'netbox_licenses.navigation.menu'
     
     # Plugin-specific settings
     default_settings = {
