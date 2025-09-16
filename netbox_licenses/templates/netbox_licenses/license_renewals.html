@@ -241,7 +241,14 @@
                                         <span class="text-muted">No end date</span>
                                     {% endif %}
                                 </td>
-                                <td><span class="badge text-bg-success">Will Auto-Renew</span></td>
+                                <td>
+                                    <span class="badge text-bg-success">Will Auto-Renew</span>
+                                    {% if instance.auto_renew is not None %}
+                                        <br><small class="text-muted">Instance override</small>
+                                    {% else %}
+                                        <br><small class="text-muted">License default</small>
+                                    {% endif %}
+                                </td>
                                 <td>{{ instance.instance_price_nok|floatformat:2 }}</td>
                                 <td>
                                     <a href="{% url 'plugins:netbox_licenses:licenseinstance' pk=instance.pk %}" class="btn btn-sm btn-outline-info">

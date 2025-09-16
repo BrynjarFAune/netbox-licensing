@@ -109,7 +109,7 @@ class LicenseInstanceForm(NetBoxModelForm):
         model = LicenseInstance
         fields = (
             'license', 'assigned_object_selector',
-            'nok_price_override',
+            'nok_price_override', 'auto_renew',
             'start_date', 'end_date', 'comments', 'tags'
         )
         widgets = {
@@ -137,6 +137,14 @@ class LicenseInstanceForm(NetBoxModelForm):
                 f"License base price: {license_obj.price} {currency_display}. "
                 f"Enter NOK price for this specific instance (leave blank to use default)."
             )
+
+            # Update auto-renew field with license default information
+            auto_renew_default = "Yes" if license_obj.auto_renew else "No"
+            self.fields['auto_renew'].help_text = (
+                f"License default: {auto_renew_default}. "
+                f"Leave blank to use license default, or select to override for this instance only."
+            )
+            self.fields['auto_renew'].widget.attrs['placeholder'] = f'License default: {auto_renew_default}'
 
     def _get_license_object(self):
         """Get the license object from form data, initial data, or existing instance"""

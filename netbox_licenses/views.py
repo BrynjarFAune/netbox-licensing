@@ -729,8 +729,8 @@ class LicenseRenewalView(View):
                 instance.days_until_expiry = None
                 instance.instance_price_nok = instance.license.price or 0
 
-            # Separate based on auto-renew setting
-            if instance.license.auto_renew:
+            # Separate based on effective auto-renew setting (instance override or license default)
+            if instance.effective_auto_renew:
                 auto_renewal_instances.append(instance)
             else:
                 manual_renewal_instances.append(instance)

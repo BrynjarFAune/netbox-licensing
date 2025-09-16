@@ -245,6 +245,15 @@ class LicenseInstance(NetBoxModel):
     )
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
+
+    # Auto-renew setting - can override license default
+    auto_renew = models.BooleanField(
+        default=None,
+        null=True,
+        blank=True,
+        help_text="Override auto-renew setting for this instance (leave blank to use license default)"
+    )
+
     comments = models.TextField(blank=True)
 
     def __str__(self):
@@ -288,6 +297,13 @@ class LicenseInstance(NetBoxModel):
         else:
             currency_display = dict(CurrencyChoices.CHOICES).get(self.license_currency, self.license_currency)
             return f"{self.license_price} {currency_display} (NOK price required)"
+
+    @property
+    def effective_auto_renew(self):
+        """Returns the effective auto-renew setting - instance override or license default"""
+        if self.auto_renew is not None:
+            return self.auto_renew
+        return self.license.auto_renew if self.license else False
 
     @property
     def derived_status(self):

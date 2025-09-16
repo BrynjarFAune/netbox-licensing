@@ -83,11 +83,13 @@
                                     <span class="badge text-bg-secondary">{{ attribution.content_type.model|title }}</span>
                                 </td>
                                 <td>
-                                    <strong>{{ attribution.object }}</strong>
                                     {% if attribution.object.get_absolute_url %}
-                                    <a href="{{ attribution.object.get_absolute_url }}" class="ms-2">
-                                        <i class="mdi mdi-open-in-new"></i>
+                                    <a href="{{ attribution.object.get_absolute_url }}" class="text-decoration-none">
+                                        <strong>{{ attribution.object }}</strong>
+                                        <i class="mdi mdi-open-in-new ms-1"></i>
                                     </a>
+                                    {% else %}
+                                    <strong>{{ attribution.object }}</strong>
                                     {% endif %}
                                 </td>
                                 <td class="text-center">{{ attribution.license_count }}</td>
