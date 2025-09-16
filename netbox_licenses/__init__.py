@@ -12,6 +12,9 @@ class NetBoxLicensesConfig(PluginConfig):
     author_email = 'contact@example.com'
     base_url = 'licenses'
     required_settings = []
+
+    # Navigation configuration
+    menu = 'netbox_licenses.navigation.menu'
     
     # Plugin-specific settings
     default_settings = {
@@ -32,8 +35,5 @@ class NetBoxLicensesConfig(PluginConfig):
     def ready(self):
         # Import signal handlers to ensure they're registered
         from . import signals
-        # Set navigation as a direct attribute
-        from .navigation import menu
-        self.navigation = menu
 
 config = NetBoxLicensesConfig
