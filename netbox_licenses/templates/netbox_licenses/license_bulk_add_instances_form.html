@@ -1,0 +1,83 @@
+{% extends 'generic/object_edit.html' %}
+{% load render_field from form_helpers %}
+
+{% block title %}Configure {{ quantity }} License Instances - {{ license.name }}{% endblock %}
+
+{% block content %}
+<form method="post">
+    {% csrf_token %}
+
+    <div class="row mb-4">
+        <div class="col">
+            <h1>Configure {{ quantity }} License Instance{{ quantity|pluralize }}</h1>
+        </div>
+        <div class="col text-end">
+            <a href="{% url 'plugins:netbox_licenses:license_bulk_add_instances' pk=license.pk %}" class="btn btn-outline-secondary">
+                <i class="mdi mdi-arrow-left"></i> Back to Quantity Selection
+            </a>
+        </div>
+    </div>
+
+    <!-- License Summary Card -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">License: {{ license.name }}</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <strong>Vendor:</strong> {{ license.vendor|default:"—" }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Total Slots:</strong> {{ license.total_licenses }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Used:</strong> {{ license.consumed_licenses }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Creating:</strong>
+                    <span class="text-primary">{{ quantity }} instance{{ quantity|pluralize }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Instance Assignment -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Step 2: Assign Instances</h5>
+        </div>
+        <div class="card-body">
+            <!-- Assignment Fields -->
+            {% for field in form %}
+                {% if "assigned_object" in field.name %}
+                    {% render_field field %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Common Settings -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Apply to All Instances</h5>
+        </div>
+        <div class="card-body">
+            {% render_field form.start_date %}
+            {% render_field form.end_date %}
+            {% render_field form.nok_price_override %}
+            {% render_field form.auto_renew %}
+            {% render_field form.comments %}
+        </div>
+    </div>
+
+    <div class="text-end">
+        <button type="submit" class="btn btn-success">
+            <i class="mdi mdi-plus-multiple"></i> Create {{ quantity }} Instance{{ quantity|pluralize }}
+        </button>
+        <a href="{% url 'plugins:netbox_licenses:license_bulk_add_instances' pk=license.pk %}" class="btn btn-outline-secondary">
+            Back to Quantity Selection
+        </a>
+    </div>
+</form>
+{% endblock %}
