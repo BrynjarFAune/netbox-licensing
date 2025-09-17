@@ -73,14 +73,14 @@
                     {% endfor %}
                     <br><strong>Assignment fields:</strong>
                     {% for field in form %}
-                        {% if "assigned_object_" in field.name %}
-                            {{ field.name }},
+                        {% if "assigned_object" in field.name %}
+                            [{{ field.name }}:{{ field.name|length }}],
                         {% endif %}
                     {% endfor %}
                 </div>
                 <div class="assignment-fields-container">
                     {% for field in form %}
-                        {% if "assigned_object_" in field.name %}
+                        {% if "assigned_object" in field.name %}
                             <div class="mb-3 assignment-field" data-field-index="{{ field.name|slice:"16:" }}" style="display: none;">
                                 {% render_field field %}
                             </div>
