@@ -69,15 +69,15 @@
                 <div class="alert alert-info" style="font-size: 0.8em;">
                     <strong>Debug - Available fields:</strong>
                     {% for field in form %}
-                        {% if field.name|slice:":15" == "assigned_object_" %}
+                        {% if field.name|slice:":16" == "assigned_object_" %}
                             {{ field.name }},
                         {% endif %}
                     {% endfor %}
                 </div>
                 <div class="assignment-fields-container">
                     {% for field in form %}
-                        {% if field.name|slice:":15" == "assigned_object_" %}
-                            <div class="mb-3 assignment-field" data-field-index="{{ field.name|slice:"15:" }}" style="display: none;">
+                        {% if field.name|slice:":16" == "assigned_object_" %}
+                            <div class="mb-3 assignment-field" data-field-index="{{ field.name|slice:"16:" }}" style="display: none;">
                                 {% render_field field %}
                             </div>
                         {% endif %}
