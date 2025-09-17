@@ -91,9 +91,9 @@ class LicenseInstanceForm(NetBoxModelForm):
     # This is the field the user interacts with
     assigned_object_selector = DynamicModelChoiceField(
         queryset=Contact.objects.none(),  # Will be populated based on license
-        required=False,
+        required=True,
         label="Assigned Object",
-        help_text="Select an object to assign this license to"
+        help_text="Select an object to assign this license to (required)"
     )
 
     # Simplified: Only NOK price for this instance

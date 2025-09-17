@@ -220,7 +220,7 @@ class LicenseInstance(NetBoxModel):
     )
 
     assigned_object_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
-    assigned_object_id = models.PositiveIntegerField(null=True, blank=True)
+    assigned_object_id = models.PositiveIntegerField()
     assigned_object = GenericForeignKey("assigned_object_type", "assigned_object_id")
 
     price_override = models.DecimalField(
@@ -418,16 +418,9 @@ class LicenseInstance(NetBoxModel):
                 )
 
     def save(self, *args, **kwargs):
-        # Handle assignment type for both assigned and unassigned instances
+        # Auto-set assignment type if not provided (assignments are now required)
         if not self.assigned_object_type_id and self.license:
-            # If there's an assigned object, use the license's default assignment type
-            if self.assigned_object_id:
-                self.assigned_object_type = self.license.assignment_type
-            # For unassigned instances, we still need a content type (use Device as default)
-            elif not self.assigned_object_type_id:
-                from django.contrib.contenttypes.models import ContentType
-                from dcim.models import Device
-                self.assigned_object_type = ContentType.objects.get_for_model(Device)
+            self.assigned_object_type = self.license.assignment_type
 
         # Smart end date calculation based on license billing cycle
         if self.start_date and not self.end_date and self.license:
