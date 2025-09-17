@@ -65,12 +65,16 @@
             <!-- Dynamic Assignment Fields -->
             <div id="assignment-fields">
                 <h6>Assign to:</h6>
-                {% for field in form %}
-                    {% if field.name|slice:":15" == "assigned_object_" %}
-                        <div class="mb-3 assignment-field" style="{% if not forloop.first %}display: none;{% endif %}">
-                            {% render_field field %}
-                        </div>
-                    {% endif %}
+                {% for i in "123456789012345678901234567890"|make_list %}
+                    {% with field_name="assigned_object_"|add:forloop.counter %}
+                        {% for field in form %}
+                            {% if field.name == field_name %}
+                                <div class="mb-3 assignment-field" style="{% if forloop.parentloop.counter > 1 %}display: none;{% endif %}">
+                                    {% render_field field %}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% endwith %}
                 {% endfor %}
             </div>
 
@@ -78,31 +82,12 @@
             <hr>
             <h6>Apply to All Instances:</h6>
 
-            <div class="row">
-                <div class="col-md-6">
-                    {% render_field form.start_date %}
-                </div>
-                <div class="col-md-6">
-                    {% render_field form.end_date %}
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6">
-                    {% render_field form.nok_price_override %}
-                </div>
-                <div class="col-md-6">
-                    {% render_field form.auto_renew %}
-                </div>
-            </div>
-
-            <div class="mb-3">
-                {% render_field form.comments %}
-            </div>
-
-            <div class="mb-3">
-                {% render_field form.tags %}
-            </div>
+            {% render_field form.start_date %}
+            {% render_field form.end_date %}
+            {% render_field form.nok_price_override %}
+            {% render_field form.auto_renew %}
+            {% render_field form.comments %}
+            {% render_field form.tags %}
 
             <div class="text-end">
                 <button type="submit" class="btn btn-success">
