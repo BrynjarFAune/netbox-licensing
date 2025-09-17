@@ -3,6 +3,7 @@ from django.views import View
 from django.shortcuts import render
 from netbox.views import generic
 from . import tables, filtersets, models, forms
+from django.shortcuts import get_object_or_404, redirect
 from django.db.models import Count, Q, F, Sum
 from django.contrib import messages
 from django.http import HttpResponseBadRequest
@@ -784,3 +785,37 @@ class LicenseRenewalView(View):
 
 # Import webhook views from webhooks.py
 from .webhooks import VendorWebhookView, VendorSyncStatusView
+
+
+class LicenseBulkAddInstancesView(View):
+    """Bulk creation of license instances"""
+    template_name = 'netbox_licenses/license_bulk_add_instances.html'
+
+    def get(self, request, pk):
+        license = get_object_or_404(models.License, pk=pk)
+        form = forms.BulkLicenseInstanceForm(license=license)
+
+        return render(request, self.template_name, {
+            'license': license,
+            'form': form,
+        })
+
+    def post(self, request, pk):
+        license = get_object_or_404(models.License, pk=pk)
+        form = forms.BulkLicenseInstanceForm(license=license, data=request.POST)
+
+        if form.is_valid():
+            try:
+                instances = form.save()
+                messages.success(
+                    request,
+                    f"Successfully created {len(instances)} license instances for {license.name}"
+                )
+                return redirect('plugins:netbox_licenses:license', pk=license.pk)
+            except Exception as e:
+                messages.error(request, f"Error creating instances: {str(e)}")
+
+        return render(request, self.template_name, {
+            'license': license,
+            'form': form,
+        })

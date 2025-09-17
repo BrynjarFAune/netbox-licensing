@@ -153,15 +153,23 @@
             <div class="card-body">
                 <div class="d-flex gap-2 align-items-center">
                     <a href="{% url 'plugins:netbox_licenses:licenseinstance_add' %}?license={{ object.pk }}" class="btn btn-success">
-                        <i class="mdi mdi-plus-thick"></i> Add License Instance
+                        <i class="mdi mdi-plus-thick"></i> Add Instance
                     </a>
+                    {% if object.available_licenses > 1 %}
+                        <a href="{% url 'plugins:netbox_licenses:license_bulk_add_instances' pk=object.pk %}" class="btn btn-info">
+                            <i class="mdi mdi-plus-multiple"></i> Bulk Add Instances
+                        </a>
+                    {% endif %}
                     {% if object.available_licenses > 0 %}
                         <span class="badge text-bg-success">{{ object.available_licenses }} slot(s) available</span>
                     {% else %}
                         <span class="badge text-bg-danger">No available slots</span>
                     {% endif %}
                 </div>
-                <small class="text-muted mt-2 d-block">Create a new instance of this license and assign it to a contact, device, or service.</small>
+                <small class="text-muted mt-2 d-block">
+                    Create license instances and assign them to contacts, devices, or services.
+                    {% if object.available_licenses > 1 %}Use bulk add for multiple instances at once.{% endif %}
+                </small>
             </div>
         </div>
     </div>
@@ -174,9 +182,16 @@
   <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
       <h5 class="mb-0">License Instances ({{ object.consumed_licenses }})</h5>
-      <a href="{% url 'plugins:netbox_licenses:licenseinstance_add' %}?license={{ object.pk }}" class="btn btn-sm btn-primary">
-        <i class="mdi mdi-plus-thick"></i> Add Instance
-      </a>
+      <div class="d-flex gap-2">
+        <a href="{% url 'plugins:netbox_licenses:licenseinstance_add' %}?license={{ object.pk }}" class="btn btn-sm btn-primary">
+          <i class="mdi mdi-plus-thick"></i> Add Instance
+        </a>
+        {% if object.available_licenses > 1 %}
+          <a href="{% url 'plugins:netbox_licenses:license_bulk_add_instances' pk=object.pk %}" class="btn btn-sm btn-info">
+            <i class="mdi mdi-plus-multiple"></i> Bulk Add
+          </a>
+        {% endif %}
+      </div>
     </div>
     <div class="card-body">
       {% if instance_table.rows %}

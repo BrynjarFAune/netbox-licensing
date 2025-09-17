@@ -15,6 +15,7 @@ urlpatterns = [
     path('licenses/<int:pk>/changelog', ObjectChangeLogView.as_view(), name='license_changelog', kwargs={
         'model': models.License
     }),
+    path('licenses/<int:pk>/bulk-add-instances/', views.LicenseBulkAddInstancesView.as_view(), name='license_bulk_add_instances'),
     path('licenses/delete/', views.LicenseBulkDeleteView.as_view(), name='license_bulk_delete'),
 
     # License Instances

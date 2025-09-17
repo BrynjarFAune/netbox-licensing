@@ -1,0 +1,155 @@
+{% extends 'generic/object_edit.html' %}
+{% load render_field from utilities %}
+
+{% block title %}Bulk Add License Instances - {{ license.name }}{% endblock %}
+
+{% block content %}
+<form method="post">
+    {% csrf_token %}
+
+    <div class="row mb-4">
+        <div class="col">
+            <h1>Bulk Add License Instances</h1>
+        </div>
+        <div class="col text-end">
+            <a href="{% url 'plugins:netbox_licenses:license' pk=license.pk %}" class="btn btn-outline-secondary">
+                <i class="mdi mdi-arrow-left"></i> Back to License
+            </a>
+        </div>
+    </div>
+
+    <!-- License Summary Card -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">License: {{ license.name }}</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <strong>Vendor:</strong> {{ license.vendor|default:"—" }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Total Slots:</strong> {{ license.total_licenses }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Used:</strong> {{ license.consumed_licenses }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Available:</strong>
+                    <span class="text-success">{{ license.available_licenses }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if license.available_licenses <= 0 %}
+        <div class="alert alert-warning">
+            <i class="mdi mdi-alert"></i>
+            <strong>No license slots available.</strong>
+            This license is fully utilized. You cannot create new instances.
+        </div>
+    {% else %}
+
+    <!-- Bulk Creation Form -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Create Multiple Instances</h5>
+        </div>
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    {% render_field form.quantity %}
+                </div>
+            </div>
+
+            <!-- Dynamic Assignment Fields -->
+            <div id="assignment-fields">
+                <h6>Assign to:</h6>
+                {% for field in form %}
+                    {% if field.name|slice:":15" == "assigned_object_" %}
+                        <div class="mb-3 assignment-field" style="{% if not forloop.first %}display: none;{% endif %}">
+                            {% render_field field %}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            <!-- Common Settings -->
+            <hr>
+            <h6>Apply to All Instances:</h6>
+
+            <div class="row">
+                <div class="col-md-6">
+                    {% render_field form.start_date %}
+                </div>
+                <div class="col-md-6">
+                    {% render_field form.end_date %}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    {% render_field form.nok_price_override %}
+                </div>
+                <div class="col-md-6">
+                    {% render_field form.auto_renew %}
+                </div>
+            </div>
+
+            <div class="mb-3">
+                {% render_field form.comments %}
+            </div>
+
+            <div class="mb-3">
+                {% render_field form.tags %}
+            </div>
+
+            <div class="text-end">
+                <button type="submit" class="btn btn-success">
+                    <i class="mdi mdi-plus-multiple"></i> Create Instances
+                </button>
+                <a href="{% url 'plugins:netbox_licenses:license' pk=license.pk %}" class="btn btn-outline-secondary">
+                    Cancel
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% endif %}
+</form>
+
+<!-- JavaScript to show/hide assignment fields based on quantity -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const quantityField = document.getElementById('id_quantity');
+    const assignmentFields = document.querySelectorAll('.assignment-field');
+
+    function updateVisibleFields() {
+        const quantity = parseInt(quantityField.value) || 0;
+        assignmentFields.forEach((field, index) => {
+            if (index < quantity) {
+                field.style.display = 'block';
+                // Make the field required
+                const input = field.querySelector('select');
+                if (input) input.required = true;
+            } else {
+                field.style.display = 'none';
+                // Remove requirement
+                const input = field.querySelector('select');
+                if (input) {
+                    input.required = false;
+                    input.value = '';
+                }
+            }
+        });
+    }
+
+    // Update on page load
+    updateVisibleFields();
+
+    // Update when quantity changes
+    quantityField.addEventListener('input', updateVisibleFields);
+    quantityField.addEventListener('change', updateVisibleFields);
+});
+</script>
+{% endblock %}

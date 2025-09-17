@@ -287,3 +287,137 @@ class LicenseInstanceForm(NetBoxModelForm):
             self.save_m2m()
 
         return instance
+
+
+class BulkLicenseInstanceForm(NetBoxModelForm):
+    """Form for bulk creation of license instances"""
+
+    quantity = forms.IntegerField(
+        min_value=1,
+        label="How many instances?",
+        help_text="Number of license instances to create"
+    )
+
+    start_date = DateInput()
+    end_date = DateInput()
+
+    # Common settings applied to all instances
+    nok_price_override = DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        required=False,
+        label="Price Override (NOK)",
+        help_text="Apply this NOK price to all instances (leave blank to use license default)"
+    )
+
+    auto_renew = BooleanField(
+        required=False,
+        label="Auto-Renew Override",
+        help_text="Override auto-renew setting for all instances"
+    )
+
+    class Meta:
+        model = LicenseInstance
+        fields = ('start_date', 'end_date', 'comments', 'tags')
+        widgets = {
+            'start_date': DateInput(attrs={'type': 'date'}),
+            'end_date': DateInput(attrs={'type': 'date'}),
+        }
+
+    def __init__(self, license, *args, **kwargs):
+        self.license = license
+        super().__init__(*args, **kwargs)
+
+        # Set quantity limit based on available licenses
+        max_available = license.available_licenses
+        self.fields['quantity'].widget.attrs['max'] = max_available
+        self.fields['quantity'].help_text = f"Number of instances to create (max {max_available} available)"
+
+        if max_available <= 0:
+            self.fields['quantity'].widget.attrs['disabled'] = True
+            self.fields['quantity'].help_text = "No license slots available"
+
+        # Add dynamic assignment fields based on license assignment type
+        if license.assignment_type:
+            model_class = license.assignment_type.model_class()
+
+            for i in range(1, min(max_available + 1, 21)):  # Cap at 20 for UI sanity
+                field_name = f'assigned_object_{i}'
+                self.fields[field_name] = DynamicModelChoiceField(
+                    queryset=model_class.objects.all(),
+                    required=False,
+                    label=f"Instance {i}",
+                    help_text=f"Assign to {license.assignment_type.model}"
+                )
+
+        # Show license info in form
+        currency_display = dict(CurrencyChoices.CHOICES).get(license.currency, license.currency)
+        self.fields['nok_price_override'].help_text = (
+            f"License base price: {license.price} {currency_display}. "
+            f"Override NOK price for all instances (leave blank to use license default)."
+        )
+
+        auto_renew_default = "enabled" if license.auto_renew else "disabled"
+        self.fields['auto_renew'].help_text = (
+            f"License default: <strong>{auto_renew_default}</strong>. "
+            f"Check to override auto-renew for all instances."
+        )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        quantity = cleaned_data.get('quantity', 0)
+
+        if quantity > self.license.available_licenses:
+            self.add_error('quantity',
+                f"Cannot create {quantity} instances. Only {self.license.available_licenses} slots available.")
+
+        # Check that we have enough assigned objects
+        assigned_objects = []
+        for i in range(1, quantity + 1):
+            field_name = f'assigned_object_{i}'
+            obj = cleaned_data.get(field_name)
+            if obj:
+                if obj in assigned_objects:
+                    self.add_error(field_name, "This object is already selected for another instance.")
+                assigned_objects.append(obj)
+            else:
+                self.add_error(field_name, f"Instance {i} assignment is required.")
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        """Create multiple license instances"""
+        quantity = self.cleaned_data.get('quantity', 0)
+        instances = []
+
+        for i in range(1, quantity + 1):
+            field_name = f'assigned_object_{i}'
+            assigned_obj = self.cleaned_data.get(field_name)
+
+            if assigned_obj:
+                instance = LicenseInstance(
+                    license=self.license,
+                    assigned_object=assigned_obj,
+                    start_date=self.cleaned_data.get('start_date'),
+                    end_date=self.cleaned_data.get('end_date'),
+                    comments=self.cleaned_data.get('comments', ''),
+                    nok_price_override=self.cleaned_data.get('nok_price_override'),
+                )
+
+                # Handle auto-renew override
+                license_default = self.license.auto_renew
+                form_value = self.cleaned_data.get('auto_renew', False)
+                if form_value == license_default:
+                    instance.auto_renew = None  # Use license default
+                else:
+                    instance.auto_renew = form_value  # Override
+
+                if commit:
+                    instance.save()
+                    # Handle tags
+                    if self.cleaned_data.get('tags'):
+                        instance.tags.set(self.cleaned_data['tags'])
+
+                instances.append(instance)
+
+        return instances
