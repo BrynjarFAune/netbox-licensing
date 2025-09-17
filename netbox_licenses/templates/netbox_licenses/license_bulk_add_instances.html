@@ -65,6 +65,15 @@
             <!-- Dynamic Assignment Fields -->
             <div id="assignment-fields">
                 <h6>Assign to:</h6>
+                <!-- Debug: Show available assignment fields -->
+                <div class="alert alert-info" style="font-size: 0.8em;">
+                    <strong>Debug - Available fields:</strong>
+                    {% for field in form %}
+                        {% if field.name|slice:":15" == "assigned_object_" %}
+                            {{ field.name }},
+                        {% endif %}
+                    {% endfor %}
+                </div>
                 <div class="assignment-fields-container">
                     {% for field in form %}
                         {% if field.name|slice:":15" == "assigned_object_" %}

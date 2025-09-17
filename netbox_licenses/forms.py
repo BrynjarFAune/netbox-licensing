@@ -298,11 +298,10 @@ class BulkLicenseInstanceForm(NetBoxModelForm):
         label="How many instances?",
         help_text="Number of license instances to create",
         widget=forms.NumberInput(attrs={
-            'type': 'number',
             'min': '1',
             'step': '1',
-            'pattern': '[0-9]+',
-            'inputmode': 'numeric'
+            'class': 'form-control',
+            'oninput': 'this.value = this.value.replace(/[^0-9]/g, "")'
         })
     )
 
@@ -373,6 +372,11 @@ class BulkLicenseInstanceForm(NetBoxModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+
+        # If super().clean() returns None, return early
+        if not cleaned_data:
+            return cleaned_data
+
         quantity = cleaned_data.get('quantity', 0)
 
         if quantity > self.license.available_licenses:
