@@ -1,22 +1,23 @@
 from netbox.plugins import PluginMenuItem, PluginMenuButton, PluginMenu
-from netbox.choices import ButtonColorChoices
 
+# Create buttons using proper PluginMenuButton class
 license_buttons = (
     PluginMenuButton(
         link='plugins:netbox_licenses:license_add',
-        title='Add',
-        icon_class='mdi mdi-plus-thick',
+        title='Add License',
+        icon_class='mdi mdi-plus-thick'
     ),
 )
 
 licenseinstance_buttons = (
     PluginMenuButton(
         link='plugins:netbox_licenses:licenseinstance_add',
-        title='Add',
-        icon_class='mdi mdi-plus-thick',
+        title='Add Instance',
+        icon_class='mdi mdi-plus-thick'
     ),
 )
 
+# Create the menu with proper navigation structure
 menu = PluginMenu(
     label='License Management',
     groups=(

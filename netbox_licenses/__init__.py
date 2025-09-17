@@ -1,6 +1,6 @@
 from netbox.plugins import PluginConfig
 
-class NetBoxLicensesConfig(PluginConfig):
+class LicenseManagementConfig(PluginConfig):
     name = 'netbox_licenses'  # Must match Python module name
     verbose_name = 'License Management'
     description = 'Comprehensive license management with utilization tracking and analytics'
@@ -9,7 +9,7 @@ class NetBoxLicensesConfig(PluginConfig):
     author_email = 'contact@example.com'
     base_url = 'licenses'
     required_settings = []
-    
+
     # Plugin-specific settings
     default_settings = {
         'auto_calculate_utilization': True,  # Automatically calculate license utilization
@@ -19,15 +19,11 @@ class NetBoxLicensesConfig(PluginConfig):
         'renewal_warning_days': 90,          # Days before renewal to show warnings
         'max_instances_per_license': 1000,   # Safety limit for license instances
     }
-    
+
     # Cache settings for performance
     caching_config = {
         'timeout': 300,  # 5 minutes
         'cache_key': 'netbox_licenses',
     }
-    
-    def ready(self):
-        # Import signal handlers to ensure they're registered
-        from . import signals
 
-config = NetBoxLicensesConfig
+config = LicenseManagementConfig

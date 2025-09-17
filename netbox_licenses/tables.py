@@ -48,12 +48,15 @@ class LicenseTable(NetBoxTable):
         # Ensure we have a raw numeric value, not a SafeString
         percentage_value = float(str(percentage)) if percentage is not None else 0.0
 
-        if percentage_value < 80:
-            color_class = "success"  # Green
-        elif percentage_value < 100:
-            color_class = "warning"  # Orange
+        # Higher utilization is better (less waste)
+        if percentage_value >= 90:
+            color_class = "success"  # Green - excellent utilization
+        elif percentage_value >= 70:
+            color_class = "info"     # Blue - good utilization
+        elif percentage_value >= 50:
+            color_class = "warning"  # Yellow - moderate utilization
         else:
-            color_class = "danger"   # Red
+            color_class = "danger"   # Red - poor utilization (high waste)
 
         return format_html(
             '<span class="badge text-bg-{}">{}</span>',
