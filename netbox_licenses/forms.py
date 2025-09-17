@@ -1,5 +1,6 @@
 from netbox.forms import NetBoxModelForm
 from utilities.forms.fields import CommentField, DynamicModelChoiceField, ContentTypeChoiceField
+from django import forms
 from django.forms import DateInput, NumberInput, IntegerField, DateField, ModelChoiceField, HiddenInput, CharField, ChoiceField, DecimalField, Textarea, BooleanField
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
