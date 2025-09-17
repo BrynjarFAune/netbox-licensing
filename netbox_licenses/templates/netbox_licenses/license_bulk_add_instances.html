@@ -67,7 +67,11 @@
                 <h6>Assign to:</h6>
                 <!-- Debug: Show available assignment fields -->
                 <div class="alert alert-info" style="font-size: 0.8em;">
-                    <strong>Debug - Available fields:</strong>
+                    <strong>Debug - ALL fields:</strong>
+                    {% for field in form %}
+                        {{ field.name }},
+                    {% endfor %}
+                    <br><strong>Assignment fields:</strong>
                     {% for field in form %}
                         {% if "assigned_object_" in field.name %}
                             {{ field.name }},
