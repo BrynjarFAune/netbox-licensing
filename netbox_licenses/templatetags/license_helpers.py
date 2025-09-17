@@ -57,8 +57,8 @@ def utilization_badge(value):
 
     color = UTILIZATION_COLORS[level]
     return format_html(
-        '<span class="badge text-bg-{}">{:.1f}%</span>',
-        color, value
+        '<span class="badge text-bg-{}">{}</span>',
+        color, f"{value:.1f}%"
     )
 
 
@@ -85,8 +85,8 @@ def waste_badge(value):
 
     color = WASTE_COLORS[level]
     return format_html(
-        '<span class="badge text-bg-{}">{:.1f}%</span>',
-        color, value
+        '<span class="badge text-bg-{}">{}</span>',
+        color, f"{value:.1f}%"
     )
 
 
