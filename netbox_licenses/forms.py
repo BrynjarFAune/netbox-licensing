@@ -296,7 +296,14 @@ class BulkLicenseInstanceForm(NetBoxModelForm):
     quantity = forms.IntegerField(
         min_value=1,
         label="How many instances?",
-        help_text="Number of license instances to create"
+        help_text="Number of license instances to create",
+        widget=forms.NumberInput(attrs={
+            'type': 'number',
+            'min': '1',
+            'step': '1',
+            'pattern': '[0-9]+',
+            'inputmode': 'numeric'
+        })
     )
 
     start_date = DateInput()

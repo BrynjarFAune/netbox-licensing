@@ -53,7 +53,7 @@
     <!-- Bulk Creation Form -->
     <div class="card">
         <div class="card-header">
-            <h5 class="mb-0">Create Multiple Instances</h5>
+            <h5 class="mb-0">Instance Configuration</h5>
         </div>
         <div class="card-body">
             <div class="row mb-4">
@@ -65,17 +65,15 @@
             <!-- Dynamic Assignment Fields -->
             <div id="assignment-fields">
                 <h6>Assign to:</h6>
-                {% for i in "123456789012345678901234567890"|make_list %}
-                    {% with field_name="assigned_object_"|add:forloop.counter %}
-                        {% for field in form %}
-                            {% if field.name == field_name %}
-                                <div class="mb-3 assignment-field" style="{% if forloop.parentloop.counter > 1 %}display: none;{% endif %}">
-                                    {% render_field field %}
-                                </div>
-                            {% endif %}
-                        {% endfor %}
-                    {% endwith %}
-                {% endfor %}
+                <div class="assignment-fields-container">
+                    {% for field in form %}
+                        {% if field.name|slice:":15" == "assigned_object_" %}
+                            <div class="mb-3 assignment-field" data-field-index="{{ field.name|slice:"15:" }}" style="display: none;">
+                                {% render_field field %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
             </div>
 
             <!-- Common Settings -->
@@ -111,15 +109,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateVisibleFields() {
         const quantity = parseInt(quantityField.value) || 0;
+
         assignmentFields.forEach((field, index) => {
-            if (index < quantity) {
+            const fieldIndex = parseInt(field.dataset.fieldIndex) || (index + 1);
+
+            if (fieldIndex <= quantity) {
                 field.style.display = 'block';
                 // Make the field required
                 const input = field.querySelector('select');
                 if (input) input.required = true;
             } else {
                 field.style.display = 'none';
-                // Remove requirement
+                // Remove requirement and clear value
                 const input = field.querySelector('select');
                 if (input) {
                     input.required = false;
@@ -132,9 +133,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update on page load
     updateVisibleFields();
 
-    // Update when quantity changes
-    quantityField.addEventListener('input', updateVisibleFields);
+    // Update when quantity field loses focus (blur) or changes
+    quantityField.addEventListener('blur', updateVisibleFields);
     quantityField.addEventListener('change', updateVisibleFields);
+
+    // Also update on input for immediate feedback
+    quantityField.addEventListener('input', function() {
+        // Only update if the value is a valid number
+        if (quantityField.value && !isNaN(quantityField.value)) {
+            updateVisibleFields();
+        }
+    });
 });
 </script>
 {% endblock %}
