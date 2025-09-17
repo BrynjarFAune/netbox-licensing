@@ -95,9 +95,9 @@ class LicenseDashboardView(View):
         auto_renewing_licenses = licenses.filter(auto_renew=True)
         auto_renewing_monthly = sum(l.monthly_equivalent_price * l.total_licenses for l in auto_renewing_licenses)
 
-        # Simple MRR tracking - Monthly Recurring Revenue
-        current_mrr = sum(l.total_monthly_consumed_cost for l in auto_renewing_licenses)
-        potential_mrr = sum(l.total_monthly_commitment for l in auto_renewing_licenses)
+        # Simple MRC tracking - Monthly Recurring Cost
+        current_mrc = sum(l.total_monthly_consumed_cost for l in auto_renewing_licenses)
+        potential_mrc = sum(l.total_monthly_commitment for l in auto_renewing_licenses)
         manual_monthly_cost = sum(l.total_monthly_consumed_cost for l in licenses.filter(auto_renew=False))
 
         context = {
@@ -128,11 +128,11 @@ class LicenseDashboardView(View):
                 'auto_renewing_monthly': auto_renewing_monthly,
                 'auto_renewing_count': auto_renewing_licenses.count(),
                 'manual_renewal_count': licenses.filter(auto_renew=False).count(),
-                # Simple MRR metrics
-                'current_mrr': current_mrr,
-                'potential_mrr': potential_mrr,
+                # Simple MRC metrics
+                'current_mrc': current_mrc,
+                'potential_mrc': potential_mrc,
                 'manual_monthly_cost': manual_monthly_cost,
-                'mrr_utilization': (current_mrr / potential_mrr * 100) if potential_mrr > 0 else 0,
+                'mrc_utilization': (current_mrc / potential_mrc * 100) if potential_mrc > 0 else 0,
             }
         }
 

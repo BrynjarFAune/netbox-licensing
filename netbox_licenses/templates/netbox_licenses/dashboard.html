@@ -120,19 +120,19 @@
     </div>
 </div>
 
-<!-- Simple MRR Tracking -->
+<!-- Monthly Recurring Cost Tracking -->
 <div class="alert alert-info mb-4">
     <div class="row align-items-center">
         <div class="col-md-9">
-            <h5><i class="mdi mdi-chart-line"></i> <strong>Monthly Recurring Revenue (MRR) Overview</strong></h5>
-            <p class="mb-2 text-muted">Portfolio Value = total license investment. MRR = recurring monthly costs from active subscriptions.</p>
+            <h5><i class="mdi mdi-chart-line"></i> <strong>Monthly Recurring Cost (MRC) Overview</strong></h5>
+            <p class="mb-2 text-muted">Portfolio Value = total license investment. MRC = recurring monthly costs from active subscriptions.</p>
             <div class="row">
                 <div class="col-md-4">
-                    <p class="mb-1"><strong>Current MRR:</strong> {{ summary.current_mrr|floatformat:0|default:"0" }} NOK/month</p>
+                    <p class="mb-1"><strong>Current MRC:</strong> {{ summary.current_mrc|floatformat:0|default:"0" }} NOK/month</p>
                     <small class="text-muted">From auto-renewing licenses currently consumed</small>
                 </div>
                 <div class="col-md-4">
-                    <p class="mb-1"><strong>Potential MRR:</strong> {{ summary.potential_mrr|floatformat:0|default:"0" }} NOK/month</p>
+                    <p class="mb-1"><strong>Potential MRC:</strong> {{ summary.potential_mrc|floatformat:0|default:"0" }} NOK/month</p>
                     <small class="text-muted">If all auto-renewing slots are used</small>
                 </div>
                 <div class="col-md-4">
@@ -142,9 +142,9 @@
             </div>
         </div>
         <div class="col-md-3 text-center">
-            <h6 class="text-muted">MRR Utilization</h6>
-            <h2 class="{% if summary.mrr_utilization >= 90 %}text-success{% elif summary.mrr_utilization >= 70 %}text-warning{% else %}text-danger{% endif %}">
-                {{ summary.mrr_utilization|floatformat:1|default:"0" }}%
+            <h6 class="text-muted">MRC Utilization</h6>
+            <h2 class="{% if summary.mrc_utilization >= 90 %}text-success{% elif summary.mrc_utilization >= 70 %}text-warning{% else %}text-danger{% endif %}">
+                {{ summary.mrc_utilization|floatformat:1|default:"0" }}%
             </h2>
             <small class="text-muted">of auto-renew capacity</small>
         </div>
