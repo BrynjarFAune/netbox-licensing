@@ -43,35 +43,20 @@ class LicenseTable(NetBoxTable):
         return record.external_id or "—"
     
     def render_utilization(self, record):
-        from django.utils.html import format_html
-        percentage = record.utilization_percentage
-        # Ensure we have a raw numeric value, not a SafeString
-        percentage_value = float(str(percentage)) if percentage is not None else 0.0
-
-        # Higher utilization is better (less waste)
-        if percentage_value >= 90:
-            color_class = "success"  # Green - excellent utilization
-        elif percentage_value >= 70:
-            color_class = "info"     # Blue - good utilization
-        elif percentage_value >= 50:
-            color_class = "warning"  # Yellow - moderate utilization
-        else:
-            color_class = "danger"   # Red - poor utilization (high waste)
-
-        return format_html(
-            '<span class="badge text-bg-{}">{}</span>',
-            color_class, f"{percentage_value:.1f}%"
-        )
+        from ..templatetags.license_helpers import utilization_badge
+        return utilization_badge(record.utilization_percentage)
     
     def render_available_licenses(self, record):
         from django.utils.html import format_html
+        from ..templatetags.license_helpers import availability_color
+
         available = record.available_licenses
+        color_class = availability_color(available)
+
         if available < 0:
-            return format_html('<span class="text-danger">{}</span>', available)
-        elif available == 0:
-            return format_html('<span class="text-warning">{}</span>', available)
+            return format_html('<span class="{}"><i class="mdi mdi-alert"></i> {}</span>', color_class, available)
         else:
-            return str(available)
+            return format_html('<span class="{}">{}</span>', color_class, available)
 
     # EXISTING RENDERING METHODS
     def render_instance_count(self, record):

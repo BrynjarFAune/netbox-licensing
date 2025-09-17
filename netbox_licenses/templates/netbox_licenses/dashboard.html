@@ -1,5 +1,6 @@
 {% extends 'base/layout.html' %}
 {% load render_table from django_tables2 %}
+{% load license_helpers %}
 
 {% block title %}License Dashboard{% endblock %}
 
@@ -111,9 +112,7 @@
             <div class="card-body">
                 <h5 class="card-title text-muted">Overall Utilization</h5>
                 <h2>
-                    <span class="badge text-bg-{% if summary.overall_utilization >= 90 %}success{% elif summary.overall_utilization >= 70 %}warning{% else %}danger{% endif %}">
-                        {{ summary.overall_utilization|floatformat:1|default:"0" }}%
-                    </span>
+                    {% utilization_badge summary.overall_utilization %}
                 </h2>
                 <small class="text-muted">license slots used</small>
             </div>
@@ -212,9 +211,7 @@
                                 </a>
                                 <br>
                                 <small class="text-muted">
-                                    <span class="badge text-bg-{% if vendor.utilization_percentage >= 90 %}success{% elif vendor.utilization_percentage >= 70 %}warning{% else %}danger{% endif %}">
-                                        {{ vendor.utilization_percentage|floatformat:1 }}% utilized
-                                    </span>
+                                    {% utilization_badge vendor.utilization_percentage %}
                                 </small>
                             </td>
                             <td class="text-center">{{ vendor.license_count }}</td>

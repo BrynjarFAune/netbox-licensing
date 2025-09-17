@@ -1,5 +1,6 @@
 {% extends 'base/layout.html' %}
 {% load render_table from django_tables2 %}
+{% load license_helpers %}
 
 {% block title %}License Utilization Report{% endblock %}
 
@@ -117,17 +118,7 @@
                         <td>{{ license.total_licenses }}</td>
                         <td>{{ license.consumed_licenses }}</td>
                         <td><span class="text-success">{{ license.available_licenses }}</span></td>
-                        <td>
-                            {% if license.waste_percentage >= 80 %}
-                                <span class="badge text-bg-danger">{{ license.waste_percentage|floatformat:1 }}%</span>
-                            {% elif license.waste_percentage >= 50 %}
-                                <span class="badge text-bg-warning">{{ license.waste_percentage|floatformat:1 }}%</span>
-                            {% elif license.waste_percentage >= 30 %}
-                                <span class="badge text-bg-info">{{ license.waste_percentage|floatformat:1 }}%</span>
-                            {% else %}
-                                <span class="badge text-bg-success">{{ license.waste_percentage|floatformat:1 }}%</span>
-                            {% endif %}
-                        </td>
+                        <td>{% waste_badge license.waste_percentage %}</td>
                         <td>{{ license.potential_savings|floatformat:2 }} {{ license.currency }}</td>
                     </tr>
                     {% endfor %}
