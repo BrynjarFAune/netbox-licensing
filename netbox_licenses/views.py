@@ -788,12 +788,12 @@ from .webhooks import VendorWebhookView, VendorSyncStatusView
 
 
 class LicenseBulkAddInstancesView(View):
-    """Bulk creation of license instances"""
-    template_name = 'netbox_licenses/license_bulk_add_instances.html'
+    """Step 1: Select quantity for bulk creation"""
+    template_name = 'netbox_licenses/license_bulk_quantity_select.html'
 
     def get(self, request, pk):
         license = get_object_or_404(models.License, pk=pk)
-        form = forms.BulkLicenseInstanceForm(license=license)
+        form = forms.QuantitySelectionForm(license=license)
 
         return render(request, self.template_name, {
             'license': license,
@@ -802,7 +802,41 @@ class LicenseBulkAddInstancesView(View):
 
     def post(self, request, pk):
         license = get_object_or_404(models.License, pk=pk)
-        form = forms.BulkLicenseInstanceForm(license=license, data=request.POST)
+        form = forms.QuantitySelectionForm(license=license, data=request.POST)
+
+        if form.is_valid():
+            quantity = form.cleaned_data['quantity']
+            return redirect('plugins:netbox_licenses:license_bulk_add_instances_form',
+                          pk=license.pk, quantity=quantity)
+
+        return render(request, self.template_name, {
+            'license': license,
+            'form': form,
+        })
+
+class LicenseBulkAddInstancesFormView(View):
+    """Step 2: Show form with static assignment fields"""
+    template_name = 'netbox_licenses/license_bulk_add_instances_form.html'
+
+    def get(self, request, pk, quantity):
+        license = get_object_or_404(models.License, pk=pk)
+
+        # Validate quantity
+        if quantity > license.available_licenses:
+            messages.error(request, f"Cannot create {quantity} instances. Only {license.available_licenses} slots available.")
+            return redirect('plugins:netbox_licenses:license_bulk_add_instances', pk=license.pk)
+
+        form = forms.BulkLicenseInstanceForm(license=license, quantity=quantity)
+
+        return render(request, self.template_name, {
+            'license': license,
+            'form': form,
+            'quantity': quantity,
+        })
+
+    def post(self, request, pk, quantity):
+        license = get_object_or_404(models.License, pk=pk)
+        form = forms.BulkLicenseInstanceForm(license=license, quantity=quantity, data=request.POST)
 
         if form.is_valid():
             try:
@@ -818,4 +852,5 @@ class LicenseBulkAddInstancesView(View):
         return render(request, self.template_name, {
             'license': license,
             'form': form,
+            'quantity': quantity,
         })

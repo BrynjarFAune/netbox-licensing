@@ -290,9 +290,8 @@ class LicenseInstanceForm(NetBoxModelForm):
         return instance
 
 
-class BulkLicenseInstanceForm(NetBoxModelForm):
-    """Form for bulk creation of license instances"""
-
+class QuantitySelectionForm(forms.Form):
+    """Simple form to select quantity for bulk creation"""
     quantity = forms.IntegerField(
         min_value=1,
         label="How many instances?",
@@ -305,37 +304,10 @@ class BulkLicenseInstanceForm(NetBoxModelForm):
         })
     )
 
-    start_date = DateInput()
-    end_date = DateInput()
-
-    # Common settings applied to all instances
-    nok_price_override = DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        required=False,
-        label="Price Override (NOK)",
-        help_text="Apply this NOK price to all instances (leave blank to use license default)"
-    )
-
-    auto_renew = BooleanField(
-        required=False,
-        label="Auto-Renew Override",
-        help_text="Override auto-renew setting for all instances"
-    )
-
-    class Meta:
-        model = LicenseInstance
-        fields = ('start_date', 'end_date', 'comments', 'tags')
-        widgets = {
-            'start_date': DateInput(attrs={'type': 'date'}),
-            'end_date': DateInput(attrs={'type': 'date'}),
-        }
-
     def __init__(self, license, *args, **kwargs):
         self.license = license
         super().__init__(*args, **kwargs)
 
-        # Set quantity limit based on available licenses
         max_available = license.available_licenses
         self.fields['quantity'].widget.attrs['max'] = max_available
         self.fields['quantity'].help_text = f"Number of instances to create (max {max_available} available)"
@@ -344,15 +316,70 @@ class BulkLicenseInstanceForm(NetBoxModelForm):
             self.fields['quantity'].widget.attrs['disabled'] = True
             self.fields['quantity'].help_text = "No license slots available"
 
-        # Add dynamic assignment fields based on license assignment type
-        if license.assignment_type:
+    def clean_quantity(self):
+        quantity = self.cleaned_data.get('quantity')
+        max_available = self.license.available_licenses
+
+        if quantity > max_available:
+            # Auto-clamp to maximum available instead of raising error
+            quantity = max_available
+
+        return quantity
+
+class BulkLicenseInstanceForm(forms.Form):
+    """Form for bulk creation of license instances"""
+
+    # Common settings applied to all instances
+    start_date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        label="Start Date"
+    )
+
+    end_date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        label="End Date"
+    )
+
+    nok_price_override = forms.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        required=False,
+        label="Price Override (NOK)",
+        help_text="Apply this NOK price to all instances (leave blank to use license default)"
+    )
+
+    auto_renew = forms.BooleanField(
+        required=False,
+        label="Auto-Renew Override",
+        help_text="Override auto-renew setting for all instances"
+    )
+
+    comments = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={'rows': 3}),
+        label="Comments"
+    )
+
+    def __init__(self, license, quantity=None, *args, **kwargs):
+        self.license = license
+        self.quantity = quantity
+        super().__init__(*args, **kwargs)
+
+        # Remove the dynamic quantity field since it's now passed as parameter
+        if 'quantity' in self.fields:
+            del self.fields['quantity']
+
+        # Add static assignment fields based on quantity
+        if license.assignment_type and quantity:
             model_class = license.assignment_type.model_class()
 
-            for i in range(1, min(max_available + 1, 21)):  # Cap at 20 for UI sanity
+            for i in range(1, quantity + 1):
                 field_name = f'assigned_object_{i}'
                 self.fields[field_name] = DynamicModelChoiceField(
                     queryset=model_class.objects.all(),
-                    required=False,
+                    required=True,  # Now required since we know exactly how many we need
                     label=f"Instance {i}",
                     help_text=f"Assign to {license.assignment_type.model}"
                 )
@@ -377,13 +404,15 @@ class BulkLicenseInstanceForm(NetBoxModelForm):
         if not cleaned_data:
             return cleaned_data
 
-        quantity = cleaned_data.get('quantity', 0)
+        # Use the quantity passed to the form
+        quantity = self.quantity or 0
 
         if quantity > self.license.available_licenses:
-            self.add_error('quantity',
-                f"Cannot create {quantity} instances. Only {self.license.available_licenses} slots available.")
+            raise forms.ValidationError(
+                f"Cannot create {quantity} instances. Only {self.license.available_licenses} slots available."
+            )
 
-        # Check that we have enough assigned objects
+        # Check that we have enough assigned objects and no duplicates
         assigned_objects = []
         for i in range(1, quantity + 1):
             field_name = f'assigned_object_{i}'
@@ -399,7 +428,7 @@ class BulkLicenseInstanceForm(NetBoxModelForm):
 
     def save(self, commit=True):
         """Create multiple license instances"""
-        quantity = self.cleaned_data.get('quantity', 0)
+        quantity = self.quantity or 0
         instances = []
 
         for i in range(1, quantity + 1):
