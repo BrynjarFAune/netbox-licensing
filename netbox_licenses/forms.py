@@ -127,6 +127,9 @@ class LicenseInstanceForm(NetBoxModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        # Mark license as required (it is required at the model level)
+        self.fields['license'].required = True
+
         # Determine the license from various sources
         license_obj = self._get_license_object()
 
