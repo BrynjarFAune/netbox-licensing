@@ -80,27 +80,25 @@ class LicenseInstanceSerializer(NetBoxModelSerializer):
 
     def get_effective_price(self, obj):
         try:
-            return float(obj.effective_price)
+            return float(obj.instance_price_nok)
         except (ValueError, TypeError, AttributeError):
             return 0.0
     
     def get_effective_currency(self, obj):
         try:
-            return obj.effective_currency
+            return obj.currency_override or obj.license.currency
         except (AttributeError):
             return 'NOK'
-    
+
     def get_price_in_nok(self, obj):
         try:
-            return float(obj.price_in_nok)
+            return float(obj.instance_price_nok)
         except (ValueError, TypeError, AttributeError):
             return 0.0
-    
+
     def get_conversion_rate_to_nok(self, obj):
-        try:
-            return float(obj.effective_conversion_rate)
-        except (ValueError, TypeError, AttributeError):
-            return 1.0
+        # Return 1.0 as we don't have conversion rate tracking
+        return 1.0
 
     class Meta:
         model = LicenseInstance

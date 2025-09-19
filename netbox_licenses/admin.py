@@ -65,15 +65,15 @@ class LicenseAdmin(admin.ModelAdmin):
 @admin.register(LicenseInstance)
 class LicenseInstanceAdmin(admin.ModelAdmin):
     list_display = [
-        'id', 'license', 'get_assignment_display', 'effective_currency',
-        'price_in_nok', 'derived_status', 'start_date', 'end_date'
+        'id', 'license', 'get_assignment_display',
+        'display_price', 'derived_status', 'start_date', 'end_date'
     ]
     list_filter = [
         'license__vendor', 'currency_override', 'start_date', 'end_date',
         'created', 'last_updated'
     ]
     search_fields = ['license__name', 'comments']
-    readonly_fields = ['effective_price', 'effective_currency', 'price_in_nok', 'effective_conversion_rate']
+    readonly_fields = ['instance_price_nok', 'display_price']
     
     fieldsets = (
         ('License Assignment', {
@@ -83,7 +83,7 @@ class LicenseInstanceAdmin(admin.ModelAdmin):
             'fields': ('price_override', 'currency_override', 'nok_price_override')
         }),
         ('Computed Values', {
-            'fields': ('effective_price', 'effective_currency', 'price_in_nok', 'effective_conversion_rate'),
+            'fields': ('instance_price_nok', 'display_price'),
             'classes': ('collapse',)
         }),
         ('Dates', {
