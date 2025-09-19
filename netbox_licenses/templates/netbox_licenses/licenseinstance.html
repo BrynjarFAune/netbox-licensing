@@ -18,7 +18,13 @@
                 </tr>
                 <tr>
                     <th scope="row">Assigned Object</th>
-                    <td>{{ object.assigned_object|default:"—" }}</td>
+                    <td>
+                        {% if object.assigned_object %}
+                            <a href="{{ object.assigned_object.get_absolute_url }}">{{ object.assigned_object }}</a>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
                 </tr>
                 <tr>
                     <th scope="row">Start Date</th>

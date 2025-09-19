@@ -137,7 +137,13 @@
                                     </a>
                                 </td>
                                 <td>{{ instance.license.vendor.name }}</td>
-                                <td>{{ instance.assigned_object|default:"—" }}</td>
+                                <td>
+                                    {% if instance.assigned_object %}
+                                        <a href="{{ instance.assigned_object.get_absolute_url }}">{{ instance.assigned_object }}</a>
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
                                 <td>{{ instance.end_date|default:"—" }}</td>
                                 <td>
                                     {% if instance.days_until_expiry != None %}
@@ -224,7 +230,13 @@
                                     </a>
                                 </td>
                                 <td>{{ instance.license.vendor.name }}</td>
-                                <td>{{ instance.assigned_object|default:"—" }}</td>
+                                <td>
+                                    {% if instance.assigned_object %}
+                                        <a href="{{ instance.assigned_object.get_absolute_url }}">{{ instance.assigned_object }}</a>
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
                                 <td>{{ instance.end_date|default:"—" }}</td>
                                 <td>
                                     {% if instance.days_until_expiry != None %}

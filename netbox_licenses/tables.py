@@ -66,12 +66,19 @@ class LicenseTable(NetBoxTable):
 class LicenseInstanceTable(NetBoxTable):
     pk = tables.CheckBoxColumn()
     license = tables.Column(linkify=True)
-    assigned_object = tables.Column(linkify=True, verbose_name="Assigned To")
+    assigned_object = tables.Column(verbose_name="Assigned To")
     start_date = tables.DateColumn(format='d/m/Y')
     end_date = tables.DateColumn(format='d/m/Y')
     status = tables.Column(verbose_name="Status", orderable=False, accessor='derived_status')
     auto_renew_status = tables.Column(empty_values=(), verbose_name="Auto-Renew", orderable=False)
     instance_price_nok = tables.Column(empty_values=(), verbose_name="Price (NOK)")
+
+    def render_assigned_object(self, record):
+        """Render assigned object with proper link"""
+        if record.assigned_object:
+            url = getattr(record.assigned_object, 'get_absolute_url', lambda: '#')()
+            return format_html('<a href="{}">{}</a>', url, record.assigned_object)
+        return "—"
 
     class Meta(NetBoxTable.Meta):
         model = LicenseInstance
