@@ -8,6 +8,7 @@ from django.db.models import Count, Q, F, Sum
 from django.contrib import messages
 from django.http import HttpResponseBadRequest
 from utilities.forms.fields import DynamicModelChoiceField
+import json
 from django.utils import timezone
 from datetime import timedelta
 from dcim.models import Manufacturer
@@ -89,16 +90,43 @@ class LicenseDashboardView(View):
         # Calculate total value in NOK
         total_value_nok = sum(stat['total_price_nok'] for stat in vendor_stats)
 
-        # Calculate subscription commitments
-        total_monthly_commitment = sum(l.total_monthly_commitment for l in licenses)
-        total_yearly_commitment = sum(l.total_yearly_commitment for l in licenses)
-        auto_renewing_licenses = licenses.filter(auto_renew=True)
-        auto_renewing_monthly = sum(l.monthly_equivalent_price * l.total_licenses for l in auto_renewing_licenses)
+        # Calculate subscription commitments in NOK
+        total_monthly_commitment = sum(l.total_monthly_commitment_nok for l in licenses)
+        total_yearly_commitment = sum(l.total_yearly_commitment_nok for l in licenses)
 
-        # Simple MRC tracking - Monthly Recurring Cost
-        current_mrc = sum(l.total_monthly_consumed_cost for l in auto_renewing_licenses)
-        potential_mrc = sum(l.total_monthly_commitment for l in auto_renewing_licenses)
-        manual_monthly_cost = sum(l.total_monthly_consumed_cost for l in licenses.filter(auto_renew=False))
+        # Payment method statistics
+        from .choices import PaymentMethodChoices
+        payment_method_stats = {}
+        for choice_value, choice_label in PaymentMethodChoices.CHOICES:
+            method_licenses = licenses.filter(payment_method=choice_value)
+            payment_method_stats[choice_value] = {
+                'label': choice_label,
+                'count': method_licenses.count(),
+                'total_licenses': sum(l.total_licenses for l in method_licenses),
+                'consumed_licenses': sum(l.consumed_licenses for l in method_licenses)
+            }
+
+        # Auto-charge licenses for true MRC
+        auto_charge_licenses = licenses.filter(payment_method=PaymentMethodChoices.CARD_AUTO)
+        auto_charge_monthly = sum(l.total_monthly_commitment_nok for l in auto_charge_licenses)
+
+        # Manual payment licenses (invoice, manual card, etc)
+        manual_payment_licenses = licenses.exclude(payment_method__in=[PaymentMethodChoices.CARD_AUTO, PaymentMethodChoices.FREE_TRIAL])
+        manual_payment_monthly = sum(l.total_monthly_commitment_nok for l in manual_payment_licenses)
+
+        # Responsibility tracking
+        unassigned_licenses = licenses.filter(responsible_contact__isnull=True).count()
+        responsible_contacts = {}
+        for license in licenses.filter(responsible_contact__isnull=False):
+            contact = license.responsible_contact
+            if contact not in responsible_contacts:
+                responsible_contacts[contact] = {
+                    'name': str(contact),
+                    'count': 0,
+                    'total_value': 0
+                }
+            responsible_contacts[contact]['count'] += 1
+            responsible_contacts[contact]['total_value'] += float(license.price or 0)
 
         context = {
             # Pie chart data for expiration status
@@ -111,6 +139,7 @@ class LicenseDashboardView(View):
 
             # Vendor statistics table
             'vendor_stats': vendor_stats,
+            'vendor_stats_json': json.dumps(vendor_stats),
 
             # Overall summary cards
             'summary': {
@@ -125,15 +154,20 @@ class LicenseDashboardView(View):
                 # NEW: Subscription commitments
                 'total_monthly_commitment': total_monthly_commitment,
                 'total_yearly_commitment': total_yearly_commitment,
-                'auto_renewing_monthly': auto_renewing_monthly,
-                'auto_renewing_count': auto_renewing_licenses.count(),
-                'manual_renewal_count': licenses.filter(auto_renew=False).count(),
-                # Simple MRC metrics
-                'current_mrc': current_mrc,
-                'potential_mrc': potential_mrc,
-                'manual_monthly_cost': manual_monthly_cost,
-                'mrc_utilization': (current_mrc / potential_mrc * 100) if potential_mrc > 0 else 0,
-            }
+                # Payment method breakdown
+                'auto_charge_monthly': auto_charge_monthly,
+                'auto_charge_count': auto_charge_licenses.count(),
+                'manual_payment_monthly': manual_payment_monthly,
+                'manual_payment_count': manual_payment_licenses.count(),
+                # Responsibility
+                'unassigned_licenses': unassigned_licenses,
+            },
+
+            # Payment method statistics
+            'payment_method_stats': payment_method_stats,
+
+            # Responsibility tracking
+            'responsible_contacts': sorted(responsible_contacts.values(), key=lambda x: x['count'], reverse=True),
         }
 
         return render(request, self.template_name, context)

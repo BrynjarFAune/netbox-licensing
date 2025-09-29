@@ -1,5 +1,24 @@
 from utilities.choices import ChoiceSet
 
+class PaymentMethodChoices(ChoiceSet):
+    INVOICE = 'invoice'
+    CARD_AUTO = 'card_auto'
+    CARD_MANUAL = 'card_manual'
+    BANK_TRANSFER = 'bank_transfer'
+    PURCHASE_ORDER = 'purchase_order'
+    PREPAID = 'prepaid'
+    FREE_TRIAL = 'free_trial'
+
+    CHOICES = [
+        (INVOICE, 'Invoice (Manual Approval & Payment)'),
+        (CARD_AUTO, 'Credit Card (Auto-Charge)'),
+        (CARD_MANUAL, 'Credit Card (Manual Payment)'),
+        (BANK_TRANSFER, 'Bank Transfer'),
+        (PURCHASE_ORDER, 'Purchase Order'),
+        (PREPAID, 'Prepaid'),
+        (FREE_TRIAL, 'Free/Trial'),
+    ]
+
 class CurrencyChoices(ChoiceSet):
     NOK = 'NOK'
     EUR = 'EUR'

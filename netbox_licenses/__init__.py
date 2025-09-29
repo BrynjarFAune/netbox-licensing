@@ -1,4 +1,5 @@
 from netbox.plugins import PluginConfig
+from . import signals  # Import signals to register them
 
 class LicenseManagementConfig(PluginConfig):
     name = 'netbox_licenses'  # Must match Python module name

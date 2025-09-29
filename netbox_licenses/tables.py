@@ -22,17 +22,21 @@ class LicenseTable(NetBoxTable):
     currency = tables.Column(verbose_name="Currency")
     total_cost = tables.Column(empty_values=(), verbose_name="Total Cost (NOK)")
 
+    # PAYMENT AND RESPONSIBILITY COLUMNS
+    payment_method = tables.Column(verbose_name="Payment Method")
+    responsible_contact = tables.Column(linkify=True, verbose_name="Responsible")
+
     class Meta(NetBoxTable.Meta):
         model = License
         fields = (
             "pk", "name", "vendor", "tenant", "external_id",
             "utilization", "total_licenses", "consumed_licenses", "available_licenses",
-            "price", "currency", "total_cost",
+            "price", "currency", "total_cost", "payment_method", "responsible_contact",
             "tags", "created", "last_updated", "actions"
         )
         default_columns = (
-            "pk", "name", "vendor", "external_id", "utilization", "total_licenses", 
-            "consumed_licenses", "available_licenses", "price", "currency"
+            "pk", "name", "vendor", "payment_method", "responsible_contact",
+            "utilization", "total_licenses", "consumed_licenses", "available_licenses"
         )
 
     # NEW UTILIZATION RENDERING METHODS
@@ -63,10 +67,27 @@ class LicenseTable(NetBoxTable):
         cost_value = float(str(record.total_cost)) if record.total_cost else 0
         return "{:.2f} NOK".format(cost_value)
 
+    def render_payment_method(self, record):
+        from django.utils.html import format_html
+        method = record.get_payment_method_display()
+        if record.payment_method == 'card_auto':
+            return format_html('<span class="badge text-bg-success">{}</span>', method)
+        elif record.payment_method in ['invoice', 'card_manual']:
+            return format_html('<span class="badge text-bg-warning">{}</span>', method)
+        elif record.payment_method == 'free_trial':
+            return format_html('<span class="badge text-bg-info">{}</span>', method)
+        else:
+            return format_html('<span class="badge text-bg-secondary">{}</span>', method)
+
+    def render_responsible_contact(self, record):
+        if record.responsible_contact:
+            return record.responsible_contact
+        return "—"
+
 class LicenseInstanceTable(NetBoxTable):
     pk = tables.CheckBoxColumn()
     license = tables.Column(linkify=True)
-    assigned_object = tables.Column(verbose_name="Assigned To", orderable=False)
+    assigned_object = tables.Column(verbose_name="Assigned To")
     start_date = tables.DateColumn(format='d/m/Y')
     end_date = tables.DateColumn(format='d/m/Y')
     status = tables.Column(verbose_name="Status", orderable=False, accessor='derived_status')

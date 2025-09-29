@@ -4,22 +4,39 @@ from netbox.filtersets import NetBoxModelFilterSet
 from netbox.forms import NetBoxModelFilterSetForm
 from django import forms
 from .models import LicenseInstance, License, LicenseStatusChoices
-from tenancy.models import Contact
+from .choices import PaymentMethodChoices
+from tenancy.models import Contact, Tenant
 from dcim.models import Manufacturer
 
 
 class LicenseFilterSet(NetBoxModelFilterSet):
     vendor = django_filters.ModelMultipleChoiceFilter(queryset=Manufacturer.objects.all())
+    tenant = django_filters.ModelMultipleChoiceFilter(queryset=Tenant.objects.all())
     external_id = django_filters.CharFilter(lookup_expr='icontains')
     has_external_id = django_filters.BooleanFilter(method='filter_has_external_id')
     underutilized = django_filters.BooleanFilter(method='filter_underutilized')
     overallocated = django_filters.BooleanFilter(method='filter_overallocated')
     total_licenses__gte = django_filters.NumberFilter(field_name='total_licenses', lookup_expr='gte')
     consumed_licenses__gte = django_filters.NumberFilter(field_name='consumed_licenses', lookup_expr='gte')
-    
+
+    # New filters for payment method and responsibility
+    payment_method = django_filters.MultipleChoiceFilter(
+        choices=PaymentMethodChoices,
+        label='Payment Method'
+    )
+    responsible_contact = django_filters.ModelMultipleChoiceFilter(
+        queryset=Contact.objects.all(),
+        label='Responsible Contact'
+    )
+    has_responsible_contact = django_filters.BooleanFilter(
+        method='filter_has_responsible_contact',
+        label='Has Responsible Contact'
+    )
+
     class Meta:
         model = License
-        fields = ('id', 'name', 'vendor', 'external_id', 'total_licenses', 'consumed_licenses')
+        fields = ('id', 'name', 'vendor', 'tenant', 'external_id', 'total_licenses',
+                  'consumed_licenses', 'payment_method', 'responsible_contact')
     
     def filter_has_external_id(self, queryset, name, value):
         if value:
@@ -35,6 +52,11 @@ class LicenseFilterSet(NetBoxModelFilterSet):
         if value:
             return queryset.filter(consumed_licenses__gt=models.F('total_licenses'))
         return queryset
+
+    def filter_has_responsible_contact(self, queryset, name, value):
+        if value:
+            return queryset.filter(responsible_contact__isnull=False)
+        return queryset.filter(responsible_contact__isnull=True)
 
 
 class LicenseInstanceFilterSet(NetBoxModelFilterSet):

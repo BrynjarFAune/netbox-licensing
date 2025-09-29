@@ -1,11 +1,11 @@
 from netbox.forms import NetBoxModelForm
 from utilities.forms.fields import CommentField, DynamicModelChoiceField, ContentTypeChoiceField
 from django import forms
-from django.forms import DateInput, NumberInput, IntegerField, DateField, ModelChoiceField, HiddenInput, CharField, ChoiceField, DecimalField, Textarea, BooleanField
+from django.forms import DateInput, NumberInput, IntegerField, DateField, ModelChoiceField, HiddenInput, CharField, ChoiceField, DecimalField, Textarea, BooleanField, URLField
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from .models import License, LicenseInstance
-from .choices import CurrencyChoices
+from .choices import CurrencyChoices, PaymentMethodChoices
 from tenancy.models import Contact, Tenant
 from dcim.models import Manufacturer
 
@@ -54,11 +54,33 @@ class LicenseForm(NetBoxModelForm):
         help_text="Vendor-specific data in JSON format (service plans, features, API limits, etc.)"
     )
 
+    # NEW PAYMENT AND RESPONSIBILITY FIELDS
+    payment_method = ChoiceField(
+        choices=PaymentMethodChoices,
+        initial=PaymentMethodChoices.INVOICE,
+        label="Payment Method",
+        help_text="How this license is paid for"
+    )
+
+    payment_portal_url = URLField(
+        required=False,
+        max_length=500,
+        label="Payment Portal URL",
+        help_text="URL to payment portal or subscription management page"
+    )
+
+    responsible_contact = DynamicModelChoiceField(
+        queryset=Contact.objects.all(),
+        required=False,
+        label="Responsible Contact",
+        help_text="Person responsible for maintaining this license (payments, renewals, compliance)"
+    )
+
     class Meta:
         model = License
         fields = (
             'name', 'vendor', 'tenant', 'assignment_type', 'price', 'currency',
-            'billing_cycle', 'auto_renew',
+            'billing_cycle', 'payment_method', 'payment_portal_url', 'responsible_contact',
             'external_id', 'total_licenses', 'metadata',
             'comments', 'tags'
         )
@@ -97,27 +119,11 @@ class LicenseInstanceForm(NetBoxModelForm):
         help_text="Select an object to assign this license to (required)"
     )
 
-    # Simplified: Only NOK price for this instance
-    nok_price_override = DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        required=False,
-        label="Instance Price (NOK)",
-        help_text="Override the price for this specific instance in Norwegian Kroner"
-    )
-
-    # Simple auto-renew checkbox
-    auto_renew = BooleanField(
-        required=False,
-        label="Auto-Renew",
-        help_text="Enable auto-renew for this license instance"
-    )
 
     class Meta:
         model = LicenseInstance
         fields = (
             'license', 'assigned_object_selector',
-            'nok_price_override', 'auto_renew',
             'start_date', 'end_date', 'comments', 'tags'
         )
         widgets = {
@@ -140,34 +146,6 @@ class LicenseInstanceForm(NetBoxModelForm):
             # No license selected or license has no assignment type
             self.fields['assigned_object_selector'].widget.attrs['disabled'] = True
             self.fields['assigned_object_selector'].help_text = "Select a license first to choose an assigned object"
-
-        # Add helpful display of license currency and price
-        if license_obj:
-            currency_display = dict(CurrencyChoices.CHOICES).get(license_obj.currency, license_obj.currency)
-            self.fields['nok_price_override'].help_text = (
-                f"License base price: {license_obj.price} {currency_display}. "
-                f"Enter NOK price for this specific instance (leave blank to use default)."
-            )
-
-            # Show license default in help text and set checkbox to effective value
-            auto_renew_default = "enabled" if license_obj.auto_renew else "disabled"
-            self.fields['auto_renew'].help_text = (
-                f"License default: <strong>{auto_renew_default}</strong>. "
-                f"Check to enable auto-renew for this instance."
-            )
-
-            # Set checkbox to show the effective auto-renew value
-            if self.instance and self.instance.pk:
-                # For existing instances, show the actual effective value
-                self.fields['auto_renew'].initial = self.instance.effective_auto_renew
-            else:
-                # For new instances, default to the license setting
-                self.fields['auto_renew'].initial = license_obj.auto_renew
-        else:
-            # No license selected
-            self.fields['auto_renew'].help_text = (
-                "Select a license first to see its default auto-renew setting."
-            )
 
     def _get_license_object(self):
         """Get the license object from form data, initial data, or existing instance"""
@@ -248,13 +226,6 @@ class LicenseInstanceForm(NetBoxModelForm):
             if expected_ct.pk != actual_ct.pk:
                 self.add_error('assigned_object_selector', 
                                f"Selected object must be of type {expected_ct.model}, not {actual_ct.model}")
-
-        # Validate NOK price override
-        nok_price_override = cleaned_data.get('nok_price_override')
-
-        if nok_price_override is not None and nok_price_override <= 0:
-            self.add_error('nok_price_override',
-                          'NOK price must be greater than 0')
 
         return cleaned_data
 
@@ -342,19 +313,6 @@ class BulkLicenseInstanceForm(forms.Form):
         label="End Date"
     )
 
-    nok_price_override = forms.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        required=False,
-        label="Price Override (NOK)",
-        help_text="Apply this NOK price to all instances (leave blank to use license default)"
-    )
-
-    auto_renew = forms.BooleanField(
-        required=False,
-        label="Auto-Renew Override",
-        help_text="Override auto-renew setting for all instances"
-    )
 
     comments = forms.CharField(
         required=False,
@@ -384,18 +342,6 @@ class BulkLicenseInstanceForm(forms.Form):
                     help_text=f"Assign to {license.assignment_type.model}"
                 )
 
-        # Show license info in form
-        currency_display = dict(CurrencyChoices.CHOICES).get(license.currency, license.currency)
-        self.fields['nok_price_override'].help_text = (
-            f"License base price: {license.price} {currency_display}. "
-            f"Override NOK price for all instances (leave blank to use license default)."
-        )
-
-        auto_renew_default = "enabled" if license.auto_renew else "disabled"
-        self.fields['auto_renew'].help_text = (
-            f"License default: <strong>{auto_renew_default}</strong>. "
-            f"Check to override auto-renew for all instances."
-        )
 
     def clean(self):
         cleaned_data = super().clean()
@@ -442,16 +388,6 @@ class BulkLicenseInstanceForm(forms.Form):
                     start_date=self.cleaned_data.get('start_date'),
                     end_date=self.cleaned_data.get('end_date'),
                     comments=self.cleaned_data.get('comments', ''),
-                    nok_price_override=self.cleaned_data.get('nok_price_override'),
-                )
-
-                # Handle auto-renew override
-                license_default = self.license.auto_renew
-                form_value = self.cleaned_data.get('auto_renew', False)
-                if form_value == license_default:
-                    instance.auto_renew = None  # Use license default
-                else:
-                    instance.auto_renew = form_value  # Override
 
                 if commit:
                     instance.save()

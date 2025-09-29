@@ -28,6 +28,48 @@
                     <td>{{ object.price }} {{ object.currency }}</td>
                 </tr>
                 <tr>
+                    <th scope="row">Billing Cycle</th>
+                    <td>{{ object.get_billing_cycle_display }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Payment Method</th>
+                    <td>
+                        {% if object.payment_method == 'card_auto' %}
+                            <span class="badge text-bg-success">{{ object.get_payment_method_display }}</span>
+                        {% elif object.payment_method == 'invoice' or object.payment_method == 'card_manual' %}
+                            <span class="badge text-bg-warning">{{ object.get_payment_method_display }}</span>
+                        {% elif object.payment_method == 'free_trial' %}
+                            <span class="badge text-bg-info">{{ object.get_payment_method_display }}</span>
+                        {% else %}
+                            <span class="badge text-bg-secondary">{{ object.get_payment_method_display }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Payment Portal</th>
+                    <td>
+                        {% if object.payment_portal_url %}
+                            <a href="{{ object.payment_portal_url }}" target="_blank" class="text-decoration-none">
+                                <i class="mdi mdi-open-in-new"></i> Open Portal
+                            </a>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Responsible Contact</th>
+                    <td>
+                        {% if object.responsible_contact %}
+                            <a href="{{ object.responsible_contact.get_absolute_url }}" class="text-decoration-none">
+                                {{ object.responsible_contact }}
+                            </a>
+                        {% else %}
+                            <span class="text-muted">No one assigned</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
                     <th scope="row">External ID</th>
                     <td>{{ object.external_id|default:"—" }}</td>
                 </tr>

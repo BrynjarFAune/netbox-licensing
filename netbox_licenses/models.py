@@ -9,7 +9,7 @@ from django.db import models
 from netbox.models import NetBoxModel
 from tenancy.models import Contact, Tenant
 from dcim.models import Manufacturer
-from .choices import LicenseStatusChoices, CurrencyChoices
+from .choices import LicenseStatusChoices, CurrencyChoices, PaymentMethodChoices
 
 
 class License(NetBoxModel):
@@ -84,7 +84,32 @@ class License(NetBoxModel):
 
     auto_renew = models.BooleanField(
         default=False,
-        help_text="Automatically renew instances when they expire"
+        help_text="Automatically renew instances when they expire (deprecated - use payment_method instead)"
+    )
+
+    # PAYMENT METHOD FIELDS
+    payment_method = models.CharField(
+        max_length=30,
+        choices=PaymentMethodChoices.CHOICES,
+        default=PaymentMethodChoices.INVOICE,
+        help_text="How this license is paid for"
+    )
+
+    payment_portal_url = models.URLField(
+        blank=True,
+        null=True,
+        max_length=500,
+        help_text="URL to payment portal or subscription management page"
+    )
+
+    # RESPONSIBILITY TRACKING
+    responsible_contact = models.ForeignKey(
+        to=Contact,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='responsible_for_licenses',
+        help_text="Person responsible for maintaining this license (payments, renewals, compliance)"
     )
 
     # LEGACY FIELD - keeping for backward compatibility
@@ -157,13 +182,38 @@ class License(NetBoxModel):
 
     @property
     def total_monthly_commitment(self):
-        """Total monthly commitment for all license slots (purchased capacity)"""
+        """Total monthly commitment for all license slots (purchased capacity) in original currency"""
         return self.monthly_equivalent_price * self.total_licenses
 
     @property
     def total_yearly_commitment(self):
-        """Total yearly commitment for all license slots (purchased capacity)"""
+        """Total yearly commitment for all license slots (purchased capacity) in original currency"""
         return self.annual_equivalent_price * self.total_licenses
+
+    @property
+    def total_monthly_commitment_nok(self):
+        """Total monthly commitment converted to NOK for dashboard display"""
+        if self.currency == CurrencyChoices.NOK:
+            return self.total_monthly_commitment
+        # Simple conversion rates (should be from a service in production)
+        conversion_rates = {
+            'USD': 10.5,
+            'EUR': 11.5,
+            'GBP': 13.5,
+            'JPY': 0.075,
+            'AUD': 7.0,
+            'CAD': 8.0,
+            'CHF': 12.0,
+            'SEK': 1.0,
+            'DKK': 1.6
+        }
+        rate = conversion_rates.get(self.currency, 1.0)
+        return self.total_monthly_commitment * rate
+
+    @property
+    def total_yearly_commitment_nok(self):
+        """Total yearly commitment converted to NOK for dashboard display"""
+        return self.total_monthly_commitment_nok * 12
 
     # EXISTING PROPERTIES
     @cached_property
@@ -223,36 +273,8 @@ class LicenseInstance(NetBoxModel):
     assigned_object_id = models.PositiveIntegerField()
     assigned_object = GenericForeignKey("assigned_object_type", "assigned_object_id")
 
-    price_override = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        null=True,
-        blank=True
-    )
-    currency_override = models.CharField(
-        max_length=3,
-        choices=CurrencyChoices.CHOICES,
-        null=True,
-        blank=True,
-        help_text="Override currency for this specific instance"
-    )
-    nok_price_override = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        help_text="Override price in NOK for currency conversion calculations"
-    )
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
-
-    # Auto-renew setting - can override license default
-    auto_renew = models.BooleanField(
-        default=None,
-        null=True,
-        blank=True,
-        help_text="Override auto-renew setting for this instance (leave blank to use license default)"
-    )
 
     comments = models.TextField(blank=True)
 
@@ -272,38 +294,22 @@ class LicenseInstance(NetBoxModel):
 
     @property
     def instance_price_nok(self):
-        """Returns the NOK price for this instance - either override or license default"""
+        """Returns the NOK price for this instance from the license"""
         from decimal import Decimal
-
-        # If we have a NOK price override for this instance, use it
-        if self.nok_price_override:
-            return Decimal(str(self.nok_price_override))
 
         # If the license is already in NOK, use its price
         if self.license_currency == CurrencyChoices.NOK:
             return self.license_price
 
         # For other currencies, we'd need a conversion rate
-        # Since we're simplifying, instances must specify NOK price if license isn't in NOK
+        # Using simple conversion for now
         return Decimal('0.0')
 
     @property
     def display_price(self):
         """Returns a formatted price display string"""
-        if self.nok_price_override:
-            return f"{self.nok_price_override} NOK (instance override)"
-        elif self.license_currency == CurrencyChoices.NOK:
-            return f"{self.license_price} NOK"
-        else:
-            currency_display = dict(CurrencyChoices.CHOICES).get(self.license_currency, self.license_currency)
-            return f"{self.license_price} {currency_display} (NOK price required)"
-
-    @property
-    def effective_auto_renew(self):
-        """Returns the effective auto-renew setting - instance override or license default"""
-        if self.auto_renew is not None:
-            return self.auto_renew
-        return self.license.auto_renew if self.license else False
+        currency_display = dict(CurrencyChoices.CHOICES).get(self.license_currency, self.license_currency)
+        return f"{self.license_price} {currency_display}"
 
     @property
     def derived_status(self):
@@ -333,7 +339,7 @@ class LicenseInstance(NetBoxModel):
         """Return human-readable assignment info"""
         if not self.assigned_object:
             return "Unassigned"
-        
+
         if self.assigned_object_type.model == 'user':
             return f"User: {self.assigned_object.username}"
         elif self.assigned_object_type.model == 'device':
@@ -344,6 +350,15 @@ class LicenseInstance(NetBoxModel):
             return f"VM: {self.assigned_object.name}"
         elif self.assigned_object_type.model == 'tenant':
             return f"Tenant: {self.assigned_object.name}"
+        else:
+            return str(self.assigned_object)
+
+    @property
+    def assigned_object_str(self):
+        """Return string representation for sorting"""
+        if not self.assigned_object:
+            return "zzz_unassigned"  # Sort unassigned items to the bottom
+        return str(self.assigned_object)
         elif self.assigned_object_type.model == 'service':
             return f"Service: {self.assigned_object.name}"
         else:
@@ -384,9 +399,7 @@ class LicenseInstance(NetBoxModel):
     @property
     def monthly_cost_contribution(self):
         """How much this instance contributes to monthly costs"""
-        # Use NOK price override if available, otherwise use license monthly equivalent
-        if self.nok_price_override:
-            return float(self.nok_price_override)
+        # Use license monthly equivalent price
         return self.license.monthly_equivalent_price
 
     @property
@@ -429,7 +442,6 @@ class LicenseInstance(NetBoxModel):
         # Validate allocation limits before saving
         self.full_clean()
 
-        # Don't auto-set price_override anymore - let it remain None to use license price
         super().save(*args, **kwargs)
 
     def _calculate_end_date(self):
