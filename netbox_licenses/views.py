@@ -55,18 +55,8 @@ class LicenseDashboardView(View):
             consumed_licenses = sum(l.consumed_licenses for l in vendor_licenses)
             available_licenses = total_licenses - consumed_licenses
 
-            # Calculate total price in NOK
-            total_price_nok = 0
-            for license in vendor_licenses:
-                if license.currency == 'NOK':
-                    total_price_nok += float(license.price) * license.total_licenses
-                else:
-                    # For non-NOK, we need instance prices
-                    for instance in license.instances.all():
-                        if instance.nok_price_override:
-                            total_price_nok += float(instance.nok_price_override)
-                        elif license.currency == 'NOK':
-                            total_price_nok += float(license.price)
+            # Calculate total price in NOK using the price_nok property
+            total_price_nok = sum(float(l.price_nok) for l in vendor_licenses)
 
             vendor_stats.append({
                 'vendor': vendor.name,
