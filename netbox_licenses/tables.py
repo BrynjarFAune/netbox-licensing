@@ -1,4 +1,5 @@
 import django_tables2 as tables
+from django.utils.html import format_html
 
 from netbox.tables import NetBoxTable, ChoiceFieldColumn
 from .models import License, LicenseInstance
@@ -87,7 +88,7 @@ class LicenseTable(NetBoxTable):
 class LicenseInstanceTable(NetBoxTable):
     pk = tables.CheckBoxColumn()
     license = tables.Column(linkify=True)
-    assigned_object = tables.Column(verbose_name="Assigned To")
+    assigned_object = tables.Column(verbose_name="Assigned To", orderable=False)
     start_date = tables.DateColumn(format='d/m/Y')
     end_date = tables.DateColumn(format='d/m/Y')
     status = tables.Column(verbose_name="Status", orderable=False, accessor='derived_status')
