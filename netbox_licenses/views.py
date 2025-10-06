@@ -55,8 +55,8 @@ class LicenseDashboardView(View):
             consumed_licenses = sum(l.consumed_licenses for l in vendor_licenses)
             available_licenses = total_licenses - consumed_licenses
 
-            # Calculate total price in NOK using the price_nok property
-            total_price_nok = sum(float(l.price_nok) for l in vendor_licenses)
+            # Calculate total price in NOK using the total_monthly_commitment_nok property
+            total_price_nok = sum(float(l.total_monthly_commitment_nok) for l in vendor_licenses)
 
             vendor_stats.append({
                 'vendor': vendor.name,

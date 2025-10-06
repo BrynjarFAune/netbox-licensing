@@ -113,20 +113,23 @@ class LicenseInstanceTable(NetBoxTable):
         )
 
     def render_auto_renew_status(self, record):
-        from django.utils.html import format_html
+        """Show payment method status from parent license"""
+        if not record.license:
+            return "—"
 
-        if record.auto_renew is None:
-            # Using license default
-            license_default = record.license.auto_renew if record.license else False
-            default_text = "Yes" if license_default else "No"
-            return format_html(
-                '<span class="badge text-bg-secondary">Default ({})</span>',
-                default_text
-            )
-        elif record.auto_renew:
-            return format_html('<span class="badge text-bg-success">Yes</span>')
+        payment_method = record.license.payment_method
+
+        # Auto-charging payment methods
+        if payment_method == 'card_auto':
+            return format_html('<span class="badge text-bg-success">Auto-Charge</span>')
+        elif payment_method in ['invoice', 'card_manual', 'bank_transfer', 'purchase_order']:
+            return format_html('<span class="badge text-bg-warning">Manual</span>')
+        elif payment_method == 'prepaid':
+            return format_html('<span class="badge text-bg-info">Prepaid</span>')
+        elif payment_method == 'free_trial':
+            return format_html('<span class="badge text-bg-secondary">Trial</span>')
         else:
-            return format_html('<span class="badge text-bg-warning">No</span>')
+            return format_html('<span class="badge text-bg-secondary">{}</span>', payment_method)
 
 
     def render_instance_price_nok(self, record):
