@@ -358,8 +358,7 @@ class LicenseInstance(NetBoxModel):
         """Return string representation for sorting"""
         if not self.assigned_object:
             return "zzz_unassigned"  # Sort unassigned items to the bottom
-        return str(self.assigned_object)
-        elif self.assigned_object_type.model == 'service':
+        if self.assigned_object_type.model == 'service':
             return f"Service: {self.assigned_object.name}"
         else:
             return f"{self.assigned_object_type.model.title()}: {str(self.assigned_object)}"

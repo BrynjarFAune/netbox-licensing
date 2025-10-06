@@ -388,6 +388,7 @@ class BulkLicenseInstanceForm(forms.Form):
                     start_date=self.cleaned_data.get('start_date'),
                     end_date=self.cleaned_data.get('end_date'),
                     comments=self.cleaned_data.get('comments', ''),
+                )
 
                 if commit:
                     instance.save()
