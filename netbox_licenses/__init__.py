@@ -1,5 +1,4 @@
 from netbox.plugins import PluginConfig
-from . import signals  # Import signals to register them
 
 class LicenseManagementConfig(PluginConfig):
     name = 'netbox_licenses'  # Must match Python module name
@@ -10,6 +9,11 @@ class LicenseManagementConfig(PluginConfig):
     author_email = 'contact@example.com'
     base_url = 'licenses'
     required_settings = []
+
+    def ready(self):
+        """Import signals when app is ready"""
+        super().ready()
+        from . import signals  # Import signals at runtime, not during module load
 
     # Plugin-specific settings
     default_settings = {
