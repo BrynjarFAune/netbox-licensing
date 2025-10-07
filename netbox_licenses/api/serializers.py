@@ -86,7 +86,7 @@ class LicenseInstanceSerializer(NetBoxModelSerializer):
     
     def get_effective_currency(self, obj):
         try:
-            return obj.currency_override or obj.license.currency
+            return obj.license.currency
         except (AttributeError):
             return 'NOK'
 
@@ -104,9 +104,8 @@ class LicenseInstanceSerializer(NetBoxModelSerializer):
         model = LicenseInstance
         fields = (
             'id', 'url', 'display_url', 'display', 'assigned_object_type', 'assigned_object_id', 'license',
-            'effective_price', 'effective_currency', 'price_in_nok', 'conversion_rate_to_nok', 
-            'price_override', 'currency_override', 'nok_price_override',
-            'start_date', 'end_date', 'comments', 'tags', 
+            'effective_price', 'effective_currency', 'price_in_nok', 'conversion_rate_to_nok',
+            'start_date', 'end_date', 'comments', 'tags',
             'custom_fields', 'created', 'last_updated', 'custom_field_data'
         )
 
