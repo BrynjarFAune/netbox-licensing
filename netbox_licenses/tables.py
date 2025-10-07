@@ -14,8 +14,8 @@ class LicenseTable(NetBoxTable):
     
     # UTILIZATION COLUMNS
     utilization = tables.Column(empty_values=(), verbose_name="Utilization %", orderable=False)
-    total_licenses = tables.Column(verbose_name="Total")
-    consumed_licenses = tables.Column(verbose_name="Used")
+    total_licenses = tables.Column(verbose_name="Capacity")
+    consumed_licenses = tables.Column(verbose_name="Instances")
     available_licenses = tables.Column(empty_values=(), verbose_name="Available")
 
     # COST COLUMNS
@@ -65,8 +65,10 @@ class LicenseTable(NetBoxTable):
         return "{} {}".format(price_value, record.currency)
 
     def render_total_cost(self, record):
-        cost_value = float(str(record.total_cost)) if record.total_cost else 0
-        return "{:.2f} NOK".format(cost_value)
+        """Calculate total cost as unit price × capacity"""
+        unit_price = float(record.price) if record.price else 0
+        total_cost = unit_price * record.total_licenses
+        return "{:.2f} {}".format(total_cost, record.currency)
 
     def render_payment_method(self, record):
         from django.utils.html import format_html
