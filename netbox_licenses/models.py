@@ -777,5 +777,120 @@ class CostAllocation(NetBoxModel):
     def is_active(self):
         """Check if allocation is currently active"""
         today = timezone.now().date()
-        return (self.effective_from <= today and 
+        return (self.effective_from <= today and
                 (self.effective_to is None or self.effective_to >= today))
+
+
+class CurrencyConversionRate(NetBoxModel):
+    """
+    Store currency conversion rates for license cost calculations.
+    Supports both API-synced rates and manual overrides.
+    """
+
+    SOURCE_CHOICES = [
+        ('api', 'API (Norges Bank)'),
+        ('manual', 'Manual Override'),
+    ]
+
+    from_currency = models.CharField(
+        max_length=3,
+        choices=CurrencyChoices.CHOICES,
+        help_text="Source currency code"
+    )
+    to_currency = models.CharField(
+        max_length=3,
+        default='NOK',
+        choices=CurrencyChoices.CHOICES,
+        help_text="Target currency code"
+    )
+    rate = models.DecimalField(
+        max_digits=12,
+        decimal_places=6,
+        help_text="Conversion rate (1 from_currency = X to_currency)"
+    )
+    source = models.CharField(
+        max_length=20,
+        choices=SOURCE_CHOICES,
+        default='api',
+        help_text="Source of this rate (API or manual override)"
+    )
+    effective_date = models.DateField(
+        help_text="Date this rate became effective"
+    )
+    notes = models.TextField(
+        blank=True,
+        help_text="Additional notes about this rate"
+    )
+
+    class Meta:
+        ordering = ['-effective_date', 'from_currency']
+        indexes = [
+            models.Index(fields=['from_currency', 'to_currency', '-effective_date']),
+            models.Index(fields=['source', '-effective_date']),
+        ]
+
+    def __str__(self):
+        return f"{self.from_currency} → {self.to_currency}: {self.rate} ({self.get_source_display()})"
+
+    def get_absolute_url(self):
+        return reverse('plugins:netbox_licenses:currencyconversionrate', args=[self.pk])
+
+    @classmethod
+    def get_current_rate(cls, from_currency, to_currency='NOK'):
+        """
+        Get most recent conversion rate.
+        Manual overrides take precedence over API rates.
+        Falls back to hardcoded rates if no DB entry exists.
+        """
+        if from_currency == to_currency:
+            return Decimal('1.0')
+
+        # Try manual override first
+        manual = cls.objects.filter(
+            from_currency=from_currency,
+            to_currency=to_currency,
+            source='manual'
+        ).order_by('-effective_date').first()
+
+        if manual:
+            return manual.rate
+
+        # Fall back to API rate
+        api = cls.objects.filter(
+            from_currency=from_currency,
+            to_currency=to_currency,
+            source='api'
+        ).order_by('-effective_date').first()
+
+        if api:
+            return api.rate
+
+        # Fall back to hardcoded rates (backward compatibility)
+        fallback_rates = {
+            'USD': Decimal('10.5'),
+            'EUR': Decimal('11.5'),
+            'GBP': Decimal('13.5'),
+            'JPY': Decimal('0.075'),
+            'AUD': Decimal('7.0'),
+            'CAD': Decimal('8.0'),
+            'CHF': Decimal('12.0'),
+            'SEK': Decimal('1.0'),
+            'DKK': Decimal('1.6'),
+        }
+        return fallback_rates.get(from_currency, Decimal('1.0'))
+
+    @property
+    def is_stale(self):
+        """Check if rate is older than 7 days"""
+        return (timezone.now().date() - self.effective_date).days > 7
+
+    def clean(self):
+        """Validate rate data"""
+        from django.core.exceptions import ValidationError
+        super().clean()
+
+        if self.from_currency == self.to_currency:
+            raise ValidationError("Source and target currency cannot be the same")
+
+        if self.rate <= 0:
+            raise ValidationError("Conversion rate must be greater than zero")
