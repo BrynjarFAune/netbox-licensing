@@ -878,3 +878,34 @@ class LicenseBulkAddInstancesFormView(View):
             'form': form,
             'quantity': quantity,
         })
+
+
+# Currency Conversion Rate Views
+class CurrencyConversionRateListView(generic.ObjectListView):
+    """List view for currency conversion rates"""
+    queryset = models.CurrencyConversionRate.objects.all()
+    table = tables.CurrencyConversionRateTable
+    filterset = filtersets.CurrencyConversionRateFilterSet
+    filterset_form = forms.CurrencyConversionRateFilterForm
+
+
+class CurrencyConversionRateView(generic.ObjectView):
+    """Detail view for a currency conversion rate"""
+    queryset = models.CurrencyConversionRate.objects.all()
+
+
+class CurrencyConversionRateEditView(generic.ObjectEditView):
+    """Create/edit view for currency conversion rates"""
+    queryset = models.CurrencyConversionRate.objects.all()
+    form = forms.CurrencyConversionRateForm
+
+
+class CurrencyConversionRateDeleteView(generic.ObjectDeleteView):
+    """Delete view for currency conversion rates"""
+    queryset = models.CurrencyConversionRate.objects.all()
+
+
+class CurrencyConversionRateBulkDeleteView(generic.BulkDeleteView):
+    """Bulk delete view for currency conversion rates"""
+    queryset = models.CurrencyConversionRate.objects.all()
+    table = tables.CurrencyConversionRateTable
