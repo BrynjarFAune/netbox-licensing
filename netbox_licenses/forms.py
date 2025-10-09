@@ -4,7 +4,7 @@ from django import forms
 from django.forms import DateInput, NumberInput, IntegerField, DateField, ModelChoiceField, HiddenInput, CharField, ChoiceField, DecimalField, Textarea, BooleanField, URLField
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
-from .models import License, LicenseInstance
+from .models import License, LicenseInstance, CurrencyConversionRate
 from .choices import CurrencyChoices, PaymentMethodChoices
 from tenancy.models import Contact, Tenant
 from dcim.models import Manufacturer
@@ -399,3 +399,46 @@ class BulkLicenseInstanceForm(forms.Form):
                 instances.append(instance)
 
         return instances
+
+
+class CurrencyConversionRateForm(NetBoxModelForm):
+    """Form for creating/editing currency conversion rates"""
+
+    class Meta:
+        model = CurrencyConversionRate
+        fields = ('from_currency', 'to_currency', 'rate', 'source', 'effective_date', 'notes', 'tags')
+        widgets = {
+            'effective_date': DateInput(attrs={'type': 'date'}),
+            'rate': NumberInput(attrs={'step': '0.000001'}),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        from_currency = cleaned_data.get('from_currency')
+        to_currency = cleaned_data.get('to_currency')
+
+        if from_currency and to_currency and from_currency == to_currency:
+            raise ValidationError("Source and target currency cannot be the same")
+
+        return cleaned_data
+
+
+class CurrencyConversionRateFilterForm(NetBoxFilterSetForm):
+    """FilterSet form for currency conversion rates"""
+    model = CurrencyConversionRate
+
+    from_currency = ChoiceField(
+        choices=[('', 'All')] + list(CurrencyChoices.CHOICES),
+        required=False,
+        label='From Currency'
+    )
+    to_currency = ChoiceField(
+        choices=[('', 'All')] + list(CurrencyChoices.CHOICES),
+        required=False,
+        label='To Currency'
+    )
+    source = ChoiceField(
+        choices=[('', 'All'), ('api', 'API'), ('manual', 'Manual')],
+        required=False,
+        label='Source'
+    )

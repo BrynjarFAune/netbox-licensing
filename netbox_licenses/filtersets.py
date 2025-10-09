@@ -3,7 +3,7 @@ from django.db import models
 from netbox.filtersets import NetBoxModelFilterSet
 from netbox.forms import NetBoxModelFilterSetForm
 from django import forms
-from .models import LicenseInstance, License, LicenseStatusChoices
+from .models import LicenseInstance, License, LicenseStatusChoices, CurrencyConversionRate
 from .choices import PaymentMethodChoices
 from tenancy.models import Contact, Tenant
 from dcim.models import Manufacturer
@@ -185,10 +185,36 @@ class LicenseFilterForm(NetBoxModelFilterSetForm):
     )
     consumed_licenses__gte = forms.IntegerField(
         required=False,
-        label="Min Consumed Licenses", 
+        label="Min Consumed Licenses",
         help_text="Minimum number of consumed licenses"
     )
-    
+
     class Meta:
         model = License
+
+
+class CurrencyConversionRateFilterSet(NetBoxModelFilterSet):
+    """FilterSet for currency conversion rates"""
+
+    from_currency = django_filters.MultipleChoiceFilter(
+        choices=[(c[0], c[1]) for c in CurrencyConversionRate._meta.get_field('from_currency').choices]
+    )
+    to_currency = django_filters.MultipleChoiceFilter(
+        choices=[(c[0], c[1]) for c in CurrencyConversionRate._meta.get_field('to_currency').choices]
+    )
+    source = django_filters.MultipleChoiceFilter(
+        choices=CurrencyConversionRate.SOURCE_CHOICES
+    )
+    effective_date = django_filters.DateFilter()
+    effective_date__gte = django_filters.DateFilter(
+        field_name='effective_date',
+        lookup_expr='gte'
+    )
+    effective_date__lte = django_filters.DateFilter(
+        field_name='effective_date',
+        lookup_expr='lte'
+    )
+
+    class Meta:
+        model = CurrencyConversionRate
         fields = []
