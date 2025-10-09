@@ -43,8 +43,19 @@ urlpatterns = [
 
     path('ajax/assigned-object/', views.AssignedObjectFieldView.as_view(), name='assigned-object-field'),
     
-    # Phase 3: Vendor Integration Webhooks  
+    # Phase 3: Vendor Integration Webhooks
     path('webhooks/<slug:vendor_slug>/', views.VendorWebhookView.as_view(), name='vendor_webhook'),
     path('vendor-status/', views.VendorSyncStatusView.as_view(), name='vendor_sync_status'),
     path('vendor-status/<slug:vendor_slug>/', views.VendorSyncStatusView.as_view(), name='vendor_sync_status_detail'),
+
+    # Currency Conversion Rates
+    path('currency-rates/', views.CurrencyConversionRateListView.as_view(), name='currencyconversionrate_list'),
+    path('currency-rates/add/', views.CurrencyConversionRateEditView.as_view(), name='currencyconversionrate_add'),
+    path('currency-rates/<int:pk>/', views.CurrencyConversionRateView.as_view(), name='currencyconversionrate'),
+    path('currency-rates/<int:pk>/edit/', views.CurrencyConversionRateEditView.as_view(), name='currencyconversionrate_edit'),
+    path('currency-rates/<int:pk>/delete/', views.CurrencyConversionRateDeleteView.as_view(), name='currencyconversionrate_delete'),
+    path('currency-rates/<int:pk>/changelog', ObjectChangeLogView.as_view(), name='currencyconversionrate_changelog', kwargs={
+        'model': models.CurrencyConversionRate
+    }),
+    path('currency-rates/delete/', views.CurrencyConversionRateBulkDeleteView.as_view(), name='currencyconversionrate_bulk_delete'),
 ]
