@@ -2,7 +2,7 @@ import django_tables2 as tables
 from django.utils.html import format_html
 
 from netbox.tables import NetBoxTable, ChoiceFieldColumn
-from .models import License, LicenseInstance
+from .models import License, LicenseInstance, CurrencyConversionRate
 from .choices import LicenseStatusChoices
 
 class LicenseTable(NetBoxTable):
@@ -153,3 +153,43 @@ class LicenseInstanceTable(NetBoxTable):
             LicenseStatusChoices.CSS_CLASSES.get(status, "secondary"),
             dict(LicenseStatusChoices.CHOICES).get(status, status)
         )
+
+
+class CurrencyConversionRateTable(NetBoxTable):
+    """Table for displaying currency conversion rates"""
+
+    pk = tables.CheckBoxColumn()
+    from_currency = tables.Column(linkify=True, verbose_name='Currency')
+    to_currency = tables.Column(verbose_name='To')
+    rate = tables.Column(verbose_name='Rate')
+    source = tables.Column(verbose_name='Source', empty_values=())
+    effective_date = tables.DateColumn(format='d/m/Y', verbose_name='Effective Date')
+    age = tables.Column(empty_values=(), verbose_name='Age', orderable=False)
+    status = tables.Column(empty_values=(), verbose_name='Status', orderable=False)
+
+    class Meta(NetBoxTable.Meta):
+        model = CurrencyConversionRate
+        fields = ('pk', 'from_currency', 'to_currency', 'rate', 'source', 'effective_date', 'age', 'status', 'actions')
+        default_columns = ('from_currency', 'to_currency', 'rate', 'source', 'effective_date', 'age', 'status')
+
+    def render_source(self, record):
+        if record.source == 'manual':
+            return format_html('<span class="badge text-bg-warning">Manual</span>')
+        else:
+            return format_html('<span class="badge text-bg-primary">API</span>')
+
+    def render_age(self, record):
+        from django.utils import timezone
+        days = (timezone.now().date() - record.effective_date).days
+        if days == 0:
+            return "Today"
+        elif days == 1:
+            return "Yesterday"
+        else:
+            return f"{days} days ago"
+
+    def render_status(self, record):
+        if record.is_stale:
+            return format_html('<span class="badge text-bg-danger">Stale</span>')
+        else:
+            return format_html('<span class="badge text-bg-success">Current</span>')
