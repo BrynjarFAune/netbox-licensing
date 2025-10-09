@@ -6,5 +6,6 @@ app_name = 'netbox_licenses'
 router = NetBoxRouter()
 router.register('licenses', views.LicenseViewSet)
 router.register('licenseinstances', views.LicenseInstanceViewSet)
+router.register('currencyconversionrates', views.CurrencyConversionRateViewSet)
 
 urlpatterns = router.urls

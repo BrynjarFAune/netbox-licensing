@@ -4,7 +4,7 @@ from django.contrib.contenttypes.models import ContentType
 from netbox.api.serializers import NetBoxModelSerializer, WritableNestedSerializer
 from tenancy.api.serializers import ContactSerializer, TenantSerializer
 from dcim.api.serializers import ManufacturerSerializer
-from ..models import License, LicenseInstance
+from ..models import License, LicenseInstance, CurrencyConversionRate
 
 class NestedLicenseSerializer(WritableNestedSerializer):
     url = serializers.HyperlinkedIdentityField(
@@ -107,5 +107,27 @@ class LicenseInstanceSerializer(NetBoxModelSerializer):
             'effective_price', 'effective_currency', 'price_in_nok', 'conversion_rate_to_nok',
             'start_date', 'end_date', 'comments', 'tags',
             'custom_fields', 'created', 'last_updated', 'custom_field_data'
+        )
+
+
+class CurrencyConversionRateSerializer(NetBoxModelSerializer):
+    url = serializers.HyperlinkedIdentityField(
+        view_name='plugins-api:netbox_licenses-api:currencyconversionrate-detail'
+    )
+
+    # Computed fields
+    is_stale = serializers.ReadOnlyField()
+    age_days = serializers.SerializerMethodField(read_only=True)
+
+    def get_age_days(self, obj):
+        from django.utils import timezone
+        return (timezone.now().date() - obj.effective_date).days
+
+    class Meta:
+        model = CurrencyConversionRate
+        fields = (
+            'id', 'url', 'display', 'from_currency', 'to_currency', 'rate',
+            'source', 'effective_date', 'notes', 'is_stale', 'age_days',
+            'tags', 'custom_fields', 'created', 'last_updated'
         )
 
