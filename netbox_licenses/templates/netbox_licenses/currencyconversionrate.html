@@ -1,0 +1,77 @@
+{% extends 'generic/object.html' %}
+{% load helpers %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col col-md-6">
+        <div class="card">
+            <h5 class="card-header">Currency Conversion Rate Details</h5>
+            <table class="table table-hover attr-table">
+                <tr>
+                    <th scope="row">From Currency</th>
+                    <td>{{ object.get_from_currency_display }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">To Currency</th>
+                    <td>{{ object.get_to_currency_display }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Exchange Rate</th>
+                    <td>{{ object.rate }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Source</th>
+                    <td>
+                        {% if object.source == 'manual' %}
+                            <span class="badge text-bg-warning">Manual Override</span>
+                        {% else %}
+                            <span class="badge text-bg-primary">API (Norges Bank)</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Effective Date</th>
+                    <td>{{ object.effective_date }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Age</th>
+                    <td>
+                        {% load tz %}
+                        {% now "Y-m-d" as today %}
+                        {{ object.effective_date|timesince }} ago
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Status</th>
+                    <td>
+                        {% if object.is_stale %}
+                            <span class="badge text-bg-danger">Stale (>7 days old)</span>
+                        {% else %}
+                            <span class="badge text-bg-success">Current</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    <div class="col col-md-6">
+        <div class="card">
+            <h5 class="card-header">Additional Information</h5>
+            <table class="table table-hover attr-table">
+                <tr>
+                    <th scope="row">Notes</th>
+                    <td>{{ object.notes|default:"—" }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Created</th>
+                    <td>{{ object.created }}</td>
+                </tr>
+                <tr>
+                    <th scope="row">Last Modified</th>
+                    <td>{{ object.last_updated }}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
