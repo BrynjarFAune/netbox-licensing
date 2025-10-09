@@ -17,6 +17,14 @@ licenseinstance_buttons = (
     ),
 )
 
+currencyrate_buttons = (
+    PluginMenuButton(
+        link='plugins:netbox_licenses:currencyconversionrate_add',
+        title='Add Currency Rate',
+        icon_class='mdi mdi-plus-thick'
+    ),
+)
+
 # Create the menu with proper navigation structure
 menu = PluginMenu(
     label='License Management',
@@ -37,6 +45,13 @@ menu = PluginMenu(
                 link='plugins:netbox_licenses:licenseinstance_list',
                 link_text='License Instances',
                 buttons=licenseinstance_buttons
+            ),
+        )),
+        ('Configuration', (
+            PluginMenuItem(
+                link='plugins:netbox_licenses:currencyconversionrate_list',
+                link_text='Currency Rates',
+                buttons=currencyrate_buttons
             ),
         )),
     ),
