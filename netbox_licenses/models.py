@@ -5,6 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils.functional import cached_property
 from django.utils import timezone
 from datetime import timedelta
+from decimal import Decimal
 from django.db import models
 from netbox.models import NetBoxModel
 from tenancy.models import Contact, Tenant
