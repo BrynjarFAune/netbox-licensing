@@ -65,8 +65,18 @@ class LicenseTable(NetBoxTable):
         return "{} {}".format(price_value, record.currency)
 
     def render_total_cost(self, record):
-        """Calculate total cost as unit price × capacity in NOK"""
-        total_nok = float(record.total_monthly_commitment_nok) if record.total_monthly_commitment_nok else 0
+        """Calculate total cost as (price × total licenses) in NOK"""
+        from netbox_licenses.models import CurrencyConversionRate
+
+        price = float(record.price) if record.price else 0
+        total_licenses = record.total_licenses
+
+        # Get conversion rate to NOK
+        rate = CurrencyConversionRate.get_rate_to_nok(record.currency)
+        if rate is None:
+            rate = 1  # Fallback if currency not found
+
+        total_nok = price * float(rate) * total_licenses
         return "{:,.2f} NOK".format(total_nok)
 
     def render_payment_method(self, record):
