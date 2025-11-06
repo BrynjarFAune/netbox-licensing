@@ -8,46 +8,34 @@
             <h5 class="card-header">Currency Conversion Rate Details</h5>
             <table class="table table-hover attr-table">
                 <tr>
-                    <th scope="row">From Currency</th>
-                    <td>{{ object.get_from_currency_display }}</td>
+                    <th scope="row">Currency Code</th>
+                    <td><strong>{{ object.currency_code }}</strong></td>
                 </tr>
                 <tr>
-                    <th scope="row">To Currency</th>
-                    <td>{{ object.get_to_currency_display }}</td>
-                </tr>
-                <tr>
-                    <th scope="row">Exchange Rate</th>
-                    <td>{{ object.rate }}</td>
+                    <th scope="row">Rate to NOK</th>
+                    <td>1 {{ object.currency_code }} = <strong>{{ object.rate_to_nok }}</strong> NOK</td>
                 </tr>
                 <tr>
                     <th scope="row">Source</th>
                     <td>
                         {% if object.source == 'manual' %}
-                            <span class="badge text-bg-warning">Manual Override</span>
+                            <span class="badge text-bg-warning">Manual Entry</span>
                         {% else %}
-                            <span class="badge text-bg-primary">API (Norges Bank)</span>
+                            <span class="badge text-bg-primary">Norges Bank API</span>
                         {% endif %}
                     </td>
                 </tr>
                 <tr>
-                    <th scope="row">Effective Date</th>
-                    <td>{{ object.effective_date }}</td>
-                </tr>
-                <tr>
-                    <th scope="row">Age</th>
-                    <td>
-                        {% load tz %}
-                        {% now "Y-m-d" as today %}
-                        {{ object.effective_date|timesince }} ago
-                    </td>
+                    <th scope="row">Last Updated</th>
+                    <td>{{ object.last_updated }}</td>
                 </tr>
                 <tr>
                     <th scope="row">Status</th>
                     <td>
                         {% if object.is_stale %}
-                            <span class="badge text-bg-danger">Stale (>7 days old)</span>
+                            <span class="badge text-bg-danger"><i class="mdi mdi-alert"></i> Stale (>7 days old)</span>
                         {% else %}
-                            <span class="badge text-bg-success">Current</span>
+                            <span class="badge text-bg-success"><i class="mdi mdi-check"></i> Current</span>
                         {% endif %}
                     </td>
                 </tr>
