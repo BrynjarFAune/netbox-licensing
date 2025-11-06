@@ -1,0 +1,161 @@
+{% extends 'base/layout.html' %}
+{% load helpers %}
+
+{% block content %}
+<div class="row">
+    <div class="col col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="mdi mdi-cog"></i> License Management Plugin Settings</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'plugins:netbox_licenses:config' %}">
+                    {% csrf_token %}
+
+                    <h6 class="card-subtitle text-muted mt-3 mb-3">License Utilization Thresholds</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="id_utilization_warning_threshold" class="form-label">
+                                    Warning Threshold (%)
+                                    <i class="mdi mdi-help-circle" title="{{ form.utilization_warning_threshold.help_text }}"></i>
+                                </label>
+                                {{ form.utilization_warning_threshold }}
+                                <small class="form-text text-muted">{{ form.utilization_warning_threshold.help_text }}</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="id_utilization_critical_threshold" class="form-label">
+                                    Critical Threshold (%)
+                                    <i class="mdi mdi-help-circle" title="{{ form.utilization_critical_threshold.help_text }}"></i>
+                                </label>
+                                {{ form.utilization_critical_threshold }}
+                                <small class="form-text text-muted">{{ form.utilization_critical_threshold.help_text }}</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="id_underutilization_threshold" class="form-label">
+                                    Underutilization Threshold (%)
+                                    <i class="mdi mdi-help-circle" title="{{ form.underutilization_threshold.help_text }}"></i>
+                                </label>
+                                {{ form.underutilization_threshold }}
+                                <small class="form-text text-muted">{{ form.underutilization_threshold.help_text }}</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <h6 class="card-subtitle text-muted mt-3 mb-3">Currency Synchronization</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    {{ form.currency_sync_enabled }}
+                                    <label class="form-check-label" for="id_currency_sync_enabled">
+                                        {{ form.currency_sync_enabled.label }}
+                                    </label>
+                                </div>
+                                <small class="form-text text-muted">{{ form.currency_sync_enabled.help_text }}</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="id_currency_sync_interval_hours" class="form-label">
+                                    Sync Interval (hours)
+                                    <i class="mdi mdi-help-circle" title="{{ form.currency_sync_interval_hours.help_text }}"></i>
+                                </label>
+                                {{ form.currency_sync_interval_hours }}
+                                <small class="form-text text-muted">{{ form.currency_sync_interval_hours.help_text }}</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="id_currency_stale_days" class="form-label">
+                                    Stale Days
+                                    <i class="mdi mdi-help-circle" title="{{ form.currency_stale_days.help_text }}"></i>
+                                </label>
+                                {{ form.currency_stale_days }}
+                                <small class="form-text text-muted">{{ form.currency_stale_days.help_text }}</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <h6 class="card-subtitle text-muted mt-3 mb-3">Renewal Warnings</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_renewal_warning_days" class="form-label">
+                                    Warning Days
+                                    <i class="mdi mdi-help-circle" title="{{ form.renewal_warning_days.help_text }}"></i>
+                                </label>
+                                {{ form.renewal_warning_days }}
+                                <small class="form-text text-muted">{{ form.renewal_warning_days.help_text }}</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_renewal_critical_days" class="form-label">
+                                    Critical Days
+                                    <i class="mdi mdi-help-circle" title="{{ form.renewal_critical_days.help_text }}"></i>
+                                </label>
+                                {{ form.renewal_critical_days }}
+                                <small class="form-text text-muted">{{ form.renewal_critical_days.help_text }}</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <h6 class="card-subtitle text-muted mt-3 mb-3">Other Settings</h6>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    {{ form.enable_cost_tracking }}
+                                    <label class="form-check-label" for="id_enable_cost_tracking">
+                                        {{ form.enable_cost_tracking.label }}
+                                    </label>
+                                </div>
+                                <small class="form-text text-muted">{{ form.enable_cost_tracking.help_text }}</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="mdi mdi-content-save"></i> Save Configuration
+                        </button>
+                        <a href="{% url 'plugins:netbox_licenses:dashboard' %}" class="btn btn-secondary">
+                            <i class="mdi mdi-close"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="mdi mdi-information-outline"></i> NetBox Timezone Configuration</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">
+                    To change the NetBox timezone, edit the <code>TIME_ZONE</code> setting in your NetBox configuration file:
+                </p>
+                <pre class="bg-light p-3 rounded"><code># In netbox-docker/configuration/configuration.py or /etc/netbox/config/configuration.py
+TIME_ZONE = 'Europe/Oslo'  # For Norway (UTC+1/UTC+2 with DST)</code></pre>
+                <p class="text-muted mb-0">
+                    After changing the timezone, restart NetBox:
+                    <code>docker compose restart netbox</code>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

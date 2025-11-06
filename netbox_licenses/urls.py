@@ -6,6 +6,9 @@ urlpatterns = [
     # Dashboard
     path('', views.LicenseDashboardView.as_view(), name='dashboard'),
 
+    # Configuration
+    path('config/', views.PluginConfigurationView.as_view(), name='config'),
+
     # Licenses
     path('licenses/', views.LicenseListView.as_view(), name='license_list'),
     path('licenses/add/', views.LicenseAddView.as_view(), name='license_add'),

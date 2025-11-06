@@ -1006,3 +1006,33 @@ class CurrencyConversionRateBulkSyncView(View):
             messages.error(request, f"Error during bulk sync: {e}")
 
         return redirect('plugins:netbox_licenses:currencyconversionrate_list')
+
+
+# Configuration views
+class PluginConfigurationView(View):
+    """View and edit plugin configuration"""
+
+    def get(self, request):
+        config = models.PluginConfiguration.get_config()
+        form = forms.PluginConfigurationForm(instance=config)
+
+        return render(request, 'netbox_licenses/config.html', {
+            'config': config,
+            'form': form,
+        })
+
+    def post(self, request):
+        config = models.PluginConfiguration.get_config()
+        form = forms.PluginConfigurationForm(request.POST, instance=config)
+
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Configuration updated successfully")
+            return redirect('plugins:netbox_licenses:config')
+        else:
+            messages.error(request, "Error updating configuration. Please check the form.")
+
+        return render(request, 'netbox_licenses/config.html', {
+            'config': config,
+            'form': form,
+        })

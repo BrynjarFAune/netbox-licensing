@@ -878,3 +878,94 @@ class CurrencyConversionRate(NetBoxModel):
 
         if self.rate <= 0:
             raise ValidationError("Conversion rate must be greater than zero")
+
+
+class PluginConfiguration(NetBoxModel):
+    """
+    Singleton model for storing plugin configuration.
+    Only one instance should exist.
+    """
+    # License utilization thresholds
+    utilization_warning_threshold = models.IntegerField(
+        default=80,
+        help_text="Warn when license utilization exceeds this percentage"
+    )
+    utilization_critical_threshold = models.IntegerField(
+        default=95,
+        help_text="Critical alert when license utilization exceeds this percentage"
+    )
+    underutilization_threshold = models.IntegerField(
+        default=20,
+        help_text="Flag licenses with utilization below this percentage"
+    )
+
+    # Currency sync settings
+    currency_sync_enabled = models.BooleanField(
+        default=True,
+        help_text="Enable automatic currency rate synchronization"
+    )
+    currency_sync_interval_hours = models.IntegerField(
+        default=24,
+        help_text="Hours between automatic currency rate syncs"
+    )
+    currency_stale_days = models.IntegerField(
+        default=7,
+        help_text="Days before a currency rate is considered stale"
+    )
+
+    # Renewal warning settings
+    renewal_warning_days = models.IntegerField(
+        default=90,
+        help_text="Days before expiry to show renewal warnings"
+    )
+    renewal_critical_days = models.IntegerField(
+        default=30,
+        help_text="Days before expiry to show critical renewal alerts"
+    )
+
+    # Cost tracking
+    enable_cost_tracking = models.BooleanField(
+        default=True,
+        help_text="Track license costs and calculate totals"
+    )
+
+    class Meta:
+        verbose_name = "Plugin Configuration"
+        verbose_name_plural = "Plugin Configuration"
+
+    def __str__(self):
+        return "License Management Configuration"
+
+    def get_absolute_url(self):
+        return reverse('plugins:netbox_licenses:config')
+
+    @classmethod
+    def get_config(cls):
+        """Get or create the singleton configuration instance"""
+        config, created = cls.objects.get_or_create(pk=1)
+        return config
+
+    def clean(self):
+        """Validate configuration values"""
+        from django.core.exceptions import ValidationError
+        super().clean()
+
+        # Ensure thresholds are in valid ranges
+        if not 0 <= self.utilization_warning_threshold <= 100:
+            raise ValidationError("Warning threshold must be between 0 and 100")
+        if not 0 <= self.utilization_critical_threshold <= 100:
+            raise ValidationError("Critical threshold must be between 0 and 100")
+        if not 0 <= self.underutilization_threshold <= 100:
+            raise ValidationError("Underutilization threshold must be between 0 and 100")
+
+        # Ensure critical is higher than warning
+        if self.utilization_critical_threshold <= self.utilization_warning_threshold:
+            raise ValidationError("Critical threshold must be higher than warning threshold")
+
+        # Validate sync interval
+        if self.currency_sync_interval_hours < 1:
+            raise ValidationError("Sync interval must be at least 1 hour")
+
+        # Validate renewal days
+        if self.renewal_critical_days > self.renewal_warning_days:
+            raise ValidationError("Critical renewal warning must be less than warning days")

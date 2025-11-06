@@ -4,7 +4,7 @@ from django import forms
 from django.forms import DateInput, NumberInput, IntegerField, DateField, ModelChoiceField, HiddenInput, CharField, ChoiceField, DecimalField, Textarea, BooleanField, URLField
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
-from .models import License, LicenseInstance, CurrencyConversionRate
+from .models import License, LicenseInstance, CurrencyConversionRate, PluginConfiguration
 from .choices import CurrencyChoices, PaymentMethodChoices
 from tenancy.models import Contact, Tenant
 from dcim.models import Manufacturer
@@ -563,3 +563,79 @@ class LicenseBulkEditForm(NetBoxModelForm):
         # Populate currency choices
         currencies = CurrencyConversionRate.get_available_currencies()
         self.fields['currency'].widget.choices = [('', '---------')] + [(c, c) for c in currencies]
+
+
+class PluginConfigurationForm(NetBoxModelForm):
+    """Form for editing plugin configuration"""
+
+    utilization_warning_threshold = IntegerField(
+        min_value=0,
+        max_value=100,
+        initial=80,
+        label="Utilization Warning Threshold (%)",
+        help_text="Show warning when license utilization exceeds this percentage"
+    )
+    utilization_critical_threshold = IntegerField(
+        min_value=0,
+        max_value=100,
+        initial=95,
+        label="Utilization Critical Threshold (%)",
+        help_text="Show critical alert when license utilization exceeds this percentage"
+    )
+    underutilization_threshold = IntegerField(
+        min_value=0,
+        max_value=100,
+        initial=20,
+        label="Underutilization Threshold (%)",
+        help_text="Flag licenses with utilization below this percentage"
+    )
+    currency_sync_enabled = BooleanField(
+        required=False,
+        initial=True,
+        label="Enable Automatic Currency Sync",
+        help_text="Automatically sync API-sourced currency rates on schedule"
+    )
+    currency_sync_interval_hours = IntegerField(
+        min_value=1,
+        initial=24,
+        label="Currency Sync Interval (hours)",
+        help_text="Hours between automatic currency rate synchronization"
+    )
+    currency_stale_days = IntegerField(
+        min_value=1,
+        initial=7,
+        label="Currency Stale Days",
+        help_text="Number of days before a currency rate is considered stale"
+    )
+    renewal_warning_days = IntegerField(
+        min_value=1,
+        initial=90,
+        label="Renewal Warning Days",
+        help_text="Days before expiry to show renewal warnings"
+    )
+    renewal_critical_days = IntegerField(
+        min_value=1,
+        initial=30,
+        label="Renewal Critical Days",
+        help_text="Days before expiry to show critical renewal alerts"
+    )
+    enable_cost_tracking = BooleanField(
+        required=False,
+        initial=True,
+        label="Enable Cost Tracking",
+        help_text="Track license costs and calculate totals in NOK"
+    )
+
+    class Meta:
+        model = PluginConfiguration
+        fields = [
+            'utilization_warning_threshold',
+            'utilization_critical_threshold',
+            'underutilization_threshold',
+            'currency_sync_enabled',
+            'currency_sync_interval_hours',
+            'currency_stale_days',
+            'renewal_warning_days',
+            'renewal_critical_days',
+            'enable_cost_tracking',
+        ]

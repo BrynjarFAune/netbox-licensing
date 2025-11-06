@@ -59,6 +59,11 @@ menu = PluginMenu(
         )),
         ('Configuration', (
             PluginMenuItem(
+                link='plugins:netbox_licenses:config',
+                link_text='Plugin Settings',
+                icon_class='mdi mdi-cog'
+            ),
+            PluginMenuItem(
                 link='plugins:netbox_licenses:currencyconversionrate_list',
                 link_text='Currency Rates',
                 buttons=currencyrate_buttons
