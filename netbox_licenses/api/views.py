@@ -40,5 +40,5 @@ class LicenseInstanceViewSet(NetBoxModelViewSet):
 class CurrencyConversionRateViewSet(NetBoxModelViewSet):
     queryset = models.CurrencyConversionRate.objects.prefetch_related(
         'tags'
-    ).order_by('-effective_date', 'from_currency')
+    ).order_by('currency_code')
     serializer_class = CurrencyConversionRateSerializer

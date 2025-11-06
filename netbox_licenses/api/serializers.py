@@ -117,17 +117,13 @@ class CurrencyConversionRateSerializer(NetBoxModelSerializer):
 
     # Computed fields
     is_stale = serializers.ReadOnlyField()
-    age_days = serializers.SerializerMethodField(read_only=True)
-
-    def get_age_days(self, obj):
-        from django.utils import timezone
-        return (timezone.now().date() - obj.effective_date).days
+    can_sync = serializers.ReadOnlyField()
 
     class Meta:
         model = CurrencyConversionRate
         fields = (
-            'id', 'url', 'display', 'from_currency', 'to_currency', 'rate',
-            'source', 'effective_date', 'notes', 'is_stale', 'age_days',
-            'tags', 'custom_fields', 'created', 'last_updated'
+            'id', 'url', 'display', 'currency_code', 'rate_to_nok',
+            'source', 'last_updated', 'notes', 'is_stale', 'can_sync',
+            'tags', 'custom_fields', 'created'
         )
 
