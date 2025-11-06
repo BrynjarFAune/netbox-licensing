@@ -194,9 +194,11 @@
             <h5 class="card-header">Quick Actions</h5>
             <div class="card-body">
                 <div class="d-flex gap-2 align-items-center">
+                    {% if object.available_licenses >= 1 %}
                     <a href="{% url 'plugins:netbox_licenses:licenseinstance_add' %}?license={{ object.pk }}" class="btn btn-success">
                         <i class="mdi mdi-plus-thick"></i> Add Instance
                     </a>
+                    {% endif %}
                     {% if object.available_licenses > 1 %}
                         <a href="{% url 'plugins:netbox_licenses:license_bulk_add_instances' pk=object.pk %}" class="btn btn-info">
                             <i class="mdi mdi-plus-multiple"></i> Bulk Add Instances
