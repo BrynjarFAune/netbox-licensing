@@ -43,11 +43,15 @@ class LicenseTable(NetBoxTable):
     # NEW UTILIZATION RENDERING METHODS
     def render_external_id(self, record):
         return record.external_id or "—"
-    
+
     def render_utilization(self, record):
         from netbox_licenses.templatetags.license_helpers import utilization_badge
         return utilization_badge(record.utilization_percentage)
-    
+
+    def value_utilization(self, record):
+        """Plain text value for CSV export"""
+        return f"{record.utilization_percentage:.1f}%"
+
     def render_available_licenses(self, record):
         from django.utils.html import format_html
         from netbox_licenses.templatetags.license_helpers import availability_color
@@ -59,6 +63,10 @@ class LicenseTable(NetBoxTable):
             return format_html('<span class="{}"><i class="mdi mdi-alert"></i> {}</span>', color_class, available)
         else:
             return format_html('<span class="{}">{}</span>', color_class, available)
+
+    def value_available_licenses(self, record):
+        """Plain text value for CSV export"""
+        return record.available_licenses
 
     def render_price(self, record):
         price_value = float(record.price) if record.price else 0
@@ -90,6 +98,10 @@ class LicenseTable(NetBoxTable):
             return format_html('<span class="badge text-bg-info">{}</span>', method)
         else:
             return format_html('<span class="badge text-bg-secondary">{}</span>', method)
+
+    def value_payment_method(self, record):
+        """Plain text value for CSV export"""
+        return record.get_payment_method_display()
 
     def render_responsible_contact(self, record):
         if record.responsible_contact:
@@ -142,6 +154,20 @@ class LicenseInstanceTable(NetBoxTable):
         else:
             return format_html('<span class="badge text-bg-secondary">{}</span>', payment_method)
 
+    def value_auto_renew_status(self, record):
+        """Plain text value for CSV export"""
+        if not record.license:
+            return "—"
+        payment_method = record.license.payment_method
+        if payment_method == 'card_auto':
+            return "Auto-Charge"
+        elif payment_method in ['invoice', 'card_manual', 'bank_transfer', 'purchase_order']:
+            return "Manual"
+        elif payment_method == 'prepaid':
+            return "Prepaid"
+        elif payment_method == 'free_trial':
+            return "Trial"
+        return payment_method
 
     def render_instance_price_nok(self, record):
         price = record.instance_price_nok
@@ -162,6 +188,11 @@ class LicenseInstanceTable(NetBoxTable):
             LicenseStatusChoices.CSS_CLASSES.get(status, "secondary"),
             dict(LicenseStatusChoices.CHOICES).get(status, status)
         )
+
+    def value_status(self, record):
+        """Plain text value for CSV export"""
+        status = record.derived_status
+        return dict(LicenseStatusChoices.CHOICES).get(status, status)
 
 
 class CurrencyConversionRateTable(NetBoxTable):
@@ -185,8 +216,16 @@ class CurrencyConversionRateTable(NetBoxTable):
         else:
             return format_html('<span class="badge text-bg-primary">Norges Bank API</span>')
 
+    def value_source(self, record):
+        """Plain text value for CSV export"""
+        return 'Manual Entry' if record.source == 'manual' else 'Norges Bank API'
+
     def render_status(self, record):
         if record.is_stale:
             return format_html('<span class="badge text-bg-danger"><i class="mdi mdi-alert"></i> Stale (>7 days)</span>')
         else:
             return format_html('<span class="badge text-bg-success"><i class="mdi mdi-check"></i> Current</span>')
+
+    def value_status(self, record):
+        """Plain text value for CSV export"""
+        return 'Stale (>7 days)' if record.is_stale else 'Current'
