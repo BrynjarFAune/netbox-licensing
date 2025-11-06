@@ -196,22 +196,20 @@ class LicenseFilterForm(NetBoxModelFilterSetForm):
 class CurrencyConversionRateFilterSet(NetBoxModelFilterSet):
     """FilterSet for currency conversion rates"""
 
-    from_currency = django_filters.MultipleChoiceFilter(
-        choices=[(c[0], c[1]) for c in CurrencyConversionRate._meta.get_field('from_currency').choices]
-    )
-    to_currency = django_filters.MultipleChoiceFilter(
-        choices=[(c[0], c[1]) for c in CurrencyConversionRate._meta.get_field('to_currency').choices]
+    currency_code = django_filters.CharFilter(
+        lookup_expr='icontains',
+        label='Currency Code'
     )
     source = django_filters.MultipleChoiceFilter(
         choices=CurrencyConversionRate.SOURCE_CHOICES
     )
-    effective_date = django_filters.DateFilter()
-    effective_date__gte = django_filters.DateFilter(
-        field_name='effective_date',
+    last_updated = django_filters.DateTimeFilter()
+    last_updated__gte = django_filters.DateTimeFilter(
+        field_name='last_updated',
         lookup_expr='gte'
     )
-    effective_date__lte = django_filters.DateFilter(
-        field_name='effective_date',
+    last_updated__lte = django_filters.DateTimeFilter(
+        field_name='last_updated',
         lookup_expr='lte'
     )
 
