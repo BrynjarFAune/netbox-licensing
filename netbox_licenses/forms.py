@@ -568,28 +568,28 @@ class LicenseBulkEditForm(NetBoxModelForm):
 class PluginConfigurationForm(forms.ModelForm):
     """Form for editing plugin configuration"""
 
-    utilization_warning_threshold = IntegerField(
+    utilization_excellent_threshold = IntegerField(
         min_value=0,
         max_value=100,
-        initial=80,
-        label="Utilization Warning Threshold (%)",
-        help_text="Show warning when license utilization exceeds this percentage",
+        initial=90,
+        label="Excellent Utilization Threshold (%)",
+        help_text="Green badge - licenses are well utilized (≥90%)",
         widget=forms.NumberInput(attrs={'class': 'form-control'})
     )
-    utilization_critical_threshold = IntegerField(
+    utilization_good_threshold = IntegerField(
         min_value=0,
         max_value=100,
-        initial=95,
-        label="Utilization Critical Threshold (%)",
-        help_text="Show critical alert when license utilization exceeds this percentage",
+        initial=70,
+        label="Good Utilization Threshold (%)",
+        help_text="Blue badge - acceptable license usage (≥70%)",
         widget=forms.NumberInput(attrs={'class': 'form-control'})
     )
-    underutilization_threshold = IntegerField(
+    utilization_moderate_threshold = IntegerField(
         min_value=0,
         max_value=100,
-        initial=20,
-        label="Underutilization Threshold (%)",
-        help_text="Flag licenses with utilization below this percentage",
+        initial=50,
+        label="Moderate Utilization Threshold (%)",
+        help_text="Yellow badge - approaching underutilization (≥50%)",
         widget=forms.NumberInput(attrs={'class': 'form-control'})
     )
     currency_sync_enabled = BooleanField(
@@ -627,24 +627,15 @@ class PluginConfigurationForm(forms.ModelForm):
         help_text="Days before expiry to show critical renewal alerts",
         widget=forms.NumberInput(attrs={'class': 'form-control'})
     )
-    enable_cost_tracking = BooleanField(
-        required=False,
-        initial=True,
-        label="Enable Cost Tracking",
-        help_text="Track license costs and calculate totals in NOK",
-        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
-    )
-
     class Meta:
         model = PluginConfiguration
         fields = [
-            'utilization_warning_threshold',
-            'utilization_critical_threshold',
-            'underutilization_threshold',
+            'utilization_excellent_threshold',
+            'utilization_good_threshold',
+            'utilization_moderate_threshold',
             'currency_sync_enabled',
             'currency_sync_interval_hours',
             'currency_stale_days',
             'renewal_warning_days',
             'renewal_critical_days',
-            'enable_cost_tracking',
         ]

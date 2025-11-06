@@ -887,18 +887,20 @@ class PluginConfiguration(models.Model):
     Internal model - not exposed via API.
     """
     # License utilization thresholds
-    utilization_warning_threshold = models.IntegerField(
-        default=80,
-        help_text="Warn when license utilization exceeds this percentage"
+    # Goal: 100% utilization is optimal
+    utilization_excellent_threshold = models.IntegerField(
+        default=90,
+        help_text="Excellent utilization (green badge) - licenses are well utilized"
     )
-    utilization_critical_threshold = models.IntegerField(
-        default=95,
-        help_text="Critical alert when license utilization exceeds this percentage"
+    utilization_good_threshold = models.IntegerField(
+        default=70,
+        help_text="Good utilization (blue badge) - acceptable usage"
     )
-    underutilization_threshold = models.IntegerField(
-        default=20,
-        help_text="Flag licenses with utilization below this percentage"
+    utilization_moderate_threshold = models.IntegerField(
+        default=50,
+        help_text="Moderate utilization (yellow badge) - approaching underutilization"
     )
+    # Below moderate threshold = poor/underutilized (red badge)
 
     # Currency sync settings
     currency_sync_enabled = models.BooleanField(
@@ -924,11 +926,6 @@ class PluginConfiguration(models.Model):
         help_text="Days before expiry to show critical renewal alerts"
     )
 
-    # Cost tracking
-    enable_cost_tracking = models.BooleanField(
-        default=True,
-        help_text="Track license costs and calculate totals"
-    )
 
     class Meta:
         verbose_name = "Plugin Configuration"
@@ -952,16 +949,18 @@ class PluginConfiguration(models.Model):
         super().clean()
 
         # Ensure thresholds are in valid ranges
-        if not 0 <= self.utilization_warning_threshold <= 100:
-            raise ValidationError("Warning threshold must be between 0 and 100")
-        if not 0 <= self.utilization_critical_threshold <= 100:
-            raise ValidationError("Critical threshold must be between 0 and 100")
-        if not 0 <= self.underutilization_threshold <= 100:
-            raise ValidationError("Underutilization threshold must be between 0 and 100")
+        if not 0 <= self.utilization_excellent_threshold <= 100:
+            raise ValidationError("Excellent threshold must be between 0 and 100")
+        if not 0 <= self.utilization_good_threshold <= 100:
+            raise ValidationError("Good threshold must be between 0 and 100")
+        if not 0 <= self.utilization_moderate_threshold <= 100:
+            raise ValidationError("Moderate threshold must be between 0 and 100")
 
-        # Ensure critical is higher than warning
-        if self.utilization_critical_threshold <= self.utilization_warning_threshold:
-            raise ValidationError("Critical threshold must be higher than warning threshold")
+        # Ensure thresholds are in descending order
+        if self.utilization_excellent_threshold <= self.utilization_good_threshold:
+            raise ValidationError("Excellent threshold must be higher than good threshold")
+        if self.utilization_good_threshold <= self.utilization_moderate_threshold:
+            raise ValidationError("Good threshold must be higher than moderate threshold")
 
         # Validate sync interval
         if self.currency_sync_interval_hours < 1:

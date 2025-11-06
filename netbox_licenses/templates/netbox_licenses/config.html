@@ -13,35 +13,36 @@
                     {% csrf_token %}
 
                     <h6 class="card-subtitle text-muted mt-3 mb-3">License Utilization Thresholds</h6>
+                    <p class="text-muted small mb-3">
+                        <strong>Goal:</strong> 100% utilization is optimal. These thresholds determine badge colors.
+                        Below moderate threshold is considered underutilized (red badge).
+                    </p>
                     <div class="row">
                         <div class="col-md-4">
                             <div class="mb-3">
-                                <label for="id_utilization_warning_threshold" class="form-label">
-                                    Warning Threshold (%)
-                                    <i class="mdi mdi-help-circle" title="{{ form.utilization_warning_threshold.help_text }}"></i>
+                                <label for="id_utilization_excellent_threshold" class="form-label">
+                                    <span class="badge text-bg-success">Excellent</span> Threshold (%)
                                 </label>
-                                {{ form.utilization_warning_threshold }}
-                                <small class="form-text text-muted">{{ form.utilization_warning_threshold.help_text }}</small>
+                                {{ form.utilization_excellent_threshold }}
+                                <small class="form-text text-muted">{{ form.utilization_excellent_threshold.help_text }}</small>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
-                                <label for="id_utilization_critical_threshold" class="form-label">
-                                    Critical Threshold (%)
-                                    <i class="mdi mdi-help-circle" title="{{ form.utilization_critical_threshold.help_text }}"></i>
+                                <label for="id_utilization_good_threshold" class="form-label">
+                                    <span class="badge text-bg-info">Good</span> Threshold (%)
                                 </label>
-                                {{ form.utilization_critical_threshold }}
-                                <small class="form-text text-muted">{{ form.utilization_critical_threshold.help_text }}</small>
+                                {{ form.utilization_good_threshold }}
+                                <small class="form-text text-muted">{{ form.utilization_good_threshold.help_text }}</small>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
-                                <label for="id_underutilization_threshold" class="form-label">
-                                    Underutilization Threshold (%)
-                                    <i class="mdi mdi-help-circle" title="{{ form.underutilization_threshold.help_text }}"></i>
+                                <label for="id_utilization_moderate_threshold" class="form-label">
+                                    <span class="badge text-bg-warning">Moderate</span> Threshold (%)
                                 </label>
-                                {{ form.underutilization_threshold }}
-                                <small class="form-text text-muted">{{ form.underutilization_threshold.help_text }}</small>
+                                {{ form.utilization_moderate_threshold }}
+                                <small class="form-text text-muted">{{ form.utilization_moderate_threshold.help_text }}</small>
                             </div>
                         </div>
                     </div>
@@ -111,23 +112,6 @@
 
                     <hr>
 
-                    <h6 class="card-subtitle text-muted mt-3 mb-3">Other Settings</h6>
-                    <div class="row">
-                        <div class="col-md-12">
-                            <div class="mb-3">
-                                <div class="form-check">
-                                    {{ form.enable_cost_tracking }}
-                                    <label class="form-check-label" for="id_enable_cost_tracking">
-                                        {{ form.enable_cost_tracking.label }}
-                                    </label>
-                                </div>
-                                <small class="form-text text-muted">{{ form.enable_cost_tracking.help_text }}</small>
-                            </div>
-                        </div>
-                    </div>
-
-                    <hr>
-
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">
                             <i class="mdi mdi-content-save"></i> Save Configuration
@@ -137,23 +121,6 @@
                         </a>
                     </div>
                 </form>
-            </div>
-        </div>
-
-        <div class="card mt-3">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="mdi mdi-information-outline"></i> NetBox Timezone Configuration</h5>
-            </div>
-            <div class="card-body">
-                <p class="text-muted">
-                    To change the NetBox timezone, edit the <code>TIME_ZONE</code> setting in your NetBox configuration file:
-                </p>
-                <pre class="bg-light p-3 rounded"><code># In netbox-docker/configuration/configuration.py or /etc/netbox/config/configuration.py
-TIME_ZONE = 'Europe/Oslo'  # For Norway (UTC+1/UTC+2 with DST)</code></pre>
-                <p class="text-muted mb-0">
-                    After changing the timezone, restart NetBox:
-                    <code>docker compose restart netbox</code>
-                </p>
             </div>
         </div>
     </div>
