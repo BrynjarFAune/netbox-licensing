@@ -19,9 +19,14 @@ licenseinstance_buttons = (
 
 currencyrate_buttons = (
     PluginMenuButton(
+        link='plugins:netbox_licenses:currencyconversionrate_add_api',
+        title='Add from API',
+        icon_class='mdi mdi-cloud-download'
+    ),
+    PluginMenuButton(
         link='plugins:netbox_licenses:currencyconversionrate_add',
-        title='Add Currency Rate',
-        icon_class='mdi mdi-plus-thick'
+        title='Add Manually',
+        icon_class='mdi mdi-pencil'
     ),
 )
 

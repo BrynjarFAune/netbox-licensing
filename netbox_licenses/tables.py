@@ -159,37 +159,25 @@ class CurrencyConversionRateTable(NetBoxTable):
     """Table for displaying currency conversion rates"""
 
     pk = tables.CheckBoxColumn()
-    from_currency = tables.Column(linkify=True, verbose_name='Currency')
-    to_currency = tables.Column(verbose_name='To')
-    rate = tables.Column(verbose_name='Rate')
+    currency_code = tables.Column(linkify=True, verbose_name='Currency')
+    rate_to_nok = tables.Column(verbose_name='Rate to NOK')
     source = tables.Column(verbose_name='Source', empty_values=())
-    effective_date = tables.DateColumn(format='d/m/Y', verbose_name='Effective Date')
-    age = tables.Column(empty_values=(), verbose_name='Age', orderable=False)
+    last_updated = tables.DateTimeColumn(format='d/m/Y H:i', verbose_name='Last Updated')
     status = tables.Column(empty_values=(), verbose_name='Status', orderable=False)
 
     class Meta(NetBoxTable.Meta):
         model = CurrencyConversionRate
-        fields = ('pk', 'from_currency', 'to_currency', 'rate', 'source', 'effective_date', 'age', 'status', 'actions')
-        default_columns = ('from_currency', 'to_currency', 'rate', 'source', 'effective_date', 'age', 'status')
+        fields = ('pk', 'currency_code', 'rate_to_nok', 'source', 'last_updated', 'status', 'actions')
+        default_columns = ('currency_code', 'rate_to_nok', 'source', 'last_updated', 'status')
 
     def render_source(self, record):
         if record.source == 'manual':
-            return format_html('<span class="badge text-bg-warning">Manual</span>')
+            return format_html('<span class="badge text-bg-warning">Manual Entry</span>')
         else:
-            return format_html('<span class="badge text-bg-primary">API</span>')
-
-    def render_age(self, record):
-        from django.utils import timezone
-        days = (timezone.now().date() - record.effective_date).days
-        if days == 0:
-            return "Today"
-        elif days == 1:
-            return "Yesterday"
-        else:
-            return f"{days} days ago"
+            return format_html('<span class="badge text-bg-primary">Norges Bank API</span>')
 
     def render_status(self, record):
         if record.is_stale:
-            return format_html('<span class="badge text-bg-danger">Stale</span>')
+            return format_html('<span class="badge text-bg-danger"><i class="mdi mdi-alert"></i> Stale (>7 days)</span>')
         else:
-            return format_html('<span class="badge text-bg-success">Current</span>')
+            return format_html('<span class="badge text-bg-success"><i class="mdi mdi-check"></i> Current</span>')
