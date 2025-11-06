@@ -37,9 +37,8 @@ class License(NetBoxModel):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     currency = models.CharField(
         max_length=3,
-        choices=CurrencyChoices.CHOICES,
-        default=CurrencyChoices.NOK,
-        help_text="Currency for the license price"
+        default='NOK',
+        help_text="Currency code (e.g., NOK, USD, EUR). Must have conversion rate defined."
     )
     
     # NEW ENHANCEMENT FIELDS
@@ -193,12 +192,15 @@ class License(NetBoxModel):
     @property
     def total_monthly_commitment_nok(self):
         """Total monthly commitment converted to NOK for dashboard display"""
-        if self.currency == CurrencyChoices.NOK:
+        if self.currency == 'NOK':
             return self.total_monthly_commitment
 
-        # Use database rates with fallback to hardcoded rates
+        # Use database rates
         from decimal import Decimal
-        rate = CurrencyConversionRate.get_current_rate(self.currency, 'NOK')
+        rate = CurrencyConversionRate.get_rate_to_nok(self.currency)
+        if rate is None:
+            # Currency not found - return 0 or could raise error
+            return Decimal('0.0')
         return self.total_monthly_commitment * float(rate)
 
     @property
@@ -237,6 +239,15 @@ class License(NetBoxModel):
 
         if self.total_licenses < 0:
             raise ValidationError("Total licenses cannot be negative")
+
+        # Validate currency has a conversion rate (unless it's NOK)
+        if self.currency and self.currency != 'NOK':
+            rate = CurrencyConversionRate.get_rate_to_nok(self.currency)
+            if rate is None:
+                raise ValidationError(
+                    f"Currency '{self.currency}' is not available. "
+                    f"Please add this currency in Currency Rates before using it."
+                )
 
         # consumed_licenses should be managed by signals, not manually edited
         # But we can validate if it's being set incorrectly
@@ -289,18 +300,19 @@ class LicenseInstance(NetBoxModel):
         from decimal import Decimal
 
         # If the license is already in NOK, use its price
-        if self.license_currency == CurrencyChoices.NOK:
+        if self.license_currency == 'NOK':
             return self.license_price
 
-        # Use database rates with fallback to hardcoded rates
-        rate = CurrencyConversionRate.get_current_rate(self.license_currency, 'NOK')
+        # Use database rates
+        rate = CurrencyConversionRate.get_rate_to_nok(self.license_currency)
+        if rate is None:
+            return Decimal('0.0')
         return self.license_price * rate
 
     @property
     def display_price(self):
         """Returns a formatted price display string"""
-        currency_display = dict(CurrencyChoices.CHOICES).get(self.license_currency, self.license_currency)
-        return f"{self.license_price} {currency_display}"
+        return f"{self.license_price} {self.license_currency}"
 
     @property
     def derived_status(self):
@@ -502,8 +514,7 @@ class LicenseRenewal(NetBoxModel):
     )
     currency = models.CharField(
         max_length=3,
-        choices=CurrencyChoices.CHOICES,
-        default=CurrencyChoices.NOK
+        default='NOK'
     )
     
     # Budget tracking
@@ -774,106 +785,87 @@ class CostAllocation(NetBoxModel):
 
 class CurrencyConversionRate(NetBoxModel):
     """
-    Store currency conversion rates for license cost calculations.
-    Supports both API-synced rates and manual overrides.
+    Store currency conversion rates to NOK for license cost calculations.
+    All currencies convert to NOK as the base currency.
+    Supports both API-synced rates (Norges Bank) and manual overrides.
     """
 
     SOURCE_CHOICES = [
-        ('api', 'API (Norges Bank)'),
-        ('manual', 'Manual Override'),
+        ('api', 'Norges Bank API'),
+        ('manual', 'Manual Entry'),
     ]
 
-    from_currency = models.CharField(
+    currency_code = models.CharField(
         max_length=3,
-        choices=CurrencyChoices.CHOICES,
-        help_text="Source currency code"
+        unique=True,
+        help_text="ISO 4217 currency code (e.g., USD, EUR, GBP)"
     )
-    to_currency = models.CharField(
-        max_length=3,
-        default='NOK',
-        choices=CurrencyChoices.CHOICES,
-        help_text="Target currency code"
-    )
-    rate = models.DecimalField(
+    rate_to_nok = models.DecimalField(
         max_digits=12,
         decimal_places=6,
-        help_text="Conversion rate (1 from_currency = X to_currency)"
+        help_text="Conversion rate: 1 [currency] = X NOK"
     )
     source = models.CharField(
         max_length=20,
         choices=SOURCE_CHOICES,
         default='api',
-        help_text="Source of this rate (API or manual override)"
+        help_text="Source of this rate"
     )
-    effective_date = models.DateField(
-        help_text="Date this rate became effective"
+    last_updated = models.DateTimeField(
+        auto_now=True,
+        help_text="Last time this rate was updated"
     )
     notes = models.TextField(
         blank=True,
-        help_text="Additional notes about this rate"
+        help_text="Additional notes about this currency"
     )
 
     class Meta:
-        ordering = ['-effective_date', 'from_currency']
+        ordering = ['currency_code']
         indexes = [
-            models.Index(fields=['from_currency', 'to_currency', '-effective_date']),
-            models.Index(fields=['source', '-effective_date']),
+            models.Index(fields=['currency_code']),
+            models.Index(fields=['source', '-last_updated']),
         ]
 
     def __str__(self):
-        return f"{self.from_currency} → {self.to_currency}: {self.rate} ({self.get_source_display()})"
+        return f"{self.currency_code} → NOK: {self.rate_to_nok} ({self.get_source_display()})"
 
     def get_absolute_url(self):
         return reverse('plugins:netbox_licenses:currencyconversionrate', args=[self.pk])
 
     @classmethod
-    def get_current_rate(cls, from_currency, to_currency='NOK'):
+    def get_rate_to_nok(cls, currency_code):
         """
-        Get most recent conversion rate.
-        Manual overrides take precedence over API rates.
-        Falls back to hardcoded rates if no DB entry exists.
+        Get conversion rate to NOK for the given currency.
+        Returns 1.0 for NOK itself.
+        Returns None if currency not found (caller should handle error).
         """
-        if from_currency == to_currency:
+        if currency_code == 'NOK':
             return Decimal('1.0')
 
-        # Try manual override first
-        manual = cls.objects.filter(
-            from_currency=from_currency,
-            to_currency=to_currency,
-            source='manual'
-        ).order_by('-effective_date').first()
+        try:
+            rate = cls.objects.get(currency_code=currency_code)
+            return rate.rate_to_nok
+        except cls.DoesNotExist:
+            return None
 
-        if manual:
-            return manual.rate
-
-        # Fall back to API rate
-        api = cls.objects.filter(
-            from_currency=from_currency,
-            to_currency=to_currency,
-            source='api'
-        ).order_by('-effective_date').first()
-
-        if api:
-            return api.rate
-
-        # Fall back to hardcoded rates (backward compatibility)
-        fallback_rates = {
-            'USD': Decimal('10.5'),
-            'EUR': Decimal('11.5'),
-            'GBP': Decimal('13.5'),
-            'JPY': Decimal('0.075'),
-            'AUD': Decimal('7.0'),
-            'CAD': Decimal('8.0'),
-            'CHF': Decimal('12.0'),
-            'SEK': Decimal('1.0'),
-            'DKK': Decimal('1.6'),
-        }
-        return fallback_rates.get(from_currency, Decimal('1.0'))
+    @classmethod
+    def get_available_currencies(cls):
+        """Get list of all available currency codes including NOK"""
+        currencies = list(cls.objects.values_list('currency_code', flat=True))
+        if 'NOK' not in currencies:
+            currencies.insert(0, 'NOK')
+        return currencies
 
     @property
     def is_stale(self):
         """Check if rate is older than 7 days"""
-        return (timezone.now().date() - self.effective_date).days > 7
+        return (timezone.now() - self.last_updated).days > 7
+
+    @property
+    def can_sync(self):
+        """Check if this currency can be synced (is from API source)"""
+        return self.source == 'api'
 
     def clean(self):
         """Validate rate data"""

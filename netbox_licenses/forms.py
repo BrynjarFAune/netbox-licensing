@@ -26,11 +26,12 @@ class LicenseForm(NetBoxModelForm):
         required=True,
         label="Assignable Object Type"
     )
-    currency = ChoiceField(
-        choices=CurrencyChoices.CHOICES,
-        initial=CurrencyChoices.NOK,
+    currency = CharField(
+        max_length=3,
+        initial='NOK',
         required=True,
-        help_text="Currency for the license price"
+        widget=forms.Select(),
+        help_text="Currency code (must be defined in Currency Rates)"
     )
     
     # NEW ENHANCEMENT FIELDS
@@ -84,6 +85,13 @@ class LicenseForm(NetBoxModelForm):
             'external_id', 'total_licenses', 'metadata',
             'comments', 'tags'
         )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Populate currency choices dynamically from available conversion rates
+        currencies = CurrencyConversionRate.get_available_currencies()
+        self.fields['currency'].widget.choices = [(c, c) for c in currencies]
 
     def clean_total_licenses(self):
         """Validate total_licenses cannot be reduced below consumed licenses"""
@@ -401,49 +409,96 @@ class BulkLicenseInstanceForm(forms.Form):
         return instances
 
 
-class CurrencyConversionRateForm(NetBoxModelForm):
-    """Form for creating/editing currency conversion rates"""
+class CurrencyConversionRateManualForm(NetBoxModelForm):
+    """Form for manually creating/editing currency conversion rates"""
+
+    currency_code = CharField(
+        max_length=3,
+        label="Currency Code",
+        help_text="ISO 4217 currency code (e.g., USD, EUR, GBP)"
+    )
+    rate_to_nok = DecimalField(
+        max_digits=12,
+        decimal_places=6,
+        min_value=0,
+        widget=NumberInput(attrs={'step': '0.000001'}),
+        label="Rate to NOK",
+        help_text="Conversion rate: 1 [currency] = X NOK"
+    )
 
     class Meta:
         model = CurrencyConversionRate
-        fields = ('from_currency', 'to_currency', 'rate', 'source', 'effective_date', 'notes', 'tags')
-        widgets = {
-            'effective_date': DateInput(attrs={'type': 'date'}),
-            'rate': NumberInput(attrs={'step': '0.000001'}),
-        }
+        fields = ('currency_code', 'rate_to_nok', 'notes', 'tags')
 
-    def clean(self):
-        cleaned_data = super().clean()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Set source to manual (hidden field, set programmatically)
+        if not self.instance.pk:
+            self.instance.source = 'manual'
 
-        # If super().clean() returns None due to validation errors, return early
-        if not cleaned_data:
-            return cleaned_data
+    def clean_currency_code(self):
+        code = self.cleaned_data.get('currency_code', '').upper()
 
-        from_currency = cleaned_data.get('from_currency')
-        to_currency = cleaned_data.get('to_currency')
+        # Check if it already exists (only for new records)
+        if not self.instance.pk:
+            if CurrencyConversionRate.objects.filter(currency_code=code).exists():
+                raise ValidationError(f"Currency {code} already exists.")
 
-        if from_currency and to_currency and from_currency == to_currency:
-            raise ValidationError("Source and target currency cannot be the same")
+        return code
 
-        return cleaned_data
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.source = 'manual'
+        if commit:
+            instance.save()
+            self.save_m2m()
+        return instance
+
+
+class CurrencyConversionRateAPIForm(forms.Form):
+    """Form for fetching currency rate from Norges Bank API"""
+
+    currency_code = CharField(
+        max_length=3,
+        label="Currency Code",
+        help_text="ISO 4217 currency code (e.g., USD, EUR, GBP)",
+        widget=forms.TextInput(attrs={'placeholder': 'USD'})
+    )
+    notes = CharField(
+        required=False,
+        widget=Textarea(attrs={'rows': 3}),
+        label="Notes",
+        help_text="Optional notes about this currency"
+    )
+
+    def clean_currency_code(self):
+        code = self.cleaned_data.get('currency_code', '').upper()
+
+        # Check if it already exists
+        if CurrencyConversionRate.objects.filter(currency_code=code).exists():
+            raise ValidationError(
+                f"Currency {code} already exists. Use the sync button to update its rate."
+            )
+
+        return code
+
+    def save(self):
+        """Fetch rate from API and create currency"""
+        from netbox_licenses.services.currency_service import create_currency_from_api
+
+        currency_code = self.cleaned_data['currency_code']
+        notes = self.cleaned_data.get('notes', '')
+
+        # This will raise NorgesBankAPIError if it fails
+        return create_currency_from_api(currency_code, notes)
 
 
 class CurrencyConversionRateFilterForm(NetBoxModelFilterSetForm):
     """FilterSet form for currency conversion rates"""
     model = CurrencyConversionRate
 
-    from_currency = ChoiceField(
-        choices=[('', 'All')] + list(CurrencyChoices.CHOICES),
-        required=False,
-        label='From Currency'
-    )
-    to_currency = ChoiceField(
-        choices=[('', 'All')] + list(CurrencyChoices.CHOICES),
-        required=False,
-        label='To Currency'
-    )
     source = ChoiceField(
-        choices=[('', 'All'), ('api', 'API'), ('manual', 'Manual')],
+        choices=[('', 'All'), ('api', 'Norges Bank API'), ('manual', 'Manual Entry')],
         required=False,
         label='Source'
     )
