@@ -414,6 +414,11 @@ class CurrencyConversionRateForm(NetBoxModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+
+        # If super().clean() returns None due to validation errors, return early
+        if not cleaned_data:
+            return cleaned_data
+
         from_currency = cleaned_data.get('from_currency')
         to_currency = cleaned_data.get('to_currency')
 
