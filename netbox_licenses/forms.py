@@ -1,4 +1,4 @@
-from netbox.forms import NetBoxModelForm
+from netbox.forms import NetBoxModelForm, NetBoxModelFilterSetForm
 from utilities.forms.fields import CommentField, DynamicModelChoiceField, ContentTypeChoiceField
 from django import forms
 from django.forms import DateInput, NumberInput, IntegerField, DateField, ModelChoiceField, HiddenInput, CharField, ChoiceField, DecimalField, Textarea, BooleanField, URLField
@@ -423,7 +423,7 @@ class CurrencyConversionRateForm(NetBoxModelForm):
         return cleaned_data
 
 
-class CurrencyConversionRateFilterForm(NetBoxFilterSetForm):
+class CurrencyConversionRateFilterForm(NetBoxModelFilterSetForm):
     """FilterSet form for currency conversion rates"""
     model = CurrencyConversionRate
 
