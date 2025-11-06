@@ -10,7 +10,7 @@ from django.utils.decorators import method_decorator
 from django.views import View
 from django.contrib.contenttypes.models import ContentType
 from .models import License, LicenseInstance, VendorIntegration, LicenseAlert
-from .services import ComplianceMonitoringService
+# from .services import ComplianceMonitoringService  # TODO: Phase 3 - implement compliance service
 
 logger = logging.getLogger(__name__)
 
