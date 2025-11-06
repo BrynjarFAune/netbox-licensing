@@ -895,9 +895,9 @@ class CurrencyConversionRateView(generic.ObjectView):
 
 
 class CurrencyConversionRateEditView(generic.ObjectEditView):
-    """Create/edit view for currency conversion rates"""
+    """Edit view for currency conversion rates (manual only)"""
     queryset = models.CurrencyConversionRate.objects.all()
-    form = forms.CurrencyConversionRateForm
+    form = forms.CurrencyConversionRateManualForm
 
 
 class CurrencyConversionRateDeleteView(generic.ObjectDeleteView):
