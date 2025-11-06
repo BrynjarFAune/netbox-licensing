@@ -256,9 +256,16 @@ class LicenseView(generic.ObjectView):
     queryset = models.License.objects.prefetch_related('instances', 'instances__assigned_object')
 
     def get_extra_context(self, request, instance):
+        # Calculate total cost in NOK
+        rate = models.CurrencyConversionRate.get_rate_to_nok(instance.currency)
+        if rate is None:
+            rate = 1
+        total_cost_nok = float(instance.price) * float(rate) * instance.total_licenses
+
         return {
             'instance_count': instance.instances.count(),
             'total_cost': instance.total_cost,
+            'total_cost_nok': total_cost_nok,
             # NEW UTILIZATION CONTEXT
             'utilization_percentage': instance.utilization_percentage,
             'available_licenses': instance.available_licenses,
@@ -943,3 +950,49 @@ class CurrencyConversionRateBulkDeleteView(generic.BulkDeleteView):
     """Bulk delete view for currency conversion rates"""
     queryset = models.CurrencyConversionRate.objects.all()
     table = tables.CurrencyConversionRateTable
+
+
+class CurrencyConversionRateSyncView(View):
+    """Sync a single currency rate from Norges Bank API"""
+
+    def post(self, request, pk):
+        currency = get_object_or_404(models.CurrencyConversionRate, pk=pk)
+
+        if currency.source != 'api':
+            messages.warning(request, f"Cannot sync {currency.currency_code}: source is 'Manual Entry', not API.")
+            return redirect('plugins:netbox_licenses:currencyconversionrate', pk=pk)
+
+        try:
+            from netbox_licenses.services.currency_service import sync_currency_rate
+            sync_currency_rate(currency)
+            messages.success(request, f"Successfully synced {currency.currency_code} rate: {currency.rate_to_nok} NOK")
+        except Exception as e:
+            messages.error(request, f"Failed to sync {currency.currency_code}: {e}")
+
+        return redirect('plugins:netbox_licenses:currencyconversionrate', pk=pk)
+
+
+class CurrencyConversionRateBulkSyncView(View):
+    """Sync all API-sourced currency rates"""
+
+    def post(self, request):
+        try:
+            from netbox_licenses.services.currency_service import sync_all_currency_rates
+            results = sync_all_currency_rates()
+
+            success_count = len(results['success'])
+            failed_count = len(results['failed'])
+
+            if success_count > 0:
+                messages.success(request, f"Successfully synced {success_count} currency rate(s).")
+            if failed_count > 0:
+                failed_currencies = ', '.join([f['currency'] for f in results['failed']])
+                messages.error(request, f"Failed to sync {failed_count} currency rate(s): {failed_currencies}")
+
+            if success_count == 0 and failed_count == 0:
+                messages.info(request, "No API-sourced currencies found to sync.")
+
+        except Exception as e:
+            messages.error(request, f"Error during bulk sync: {e}")
+
+        return redirect('plugins:netbox_licenses:currencyconversionrate_list')

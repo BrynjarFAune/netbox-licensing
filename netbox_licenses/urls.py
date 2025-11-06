@@ -55,8 +55,10 @@ urlpatterns = [
     path('currency-rates/<int:pk>/', views.CurrencyConversionRateView.as_view(), name='currencyconversionrate'),
     path('currency-rates/<int:pk>/edit/', views.CurrencyConversionRateEditView.as_view(), name='currencyconversionrate_edit'),
     path('currency-rates/<int:pk>/delete/', views.CurrencyConversionRateDeleteView.as_view(), name='currencyconversionrate_delete'),
+    path('currency-rates/<int:pk>/sync/', views.CurrencyConversionRateSyncView.as_view(), name='currencyconversionrate_sync'),
     path('currency-rates/<int:pk>/changelog', ObjectChangeLogView.as_view(), name='currencyconversionrate_changelog', kwargs={
         'model': models.CurrencyConversionRate
     }),
     path('currency-rates/delete/', views.CurrencyConversionRateBulkDeleteView.as_view(), name='currencyconversionrate_bulk_delete'),
+    path('currency-rates/sync-all/', views.CurrencyConversionRateBulkSyncView.as_view(), name='currencyconversionrate_bulk_sync'),
 ]

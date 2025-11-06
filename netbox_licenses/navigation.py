@@ -28,6 +28,11 @@ currencyrate_buttons = (
         title='Add Manually',
         icon_class='mdi mdi-pencil'
     ),
+    PluginMenuButton(
+        link='plugins:netbox_licenses:currencyconversionrate_bulk_sync',
+        title='Sync All API Rates',
+        icon_class='mdi mdi-sync'
+    ),
 )
 
 # Create the menu with proper navigation structure
