@@ -302,6 +302,15 @@ class LicenseBulkDeleteView(generic.BulkDeleteView):
     queryset = models.License.objects.all()
     table = tables.LicenseTable
 
+
+class LicenseBulkEditView(generic.BulkEditView):
+    """Bulk edit view for licenses"""
+    queryset = models.License.objects.all()
+    filterset = filtersets.LicenseFilterSet
+    table = tables.LicenseTable
+    form = forms.LicenseBulkEditForm
+
+
 # LicenseInstance views
 class LicenseInstanceListView(generic.ObjectListView):
     queryset = models.LicenseInstance.objects.prefetch_related('license', 'assigned_object')
@@ -973,18 +982,10 @@ class CurrencyConversionRateSyncView(View):
 
 
 class CurrencyConversionRateBulkSyncView(View):
-    """Sync all API-sourced currency rates"""
+    """Sync all API-sourced currency rates - no template needed, just execute and redirect"""
 
     def get(self, request):
-        # Get count of API-sourced currencies
-        api_currencies = models.CurrencyConversionRate.objects.filter(source='api')
-        context = {
-            'api_currency_count': api_currencies.count(),
-            'api_currencies': api_currencies,
-        }
-        return render(request, 'netbox_licenses/currencyconversionrate_bulk_sync.html', context)
-
-    def post(self, request):
+        # Execute sync directly on GET (button click)
         try:
             from netbox_licenses.services.currency_service import sync_all_currency_rates
             results = sync_all_currency_rates()

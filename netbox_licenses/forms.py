@@ -502,3 +502,64 @@ class CurrencyConversionRateFilterForm(NetBoxModelFilterSetForm):
         required=False,
         label='Source'
     )
+
+
+class LicenseBulkEditForm(NetBoxModelForm):
+    """
+    Bulk edit form for licenses.
+    Allows editing vendor, tenant, payment info, contacts, and pricing for multiple licenses.
+    """
+    vendor = DynamicModelChoiceField(
+        queryset=Manufacturer.objects.all(),
+        required=False,
+        label="Vendor"
+    )
+    tenant = DynamicModelChoiceField(
+        queryset=Tenant.objects.all(),
+        required=False,
+        label="Tenant"
+    )
+    payment_method = ChoiceField(
+        choices=[('', '---------')] + list(PaymentMethodChoices),
+        required=False,
+        label="Payment Method"
+    )
+    billing_cycle = ChoiceField(
+        choices=[('', '---------'), ('monthly', 'Monthly'), ('annually', 'Annually'), ('perpetual', 'Perpetual'), ('other', 'Other')],
+        required=False,
+        label="Billing Cycle"
+    )
+    payment_portal_url = URLField(
+        required=False,
+        max_length=500,
+        label="Payment Portal URL"
+    )
+    responsible_contact = DynamicModelChoiceField(
+        queryset=Contact.objects.all(),
+        required=False,
+        label="Responsible Contact"
+    )
+    currency = CharField(
+        max_length=3,
+        required=False,
+        widget=forms.Select(),
+        label="Currency"
+    )
+    price = DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        required=False,
+        label="Price per License"
+    )
+
+    class Meta:
+        model = License
+        fields = []  # We define fields manually above
+        nullable_fields = ['payment_portal_url', 'responsible_contact', 'price']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Populate currency choices
+        currencies = CurrencyConversionRate.get_available_currencies()
+        self.fields['currency'].widget.choices = [('', '---------')] + [(c, c) for c in currencies]

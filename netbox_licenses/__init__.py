@@ -23,6 +23,10 @@ class LicenseManagementConfig(PluginConfig):
         'enable_cost_tracking': True,        # Track license costs and renewals
         'renewal_warning_days': 90,          # Days before renewal to show warnings
         'max_instances_per_license': 1000,   # Safety limit for license instances
+        # Currency sync settings
+        'currency_sync_enabled': True,       # Enable automatic currency rate syncing
+        'currency_sync_interval': 86400,     # Sync interval in seconds (default: 24 hours)
+        'currency_stale_days': 7,            # Days before rate is considered stale
     }
 
     # Cache settings for performance
