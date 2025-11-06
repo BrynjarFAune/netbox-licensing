@@ -65,10 +65,9 @@ class LicenseTable(NetBoxTable):
         return "{} {}".format(price_value, record.currency)
 
     def render_total_cost(self, record):
-        """Calculate total cost as unit price × capacity"""
-        unit_price = float(record.price) if record.price else 0
-        total_cost = unit_price * record.total_licenses
-        return "{:.2f} {}".format(total_cost, record.currency)
+        """Calculate total cost as unit price × capacity in NOK"""
+        total_nok = float(record.total_monthly_commitment_nok) if record.total_monthly_commitment_nok else 0
+        return "{:,.2f} NOK".format(total_nok)
 
     def render_payment_method(self, record):
         from django.utils.html import format_html
