@@ -900,7 +900,7 @@ class CurrencyConversionRateEditView(generic.ObjectEditView):
     form = forms.CurrencyConversionRateManualForm
 
 
-class CurrencyConversionRateAddAPIView(generic.GenericView):
+class CurrencyConversionRateAddAPIView(View):
     """Add currency by fetching from Norges Bank API"""
 
     def get(self, request):
