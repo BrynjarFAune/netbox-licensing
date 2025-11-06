@@ -880,10 +880,11 @@ class CurrencyConversionRate(NetBoxModel):
             raise ValidationError("Conversion rate must be greater than zero")
 
 
-class PluginConfiguration(NetBoxModel):
+class PluginConfiguration(models.Model):
     """
     Singleton model for storing plugin configuration.
     Only one instance should exist.
+    Internal model - not exposed via API.
     """
     # License utilization thresholds
     utilization_warning_threshold = models.IntegerField(

@@ -565,7 +565,7 @@ class LicenseBulkEditForm(NetBoxModelForm):
         self.fields['currency'].widget.choices = [('', '---------')] + [(c, c) for c in currencies]
 
 
-class PluginConfigurationForm(NetBoxModelForm):
+class PluginConfigurationForm(forms.ModelForm):
     """Form for editing plugin configuration"""
 
     utilization_warning_threshold = IntegerField(
@@ -573,57 +573,66 @@ class PluginConfigurationForm(NetBoxModelForm):
         max_value=100,
         initial=80,
         label="Utilization Warning Threshold (%)",
-        help_text="Show warning when license utilization exceeds this percentage"
+        help_text="Show warning when license utilization exceeds this percentage",
+        widget=forms.NumberInput(attrs={'class': 'form-control'})
     )
     utilization_critical_threshold = IntegerField(
         min_value=0,
         max_value=100,
         initial=95,
         label="Utilization Critical Threshold (%)",
-        help_text="Show critical alert when license utilization exceeds this percentage"
+        help_text="Show critical alert when license utilization exceeds this percentage",
+        widget=forms.NumberInput(attrs={'class': 'form-control'})
     )
     underutilization_threshold = IntegerField(
         min_value=0,
         max_value=100,
         initial=20,
         label="Underutilization Threshold (%)",
-        help_text="Flag licenses with utilization below this percentage"
+        help_text="Flag licenses with utilization below this percentage",
+        widget=forms.NumberInput(attrs={'class': 'form-control'})
     )
     currency_sync_enabled = BooleanField(
         required=False,
         initial=True,
         label="Enable Automatic Currency Sync",
-        help_text="Automatically sync API-sourced currency rates on schedule"
+        help_text="Automatically sync API-sourced currency rates on schedule",
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
     )
     currency_sync_interval_hours = IntegerField(
         min_value=1,
         initial=24,
         label="Currency Sync Interval (hours)",
-        help_text="Hours between automatic currency rate synchronization"
+        help_text="Hours between automatic currency rate synchronization",
+        widget=forms.NumberInput(attrs={'class': 'form-control'})
     )
     currency_stale_days = IntegerField(
         min_value=1,
         initial=7,
         label="Currency Stale Days",
-        help_text="Number of days before a currency rate is considered stale"
+        help_text="Number of days before a currency rate is considered stale",
+        widget=forms.NumberInput(attrs={'class': 'form-control'})
     )
     renewal_warning_days = IntegerField(
         min_value=1,
         initial=90,
         label="Renewal Warning Days",
-        help_text="Days before expiry to show renewal warnings"
+        help_text="Days before expiry to show renewal warnings",
+        widget=forms.NumberInput(attrs={'class': 'form-control'})
     )
     renewal_critical_days = IntegerField(
         min_value=1,
         initial=30,
         label="Renewal Critical Days",
-        help_text="Days before expiry to show critical renewal alerts"
+        help_text="Days before expiry to show critical renewal alerts",
+        widget=forms.NumberInput(attrs={'class': 'form-control'})
     )
     enable_cost_tracking = BooleanField(
         required=False,
         initial=True,
         label="Enable Cost Tracking",
-        help_text="Track license costs and calculate totals in NOK"
+        help_text="Track license costs and calculate totals in NOK",
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
     )
 
     class Meta:
