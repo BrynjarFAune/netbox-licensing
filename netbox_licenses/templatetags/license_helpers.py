@@ -3,14 +3,30 @@ from django.utils.html import format_html
 
 register = template.Library()
 
-# Centralized threshold configuration
-UTILIZATION_THRESHOLDS = {
-    'excellent': 90,  # >= 90% utilization
-    'good': 70,       # >= 70% utilization
-    'moderate': 50,   # >= 50% utilization
-    'poor': 0         # < 50% utilization
-}
 
+def get_utilization_thresholds():
+    """Get utilization thresholds from plugin configuration"""
+    from netbox_licenses.models import PluginConfiguration
+
+    try:
+        config = PluginConfiguration.get_config()
+        return {
+            'excellent': config.utilization_excellent_threshold,
+            'good': config.utilization_good_threshold,
+            'moderate': config.utilization_moderate_threshold,
+            'poor': 0
+        }
+    except Exception:
+        # Fallback to defaults if config doesn't exist yet
+        return {
+            'excellent': 90,
+            'good': 70,
+            'moderate': 50,
+            'poor': 0
+        }
+
+
+# Waste thresholds (not configurable)
 WASTE_THRESHOLDS = {
     'critical': 80,   # >= 80% waste
     'high': 50,       # >= 50% waste
@@ -39,18 +55,22 @@ def utilization_badge(value):
     """
     Returns a badge HTML with appropriate color based on utilization percentage.
     High utilization = good (green), Low utilization = bad (red)
+    Thresholds are read from plugin configuration.
     """
     if value is None:
         value = 0
 
     value = float(str(value))  # Handle SafeString
 
+    # Get thresholds from config
+    thresholds = get_utilization_thresholds()
+
     # Determine level based on thresholds
-    if value >= UTILIZATION_THRESHOLDS['excellent']:
+    if value >= thresholds['excellent']:
         level = 'excellent'
-    elif value >= UTILIZATION_THRESHOLDS['good']:
+    elif value >= thresholds['good']:
         level = 'good'
-    elif value >= UTILIZATION_THRESHOLDS['moderate']:
+    elif value >= thresholds['moderate']:
         level = 'moderate'
     else:
         level = 'poor'
@@ -97,17 +117,21 @@ def utilization_text_color(value):
     """
     Returns just the color class for utilization percentage.
     Useful for coloring text without a badge.
+    Thresholds are read from plugin configuration.
     """
     if value is None:
         value = 0
 
     value = float(str(value))
 
-    if value >= UTILIZATION_THRESHOLDS['excellent']:
+    # Get thresholds from config
+    thresholds = get_utilization_thresholds()
+
+    if value >= thresholds['excellent']:
         return 'text-success'
-    elif value >= UTILIZATION_THRESHOLDS['good']:
+    elif value >= thresholds['good']:
         return 'text-info'
-    elif value >= UTILIZATION_THRESHOLDS['moderate']:
+    elif value >= thresholds['moderate']:
         return 'text-warning'
     else:
         return 'text-danger'

@@ -4,7 +4,7 @@ Background jobs for NetBox Licenses plugin
 from datetime import timedelta
 from django.utils import timezone
 from netbox.jobs import Job
-from .models import CurrencyConversionRate
+from .models import CurrencyConversionRate, PluginConfiguration
 from .services.currency_service import sync_currency_rate
 
 
@@ -12,17 +12,26 @@ class SyncCurrencyRatesJob(Job):
     """
     Background job to sync all API-sourced currency rates from Norges Bank.
     Runs on a configurable schedule to keep exchange rates current.
+    Schedule and enabled status are controlled by plugin configuration.
     """
 
     class Meta:
         name = "Sync Currency Rates"
         description = "Synchronize API-sourced currency exchange rates from Norges Bank"
-        # Schedule: Run daily at 2 AM
         scheduling_enabled = True
-        interval = 86400  # 24 hours in seconds
+        interval = 86400  # Default 24 hours, overridden by config
 
     def run(self, *args, **kwargs):
         """Execute the currency sync job"""
+
+        # Check if sync is enabled in configuration
+        try:
+            config = PluginConfiguration.get_config()
+            if not config.currency_sync_enabled:
+                self.log_info("Currency sync is disabled in plugin configuration")
+                return
+        except Exception as e:
+            self.log_warning(f"Could not load plugin configuration: {e}. Proceeding with sync.")
 
         # Get all API-sourced currencies
         api_currencies = CurrencyConversionRate.objects.filter(source='api')
@@ -70,19 +79,26 @@ class SyncCurrencyRatesJob(Job):
 class CleanupStaleCurrencyRatesJob(Job):
     """
     Background job to identify and report stale currency rates.
-    Rates older than 7 days are considered stale.
+    Stale threshold is configurable in plugin settings.
     """
 
     class Meta:
         name = "Check for Stale Currency Rates"
-        description = "Identify currency rates that haven't been updated in over 7 days"
+        description = "Identify currency rates that haven't been updated recently"
         scheduling_enabled = True
         interval = 86400  # Run daily
 
     def run(self, *args, **kwargs):
         """Check for stale currency rates"""
 
-        stale_threshold = timezone.now() - timedelta(days=7)
+        # Get stale threshold from config
+        try:
+            config = PluginConfiguration.get_config()
+            stale_days = config.currency_stale_days
+        except Exception:
+            stale_days = 7  # Fallback default
+
+        stale_threshold = timezone.now() - timedelta(days=stale_days)
         stale_currencies = CurrencyConversionRate.objects.filter(
             last_updated__lt=stale_threshold
         )

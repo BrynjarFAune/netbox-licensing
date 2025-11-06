@@ -860,8 +860,13 @@ class CurrencyConversionRate(NetBoxModel):
 
     @property
     def is_stale(self):
-        """Check if rate is older than 7 days"""
-        return (timezone.now() - self.last_updated).days > 7
+        """Check if rate is older than configured stale threshold"""
+        try:
+            config = PluginConfiguration.get_config()
+            stale_days = config.currency_stale_days
+        except Exception:
+            stale_days = 7  # Fallback default
+        return (timezone.now() - self.last_updated).days > stale_days
 
     @property
     def can_sync(self):
