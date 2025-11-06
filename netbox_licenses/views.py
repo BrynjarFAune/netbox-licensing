@@ -975,6 +975,15 @@ class CurrencyConversionRateSyncView(View):
 class CurrencyConversionRateBulkSyncView(View):
     """Sync all API-sourced currency rates"""
 
+    def get(self, request):
+        # Get count of API-sourced currencies
+        api_currencies = models.CurrencyConversionRate.objects.filter(source='api')
+        context = {
+            'api_currency_count': api_currencies.count(),
+            'api_currencies': api_currencies,
+        }
+        return render(request, 'netbox_licenses/currencyconversionrate_bulk_sync.html', context)
+
     def post(self, request):
         try:
             from netbox_licenses.services.currency_service import sync_all_currency_rates
