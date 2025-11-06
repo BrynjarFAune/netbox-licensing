@@ -51,6 +51,7 @@ urlpatterns = [
     # Currency Conversion Rates
     path('currency-rates/', views.CurrencyConversionRateListView.as_view(), name='currencyconversionrate_list'),
     path('currency-rates/add/', views.CurrencyConversionRateEditView.as_view(), name='currencyconversionrate_add'),
+    path('currency-rates/add-api/', views.CurrencyConversionRateAddAPIView.as_view(), name='currencyconversionrate_add_api'),
     path('currency-rates/<int:pk>/', views.CurrencyConversionRateView.as_view(), name='currencyconversionrate'),
     path('currency-rates/<int:pk>/edit/', views.CurrencyConversionRateEditView.as_view(), name='currencyconversionrate_edit'),
     path('currency-rates/<int:pk>/delete/', views.CurrencyConversionRateDeleteView.as_view(), name='currencyconversionrate_delete'),

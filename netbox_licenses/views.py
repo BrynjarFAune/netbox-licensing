@@ -900,6 +900,40 @@ class CurrencyConversionRateEditView(generic.ObjectEditView):
     form = forms.CurrencyConversionRateManualForm
 
 
+class CurrencyConversionRateAddAPIView(generic.GenericView):
+    """Add currency by fetching from Norges Bank API"""
+
+    def get(self, request):
+        form = forms.CurrencyConversionRateAPIForm()
+        return render(request, 'netbox_licenses/currencyconversionrate_add_api.html', {
+            'form': form,
+        })
+
+    def post(self, request):
+        form = forms.CurrencyConversionRateAPIForm(request.POST)
+
+        if form.is_valid():
+            try:
+                currency = form.save()
+                messages.success(
+                    request,
+                    f"Successfully added {currency.currency_code} with rate {currency.rate_to_nok} NOK from Norges Bank API."
+                )
+                return redirect('plugins:netbox_licenses:currencyconversionrate', pk=currency.pk)
+            except Exception as e:
+                from netbox_licenses.services.currency_service import NorgesBankAPIError
+                if isinstance(e, NorgesBankAPIError):
+                    messages.error(request, f"API Error: {e}")
+                else:
+                    messages.error(request, f"Error: {e}")
+                # Redirect back to currency list on error
+                return redirect('plugins:netbox_licenses:currencyconversionrate_list')
+
+        return render(request, 'netbox_licenses/currencyconversionrate_add_api.html', {
+            'form': form,
+        })
+
+
 class CurrencyConversionRateDeleteView(generic.ObjectDeleteView):
     """Delete view for currency conversion rates"""
     queryset = models.CurrencyConversionRate.objects.all()
