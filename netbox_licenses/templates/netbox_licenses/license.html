@@ -13,11 +13,11 @@
                 </tr>
                 <tr>
                     <th scope="row">Vendor</th>
-                    <td>{{ object.vendor }}</td>
+                    <td>{{ object.vendor|linkify }}</td>
                 </tr>
                 <tr>
                     <th scope="row">Tenant</th>
-                    <td>{{ object.tenant }}</td>
+                    <td>{{ object.tenant|linkify }}</td>
                 </tr>
                 <tr>
                     <th scope="row">Assignment Type</th>
@@ -62,7 +62,7 @@
                     <td>
                         {% if object.responsible_contact %}
                             <a href="{{ object.responsible_contact.get_absolute_url }}" class="text-decoration-none">
-                                {{ object.responsible_contact }}
+                                {{ object.responsible_contact|linkify }}
                             </a>
                         {% else %}
                             <span class="text-muted">No one assigned</span>

@@ -195,20 +195,11 @@ class License(NetBoxModel):
         """Total monthly commitment converted to NOK for dashboard display"""
         if self.currency == CurrencyChoices.NOK:
             return self.total_monthly_commitment
-        # Simple conversion rates (should be from a service in production)
-        conversion_rates = {
-            'USD': 10.5,
-            'EUR': 11.5,
-            'GBP': 13.5,
-            'JPY': 0.075,
-            'AUD': 7.0,
-            'CAD': 8.0,
-            'CHF': 12.0,
-            'SEK': 1.0,
-            'DKK': 1.6
-        }
-        rate = conversion_rates.get(self.currency, 1.0)
-        return self.total_monthly_commitment * rate
+
+        # Use database rates with fallback to hardcoded rates
+        from decimal import Decimal
+        rate = CurrencyConversionRate.get_current_rate(self.currency, 'NOK')
+        return self.total_monthly_commitment * float(rate)
 
     @property
     def total_yearly_commitment_nok(self):
@@ -301,9 +292,9 @@ class LicenseInstance(NetBoxModel):
         if self.license_currency == CurrencyChoices.NOK:
             return self.license_price
 
-        # For other currencies, we'd need a conversion rate
-        # Using simple conversion for now
-        return Decimal('0.0')
+        # Use database rates with fallback to hardcoded rates
+        rate = CurrencyConversionRate.get_current_rate(self.license_currency, 'NOK')
+        return self.license_price * rate
 
     @property
     def display_price(self):
