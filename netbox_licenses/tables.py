@@ -2,7 +2,7 @@ import django_tables2 as tables
 from django.utils.html import format_html
 
 from netbox.tables import NetBoxTable, ChoiceFieldColumn
-from .models import License, LicenseInstance, CurrencyConversionRate
+from .models import License, LicenseInstance, LicenseRenewal, CurrencyConversionRate
 from .choices import LicenseStatusChoices
 
 class LicenseTable(NetBoxTable):
@@ -229,3 +229,83 @@ class CurrencyConversionRateTable(NetBoxTable):
     def value_status(self, record):
         """Plain text value for CSV export"""
         return 'Stale (>7 days)' if record.is_stale else 'Current'
+
+
+class LicenseRenewalTable(NetBoxTable):
+    """Table for displaying license renewal history"""
+
+    pk = tables.CheckBoxColumn()
+    license = tables.Column(linkify=True, verbose_name='License')
+    period_start = tables.DateColumn(format='d/m/Y', verbose_name='Period Start')
+    period_end = tables.DateColumn(format='d/m/Y', verbose_name='Period End')
+    seats_purchased = tables.Column(verbose_name='Seats')
+    utilization = tables.Column(empty_values=(), verbose_name='Utilization', orderable=False)
+    price = tables.Column(verbose_name='Price', empty_values=())
+    status = tables.Column(empty_values=(), verbose_name='Status', orderable=False)
+    invoice_reference = tables.Column(verbose_name='Invoice #')
+    paid_date = tables.DateColumn(format='d/m/Y', verbose_name='Paid Date')
+
+    class Meta(NetBoxTable.Meta):
+        model = LicenseRenewal
+        fields = (
+            'pk', 'id', 'license', 'period_start', 'period_end',
+            'seats_purchased', 'utilization', 'price', 'currency',
+            'payment_method', 'status', 'invoice_reference', 'paid_date',
+            'created', 'last_updated', 'actions'
+        )
+        default_columns = (
+            'pk', 'license', 'period_start', 'period_end',
+            'seats_purchased', 'utilization', 'price', 'status'
+        )
+
+    def render_utilization(self, record):
+        """Show utilization percentage for this renewal period"""
+        if record.seats_purchased == 0:
+            return "—"
+
+        percentage = (record.seats_utilized / record.seats_purchased) * 100
+
+        if percentage >= 90:
+            color = 'success'
+        elif percentage >= 70:
+            color = 'info'
+        elif percentage >= 50:
+            color = 'warning'
+        else:
+            color = 'danger'
+
+        return format_html(
+            '<span class="badge text-bg-{}">{:.1f}%</span>',
+            color,
+            percentage
+        )
+
+    def value_utilization(self, record):
+        """Plain text value for CSV export"""
+        if record.seats_purchased == 0:
+            return "0%"
+        percentage = (record.seats_utilized / record.seats_purchased) * 100
+        return f"{percentage:.1f}%"
+
+    def render_price(self, record):
+        """Format price with currency"""
+        return f"{record.price} {record.currency}"
+
+    def render_status(self, record):
+        """Render status badge"""
+        status_colors = {
+            'pending': 'warning',
+            'approved': 'info',
+            'paid': 'success',
+            'cancelled': 'secondary',
+        }
+        color = status_colors.get(record.status, 'secondary')
+        return format_html(
+            '<span class="badge text-bg-{}">{}</span>',
+            color,
+            record.get_status_display()
+        )
+
+    def value_status(self, record):
+        """Plain text value for CSV export"""
+        return record.get_status_display()

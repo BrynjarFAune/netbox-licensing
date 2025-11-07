@@ -34,6 +34,17 @@ urlpatterns = [
     }),
     path('license-instances/delete/', views.LicenseInstanceBulkDeleteView.as_view(), name="licenseinstance_bulk_delete"),
 
+    # License Renewals
+    path('renewals/', views.LicenseRenewalListView.as_view(), name='licenserenewal_list'),
+    path('renewals/add/', views.LicenseRenewalEditView.as_view(), name='licenserenewal_add'),
+    path('renewals/<int:pk>/', views.LicenseRenewalView.as_view(), name='licenserenewal'),
+    path('renewals/<int:pk>/edit/', views.LicenseRenewalEditView.as_view(), name='licenserenewal_edit'),
+    path('renewals/<int:pk>/delete/', views.LicenseRenewalDeleteView.as_view(), name='licenserenewal_delete'),
+    path('renewals/<int:pk>/changelog', ObjectChangeLogView.as_view(), name='licenserenewal_changelog', kwargs={
+        'model': models.LicenseRenewal
+    }),
+    path('renewals/delete/', views.LicenseRenewalBulkDeleteView.as_view(), name='licenserenewal_bulk_delete'),
+
     # Reporting views
     path('reports/utilization/', views.UtilizationReportView.as_view(), name='utilization_report'),
     path('reports/vendor-utilization/', views.VendorUtilizationView.as_view(), name='vendor_utilization'),

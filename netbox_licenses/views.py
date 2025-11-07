@@ -413,6 +413,46 @@ class LicenseInstanceBulkDeleteView(generic.BulkDeleteView):
     queryset = models.LicenseInstance.objects.all()
     table = tables.LicenseInstanceTable
 
+
+# License Renewal Views
+class LicenseRenewalListView(generic.ObjectListView):
+    """List view for license renewals"""
+    queryset = models.LicenseRenewal.objects.prefetch_related('license', 'license__vendor')
+    table = tables.LicenseRenewalTable
+
+
+class LicenseRenewalView(generic.ObjectView):
+    """Detail view for a single license renewal"""
+    queryset = models.LicenseRenewal.objects.prefetch_related('license', 'license__vendor')
+
+
+class LicenseRenewalEditView(generic.ObjectEditView):
+    """Edit view for license renewals"""
+    queryset = models.LicenseRenewal.objects.all()
+    form = forms.LicenseRenewalForm
+
+    def get_extra_context(self, request, instance):
+        # Add context for immutability warning if editing existing renewal
+        if instance.pk:
+            messages.warning(
+                request,
+                "Warning: Renewals are immutable after creation. "
+                "Only admins can delete renewals. Any edits will fail."
+            )
+        return {}
+
+
+class LicenseRenewalDeleteView(generic.ObjectDeleteView):
+    """Delete view for license renewals (admin only)"""
+    queryset = models.LicenseRenewal.objects.all()
+
+
+class LicenseRenewalBulkDeleteView(generic.BulkDeleteView):
+    """Bulk delete view for license renewals"""
+    queryset = models.LicenseRenewal.objects.all()
+    table = tables.LicenseRenewalTable
+
+
 # Utilization Reporting Views
 class UtilizationReportView(View):
     """Comprehensive utilization report for license optimization"""

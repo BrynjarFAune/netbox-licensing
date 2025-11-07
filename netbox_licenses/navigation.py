@@ -17,6 +17,14 @@ licenseinstance_buttons = (
     ),
 )
 
+licenserenewal_buttons = (
+    PluginMenuButton(
+        link='plugins:netbox_licenses:licenserenewal_add',
+        title='Add Renewal',
+        icon_class='mdi mdi-plus-thick'
+    ),
+)
+
 currencyrate_buttons = (
     PluginMenuButton(
         link='plugins:netbox_licenses:currencyconversionrate_add_api',
@@ -55,6 +63,11 @@ menu = PluginMenu(
                 link='plugins:netbox_licenses:licenseinstance_list',
                 link_text='License Instances',
                 buttons=licenseinstance_buttons
+            ),
+            PluginMenuItem(
+                link='plugins:netbox_licenses:licenserenewal_list',
+                link_text='License Renewals',
+                buttons=licenserenewal_buttons
             ),
         )),
         ('Configuration', (

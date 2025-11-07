@@ -4,7 +4,7 @@ from django import forms
 from django.forms import DateInput, NumberInput, IntegerField, DateField, ModelChoiceField, HiddenInput, CharField, ChoiceField, DecimalField, Textarea, BooleanField, URLField
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
-from .models import License, LicenseInstance, CurrencyConversionRate, PluginConfiguration
+from .models import License, LicenseInstance, LicenseRenewal, CurrencyConversionRate, PluginConfiguration
 from .choices import CurrencyChoices, PaymentMethodChoices
 from tenancy.models import Contact, Tenant
 from dcim.models import Manufacturer
@@ -639,3 +639,119 @@ class PluginConfigurationForm(forms.ModelForm):
             'renewal_warning_days',
             'renewal_critical_days',
         ]
+
+
+class LicenseRenewalForm(NetBoxModelForm):
+    """Form for creating license renewal records"""
+
+    license = DynamicModelChoiceField(
+        queryset=License.objects.all(),
+        required=True
+    )
+
+    period_start = DateField(
+        widget=DateInput(attrs={'type': 'date'}),
+        required=True,
+        help_text="Start date of this billing period"
+    )
+
+    period_end = DateField(
+        widget=DateInput(attrs={'type': 'date'}),
+        required=True,
+        help_text="End date of this billing period"
+    )
+
+    price = DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        required=True,
+        help_text="Cost for this renewal period"
+    )
+
+    currency = ChoiceField(
+        choices=CurrencyChoices,
+        initial='NOK',
+        required=True
+    )
+
+    payment_method = ChoiceField(
+        choices=PaymentMethodChoices,
+        required=True,
+        help_text="How this renewal will be paid"
+    )
+
+    seats_purchased = IntegerField(
+        min_value=1,
+        required=True,
+        help_text="Number of license seats for this period"
+    )
+
+    seats_utilized = IntegerField(
+        min_value=0,
+        initial=0,
+        required=False,
+        help_text="Number of seats actually in use (snapshot)"
+    )
+
+    # Invoice tracking fields
+    invoice_reference = CharField(
+        max_length=200,
+        required=False,
+        help_text="Invoice number or reference"
+    )
+
+    invoice_file = forms.FileField(
+        required=False,
+        help_text="Upload invoice PDF or image"
+    )
+
+    invoice_url = URLField(
+        max_length=500,
+        required=False,
+        help_text="Link to invoice in accounting system"
+    )
+
+    # Payment tracking
+    status = ChoiceField(
+        choices=[
+            ('pending', 'Pending Payment'),
+            ('approved', 'Approved for Payment'),
+            ('paid', 'Paid'),
+            ('cancelled', 'Cancelled'),
+        ],
+        initial='pending',
+        required=True
+    )
+
+    paid_date = DateField(
+        widget=DateInput(attrs={'type': 'date'}),
+        required=False,
+        help_text="Date payment was made"
+    )
+
+    comments = CommentField()
+
+    class Meta:
+        model = LicenseRenewal
+        fields = [
+            'license', 'period_start', 'period_end', 'price', 'currency',
+            'payment_method', 'seats_purchased', 'seats_utilized',
+            'invoice_reference', 'invoice_file', 'invoice_url',
+            'status', 'paid_date', 'comments', 'tags'
+        ]
+
+    def clean(self):
+        cleaned_data = super().clean()
+        period_start = cleaned_data.get('period_start')
+        period_end = cleaned_data.get('period_end')
+
+        if period_start and period_end and period_end <= period_start:
+            raise ValidationError("Period end date must be after start date")
+
+        seats_purchased = cleaned_data.get('seats_purchased')
+        seats_utilized = cleaned_data.get('seats_utilized', 0)
+
+        if seats_utilized > seats_purchased:
+            raise ValidationError("Seats utilized cannot exceed seats purchased")
+
+        return cleaned_data
