@@ -204,7 +204,7 @@
         <div class="card">
             <h5 class="card-header">Quick Actions</h5>
             <div class="card-body">
-                <div class="d-flex gap-2 align-items-center">
+                <div class="d-flex gap-2 align-items-center flex-wrap">
                     {% if object.available_licenses >= 1 %}
                     <a href="{% url 'plugins:netbox_licenses:licenseinstance_add' %}?license={{ object.pk }}" class="btn btn-success">
                         <i class="mdi mdi-plus-thick"></i> Add Instance
@@ -215,6 +215,9 @@
                             <i class="mdi mdi-plus-multiple"></i> Bulk Add Instances
                         </a>
                     {% endif %}
+                    <a href="{% url 'plugins:netbox_licenses:licenserenewal_add' %}?license={{ object.pk }}" class="btn btn-warning">
+                        <i class="mdi mdi-refresh"></i> Renew License
+                    </a>
                     {% if object.available_licenses > 0 %}
                         <span class="badge text-bg-success">{{ object.available_licenses }} slot(s) available</span>
                     {% else %}
@@ -260,6 +263,88 @@
           <p>This license has no active instances. Create your first instance to start tracking usage.</p>
           <a href="{% url 'plugins:netbox_licenses:licenseinstance_add' %}?license={{ object.pk }}" class="btn btn-primary">
             <i class="mdi mdi-plus-thick"></i> Create First Instance
+          </a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+<!-- License Renewals Table Tab -->
+<div class="tab-pane" id="renewals">
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">License Renewals ({{ object.renewals.count }})</h5>
+      <a href="{% url 'plugins:netbox_licenses:licenserenewal_add' %}?license={{ object.pk }}" class="btn btn-sm btn-warning">
+        <i class="mdi mdi-refresh"></i> Record Renewal
+      </a>
+    </div>
+    <div class="card-body">
+      {% if object.renewals.all %}
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Period</th>
+                <th>Seats</th>
+                <th>Utilization</th>
+                <th>Price</th>
+                <th>Status</th>
+                <th>Invoice</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for renewal in object.renewals.all %}
+              <tr>
+                <td>
+                  <a href="{% url 'plugins:netbox_licenses:licenserenewal' pk=renewal.pk %}">
+                    {{ renewal.period_start|date:"d/m/Y" }} - {{ renewal.period_end|date:"d/m/Y" }}
+                  </a>
+                </td>
+                <td>{{ renewal.seats_utilized }} / {{ renewal.seats_purchased }}</td>
+                <td>
+                  {% if renewal.seats_purchased > 0 %}
+                    {% widthratio renewal.seats_utilized 1 renewal.seats_purchased as util_ratio %}
+                    {% widthratio util_ratio 1 100 as util_pct %}
+                    <span class="badge text-bg-{% if util_pct >= 90 %}success{% elif util_pct >= 70 %}info{% elif util_pct >= 50 %}warning{% else %}danger{% endif %}">
+                      {{ util_pct }}%
+                    </span>
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td>{{ renewal.price }} {{ renewal.currency }}</td>
+                <td>
+                  <span class="badge text-bg-{% if renewal.status == 'paid' %}success{% elif renewal.status == 'approved' %}info{% elif renewal.status == 'pending' %}warning{% else %}secondary{% endif %}">
+                    {{ renewal.get_status_display }}
+                  </span>
+                </td>
+                <td>
+                  {% if renewal.invoice_reference %}
+                    {{ renewal.invoice_reference }}
+                  {% elif renewal.invoice_url %}
+                    <a href="{{ renewal.invoice_url }}" target="_blank"><i class="mdi mdi-open-in-new"></i></a>
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td>
+                  <a href="{% url 'plugins:netbox_licenses:licenserenewal' pk=renewal.pk %}" class="btn btn-sm btn-outline-primary">
+                    <i class="mdi mdi-eye"></i>
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="text-center text-muted py-4">
+          <i class="mdi mdi-refresh" style="font-size: 3rem;"></i>
+          <h4>No Renewal Records</h4>
+          <p>This license has no renewal history. Create a renewal record to track billing cycles.</p>
+          <a href="{% url 'plugins:netbox_licenses:licenserenewal_add' %}?license={{ object.pk }}" class="btn btn-warning">
+            <i class="mdi mdi-refresh"></i> Record First Renewal
           </a>
         </div>
       {% endif %}
