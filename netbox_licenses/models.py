@@ -310,8 +310,8 @@ class LicenseInstance(NetBoxModel):
     assigned_object_id = models.PositiveIntegerField()
     assigned_object = GenericForeignKey("assigned_object_type", "assigned_object_id")
 
-    start_date = models.DateField(null=True, blank=True)
-    end_date = models.DateField(null=True, blank=True)
+    start_date = models.DateField(default=timezone.now, help_text="When this user/device was assigned the license")
+    end_date = models.DateField(null=True, blank=True, help_text="When this assignment ended (null = still active)")
 
     comments = models.TextField(blank=True)
 
@@ -348,6 +348,22 @@ class LicenseInstance(NetBoxModel):
     def display_price(self):
         """Returns a formatted price display string"""
         return f"{self.license_price} {self.license_currency}"
+
+    @property
+    def is_active(self):
+        """Check if this assignment is currently active"""
+        today = timezone.now().date()
+
+        # Not started yet
+        if self.start_date and self.start_date > today:
+            return False
+
+        # Already ended
+        if self.end_date and self.end_date < today:
+            return False
+
+        # Active if started and not ended
+        return True
 
     @property
     def derived_status(self):
@@ -406,43 +422,15 @@ class LicenseInstance(NetBoxModel):
         """Return assignment type for filtering"""
         return self.assigned_object_type.model if self.assigned_object_type else None
 
-    # SUBSCRIPTION LIFECYCLE PROPERTIES
+    # ASSIGNMENT LIFECYCLE PROPERTIES
     @property
-    def renewal_status(self):
-        """Smart status considering auto-renew and billing cycles"""
-        from django.utils import timezone
-
-        if self.license.auto_renew:
-            if not self.end_date:
-                return 'perpetual'
-            return 'auto_renewing'
-
-        # Manual renewal logic
+    def days_until_expiry(self):
+        """Days until this assignment expires (None if no end date)"""
         if not self.end_date:
-            return 'no_expiry'
+            return None
 
         today = timezone.now().date()
-        days_until = (self.end_date - today).days
-
-        if days_until < 0:
-            return 'expired'
-        elif days_until <= 7:
-            return 'critical'
-        elif days_until <= 30:
-            return 'warning'
-        else:
-            return 'active'
-
-    @property
-    def monthly_cost_contribution(self):
-        """How much this instance contributes to monthly costs"""
-        # Use license monthly equivalent price
-        return self.license.monthly_equivalent_price
-
-    @property
-    def is_auto_renewing(self):
-        """Check if this instance auto-renews"""
-        return self.license.auto_renew
+        return (self.end_date - today).days
 
     def get_absolute_url(self):
         return reverse('plugins:netbox_licenses:licenseinstance', args=[self.pk])
@@ -468,118 +456,13 @@ class LicenseInstance(NetBoxModel):
                 )
 
     def save(self, *args, **kwargs):
-        # Auto-set assignment type if not provided (assignments are now required)
-        if not self.assigned_object_type_id and self.license:
-            self.assigned_object_type = self.license.assignment_type
-
-        # Smart end date calculation based on license billing cycle
-        if self.start_date and not self.end_date and self.license:
-            self._calculate_end_date()
-
         # Validate allocation limits before saving
         self.full_clean()
 
         super().save(*args, **kwargs)
 
-    def _calculate_end_date(self):
-        """Calculate end date based on license billing cycle"""
-        from datetime import timedelta
-        from dateutil.relativedelta import relativedelta
-
-        cycle = self.license.billing_cycle
-
-        if cycle == 'monthly':
-            # Add 1 month using relativedelta for accurate month calculation
-            self.end_date = self.start_date + relativedelta(months=1) - timedelta(days=1)
-        elif cycle == 'quarterly':
-            # Add 3 months
-            self.end_date = self.start_date + relativedelta(months=3) - timedelta(days=1)
-        elif cycle == 'yearly':
-            # Add 1 year
-            self.end_date = self.start_date + relativedelta(years=1) - timedelta(days=1)
-        elif cycle == 'one_time':
-            # No expiry for one-time purchases
-            self.end_date = None
-        else:  # custom
-            # Default to 1 month for custom cycles
-            self.end_date = self.start_date + relativedelta(months=1) - timedelta(days=1)
-
 
 # Phase 3: Business Logic & Integration Models
-
-class LicenseRenewal(NetBoxModel):
-    """Track license renewal processes and approvals"""
-    
-    RENEWAL_STATUS_CHOICES = [
-        ('pending', 'Pending Review'),
-        ('approved', 'Approved'),
-        ('rejected', 'Rejected'),
-        ('in_progress', 'In Progress'),
-        ('completed', 'Completed'),
-        ('cancelled', 'Cancelled'),
-    ]
-    
-    license = models.ForeignKey(
-        to=License,
-        on_delete=models.CASCADE,
-        related_name='renewals'
-    )
-    renewal_date = models.DateField(
-        help_text="Date when license needs to be renewed"
-    )
-    new_end_date = models.DateField(
-        null=True, blank=True,
-        help_text="New expiration date after renewal"
-    )
-    status = models.CharField(
-        max_length=20,
-        choices=RENEWAL_STATUS_CHOICES,
-        default='pending'
-    )
-    
-    # Approval workflow
-    requested_by = models.CharField(max_length=100, blank=True)
-    approved_by = models.CharField(max_length=100, blank=True)
-    approval_date = models.DateTimeField(null=True, blank=True)
-    
-    # Cost information
-    renewal_cost = models.DecimalField(
-        max_digits=12, decimal_places=2,
-        null=True, blank=True
-    )
-    currency = models.CharField(
-        max_length=3,
-        default='NOK'
-    )
-    
-    # Budget tracking
-    budget_approved = models.BooleanField(default=False)
-    budget_code = models.CharField(max_length=50, blank=True)
-    
-    # Workflow metadata
-    workflow_data = models.JSONField(
-        default=dict, blank=True,
-        help_text="Workflow-specific data and approval history"
-    )
-    
-    notes = models.TextField(blank=True)
-    
-    class Meta:
-        ordering = ['-renewal_date']
-    
-    def __str__(self):
-        return f"{self.license.name} renewal ({self.renewal_date})"
-    
-    @property
-    def is_overdue(self):
-        """Check if renewal is overdue"""
-        return self.renewal_date < timezone.now().date() and self.status != 'completed'
-    
-    @property
-    def days_until_renewal(self):
-        """Days until renewal is due"""
-        return (self.renewal_date - timezone.now().date()).days
-
 
 class VendorIntegration(NetBoxModel):
     """Vendor API integration configurations"""
