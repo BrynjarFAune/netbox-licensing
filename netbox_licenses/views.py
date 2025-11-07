@@ -439,7 +439,7 @@ class LicenseRenewalEditView(generic.ObjectEditView):
     queryset = models.LicenseRenewal.objects.all()
     form = forms.LicenseRenewalForm
 
-    def alter_object(self, obj, request):
+    def alter_object(self, obj, request, args, kwargs):
         """Pre-populate license from URL parameter"""
         if not obj.pk and 'license' in request.GET:
             try:
