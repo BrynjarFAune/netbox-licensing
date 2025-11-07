@@ -5,7 +5,6 @@ class PaymentMethodChoices(ChoiceSet):
     CARD_AUTO = 'card_auto'
     CARD_MANUAL = 'card_manual'
     BANK_TRANSFER = 'bank_transfer'
-    PURCHASE_ORDER = 'purchase_order'
     PREPAID = 'prepaid'
     FREE_TRIAL = 'free_trial'
 
@@ -14,7 +13,6 @@ class PaymentMethodChoices(ChoiceSet):
         (CARD_AUTO, 'Credit Card (Auto-Charge)'),
         (CARD_MANUAL, 'Credit Card (Manual Payment)'),
         (BANK_TRANSFER, 'Bank Transfer'),
-        (PURCHASE_ORDER, 'Purchase Order'),
         (PREPAID, 'Prepaid'),
         (FREE_TRIAL, 'Free/Trial'),
     ]

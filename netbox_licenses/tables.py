@@ -145,7 +145,7 @@ class LicenseInstanceTable(NetBoxTable):
         # Auto-charging payment methods
         if payment_method == 'card_auto':
             return format_html('<span class="badge text-bg-success">Auto-Charge</span>')
-        elif payment_method in ['invoice', 'card_manual', 'bank_transfer', 'purchase_order']:
+        elif payment_method in ['invoice', 'card_manual', 'bank_transfer']:
             return format_html('<span class="badge text-bg-warning">Manual</span>')
         elif payment_method == 'prepaid':
             return format_html('<span class="badge text-bg-info">Prepaid</span>')
@@ -161,7 +161,7 @@ class LicenseInstanceTable(NetBoxTable):
         payment_method = record.license.payment_method
         if payment_method == 'card_auto':
             return "Auto-Charge"
-        elif payment_method in ['invoice', 'card_manual', 'bank_transfer', 'purchase_order']:
+        elif payment_method in ['invoice', 'card_manual', 'bank_transfer']:
             return "Manual"
         elif payment_method == 'prepaid':
             return "Prepaid"
