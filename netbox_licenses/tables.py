@@ -6,6 +6,7 @@ from .models import License, LicenseInstance, LicenseRenewal, CurrencyConversion
 from .choices import LicenseStatusChoices
 
 class LicenseTable(NetBoxTable):
+    # NetBox standard checkbox - uses django-tables2 CheckBoxColumn with NetBoxTable inheritance
     pk = tables.CheckBoxColumn()
     name = tables.Column(linkify=True)
     vendor = tables.Column(linkify=True)
