@@ -431,6 +431,16 @@ class LicenseRenewalEditView(generic.ObjectEditView):
     queryset = models.LicenseRenewal.objects.all()
     form = forms.LicenseRenewalForm
 
+    def alter_object(self, instance, request):
+        """Pre-populate license from URL parameter"""
+        if not instance.pk and 'license' in request.GET:
+            try:
+                license_id = int(request.GET['license'])
+                instance.license = models.License.objects.get(pk=license_id)
+            except (ValueError, models.License.DoesNotExist):
+                pass
+        return instance
+
     def get_extra_context(self, request, instance):
         # Add context for immutability warning if editing existing renewal
         if instance.pk:
