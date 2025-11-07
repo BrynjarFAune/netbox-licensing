@@ -82,6 +82,12 @@ class License(NetBoxModel):
         help_text="How frequently this license is billed"
     )
 
+    contract_start_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="When the contract/billing started (for calculating next renewal)"
+    )
+
     auto_renew = models.BooleanField(
         default=False,
         help_text="Automatically renew instances when they expire (deprecated - use payment_method instead)"
@@ -208,6 +214,34 @@ class License(NetBoxModel):
     def total_yearly_commitment_nok(self):
         """Total yearly commitment converted to NOK for dashboard display"""
         return self.total_monthly_commitment_nok * 12
+
+    @property
+    def next_renewal_date(self):
+        """Calculate next renewal date based on contract start and billing cycle"""
+        if not self.contract_start_date:
+            return None
+
+        from dateutil.relativedelta import relativedelta
+
+        today = timezone.now().date()
+        start = self.contract_start_date
+
+        # Calculate renewal interval
+        if self.billing_cycle == 'monthly':
+            delta = relativedelta(months=1)
+        elif self.billing_cycle == 'quarterly':
+            delta = relativedelta(months=3)
+        elif self.billing_cycle == 'yearly':
+            delta = relativedelta(years=1)
+        else:
+            return None  # one_time or custom
+
+        # Find next renewal date after today
+        next_date = start
+        while next_date <= today:
+            next_date += delta
+
+        return next_date
 
     # EXISTING PROPERTIES
     @cached_property
@@ -974,3 +1008,142 @@ class PluginConfiguration(models.Model):
         # Validate renewal days
         if self.renewal_critical_days > self.renewal_warning_days:
             raise ValidationError("Critical renewal warning must be less than warning days")
+
+
+class LicenseRenewal(NetBoxModel):
+    """
+    Tracks renewal history for licenses.
+    Each renewal represents one billing period.
+    Immutable once created - can only be deleted by admins.
+    """
+    license = models.ForeignKey(
+        to='License',
+        on_delete=models.CASCADE,
+        related_name='renewals',
+        help_text="License this renewal belongs to"
+    )
+
+    # Period dates
+    period_start = models.DateField(
+        help_text="Start date of this billing period"
+    )
+    period_end = models.DateField(
+        help_text="End date of this billing period"
+    )
+
+    # Financial details
+    price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        help_text="Price for this renewal period"
+    )
+    currency = models.CharField(
+        max_length=3,
+        default='NOK',
+        help_text="Currency code"
+    )
+
+    # Payment tracking
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PaymentMethodChoices,
+        help_text="How this renewal was/will be paid"
+    )
+
+    # Invoice tracking (simple for now)
+    invoice_reference = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Invoice number or reference"
+    )
+    invoice_file = models.FileField(
+        upload_to='license_invoices/%Y/%m/',
+        null=True,
+        blank=True,
+        help_text="Upload invoice PDF or screenshot"
+    )
+    invoice_url = models.URLField(
+        max_length=500,
+        blank=True,
+        help_text="Link to invoice in accounting system"
+    )
+
+    # Utilization snapshot
+    seats_purchased = models.IntegerField(
+        help_text="Total seats purchased for this period"
+    )
+    seats_utilized = models.IntegerField(
+        default=0,
+        help_text="Seats utilized at time of renewal"
+    )
+
+    # Status
+    STATUS_CHOICES = [
+        ('pending', 'Pending Payment'),
+        ('paid', 'Paid'),
+        ('cancelled', 'Cancelled'),
+    ]
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='pending',
+        help_text="Payment status"
+    )
+
+    paid_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date payment was made"
+    )
+
+    class Meta:
+        ordering = ['-period_start']
+        verbose_name = "License Renewal"
+        verbose_name_plural = "License Renewals"
+        indexes = [
+            models.Index(fields=['license', '-period_start']),
+            models.Index(fields=['status']),
+        ]
+
+    def __str__(self):
+        return f"{self.license.name} - {self.period_start} to {self.period_end}"
+
+    def get_absolute_url(self):
+        return reverse('plugins:netbox_licenses:licenserenewal', args=[self.pk])
+
+    @property
+    def utilization_percentage(self):
+        """Calculate utilization for this period"""
+        if self.seats_purchased == 0:
+            return 0
+        return (self.seats_utilized / self.seats_purchased) * 100
+
+    @property
+    def cost_per_seat(self):
+        """Calculate cost per seat for this period"""
+        if self.seats_purchased == 0:
+            return 0
+        return self.price / self.seats_purchased
+
+    def save(self, *args, **kwargs):
+        """Enforce immutability - renewals cannot be modified after creation"""
+        if self.pk:
+            raise ValidationError("Renewals are immutable and cannot be modified. Create a new renewal instead.")
+        super().save(*args, **kwargs)
+
+    def clean(self):
+        """Validate renewal data"""
+        from django.core.exceptions import ValidationError
+        super().clean()
+
+        # Validate period dates
+        if self.period_end <= self.period_start:
+            raise ValidationError("Period end date must be after start date")
+
+        # Validate seats
+        if self.seats_purchased < 0:
+            raise ValidationError("Seats purchased cannot be negative")
+        if self.seats_utilized < 0:
+            raise ValidationError("Seats utilized cannot be negative")
+        if self.seats_utilized > self.seats_purchased:
+            raise ValidationError("Seats utilized cannot exceed seats purchased")
