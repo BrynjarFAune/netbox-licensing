@@ -32,6 +32,7 @@ urlpatterns = [
     path('license-instances/<int:pk>/changelog', ObjectChangeLogView.as_view(), name='licenseinstance_changelog', kwargs={
         'model': models.LicenseInstance
     }),
+    path('license-instances/edit/', views.LicenseInstanceBulkEditView.as_view(), name='licenseinstance_bulk_edit'),
     path('license-instances/delete/', views.LicenseInstanceBulkDeleteView.as_view(), name="licenseinstance_bulk_delete"),
 
     # License Renewals

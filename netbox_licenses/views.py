@@ -409,6 +409,14 @@ class AssignedObjectFieldView(View):
             },
         )
 
+class LicenseInstanceBulkEditView(generic.BulkEditView):
+    """Bulk edit view for license instances"""
+    queryset = models.LicenseInstance.objects.all()
+    filterset = filtersets.LicenseInstanceFilterSet
+    table = tables.LicenseInstanceTable
+    form = forms.LicenseInstanceBulkEditForm
+
+
 class LicenseInstanceBulkDeleteView(generic.BulkDeleteView):
     queryset = models.LicenseInstance.objects.all()
     table = tables.LicenseInstanceTable
@@ -431,15 +439,15 @@ class LicenseRenewalEditView(generic.ObjectEditView):
     queryset = models.LicenseRenewal.objects.all()
     form = forms.LicenseRenewalForm
 
-    def alter_object(self, instance, request):
+    def alter_object(self, obj, request):
         """Pre-populate license from URL parameter"""
-        if not instance.pk and 'license' in request.GET:
+        if not obj.pk and 'license' in request.GET:
             try:
                 license_id = int(request.GET['license'])
-                instance.license = models.License.objects.get(pk=license_id)
+                obj.license = models.License.objects.get(pk=license_id)
             except (ValueError, models.License.DoesNotExist):
                 pass
-        return instance
+        return obj
 
     def get_extra_context(self, request, instance):
         # Add context for immutability warning if editing existing renewal

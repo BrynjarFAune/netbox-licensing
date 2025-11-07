@@ -269,6 +269,23 @@ class LicenseInstanceForm(NetBoxModelForm):
         return instance
 
 
+class LicenseInstanceBulkEditForm(NetBoxModelForm):
+    """Bulk edit form for license instances"""
+
+    end_date = DateField(
+        required=False,
+        widget=DateInput(attrs={'type': 'date'}),
+        help_text="Update end date for selected instances"
+    )
+
+    comments = CommentField()
+
+    class Meta:
+        model = LicenseInstance
+        fields = ['end_date', 'comments']
+        nullable_fields = ['end_date', 'comments']
+
+
 class QuantitySelectionForm(forms.Form):
     """Simple form to select quantity for bulk creation"""
     quantity = forms.IntegerField(
