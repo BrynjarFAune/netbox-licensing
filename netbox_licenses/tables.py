@@ -6,8 +6,7 @@ from .models import License, LicenseInstance, LicenseRenewal, CurrencyConversion
 from .choices import LicenseStatusChoices
 
 class LicenseTable(NetBoxTable):
-    # NetBox standard checkbox - uses django-tables2 CheckBoxColumn with NetBoxTable inheritance
-    pk = tables.CheckBoxColumn()
+    # pk column provided automatically by NetBoxTable - do not redefine!
     name = tables.Column(linkify=True)
     vendor = tables.Column(linkify=True)
     tenant = tables.Column(linkify=True)
@@ -110,7 +109,7 @@ class LicenseTable(NetBoxTable):
         return "—"
 
 class LicenseInstanceTable(NetBoxTable):
-    pk = tables.CheckBoxColumn()
+    # pk column provided automatically by NetBoxTable
     license = tables.Column(linkify=True)
     assigned_object = tables.Column(verbose_name="Assigned To", orderable=False)
     start_date = tables.DateColumn(format='d/m/Y')
@@ -198,8 +197,7 @@ class LicenseInstanceTable(NetBoxTable):
 
 class CurrencyConversionRateTable(NetBoxTable):
     """Table for displaying currency conversion rates"""
-
-    pk = tables.CheckBoxColumn()
+    # pk column provided automatically by NetBoxTable
     currency_code = tables.Column(linkify=True, verbose_name='Currency')
     rate_to_nok = tables.Column(verbose_name='Rate to NOK')
     source = tables.Column(verbose_name='Source', empty_values=())
@@ -234,8 +232,7 @@ class CurrencyConversionRateTable(NetBoxTable):
 
 class LicenseRenewalTable(NetBoxTable):
     """Table for displaying license renewal history"""
-
-    pk = tables.CheckBoxColumn()
+    # pk column provided automatically by NetBoxTable
     license = tables.Column(linkify=True, verbose_name='License')
     period_start = tables.DateColumn(format='d/m/Y', verbose_name='Period Start')
     period_end = tables.DateColumn(format='d/m/Y', verbose_name='Period End')
