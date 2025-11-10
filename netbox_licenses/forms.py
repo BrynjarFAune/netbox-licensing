@@ -703,12 +703,7 @@ class LicenseRenewalForm(NetBoxModelForm):
         help_text="Number of license seats for this period"
     )
 
-    seats_utilized = IntegerField(
-        min_value=0,
-        initial=0,
-        required=False,
-        help_text="Number of seats actually in use during this period (can be updated later)"
-    )
+    # seats_utilized is auto-set from license.consumed_licenses on save - not user editable
 
     # Invoice tracking fields
     invoice_reference = CharField(
@@ -752,7 +747,7 @@ class LicenseRenewalForm(NetBoxModelForm):
         model = LicenseRenewal
         fields = [
             'license', 'period_start', 'period_end', 'price', 'currency',
-            'payment_method', 'seats_purchased', 'seats_utilized',
+            'payment_method', 'seats_purchased',
             'invoice_reference', 'invoice_file', 'invoice_url',
             'status', 'paid_date', 'comments', 'tags'
         ]
@@ -779,10 +774,6 @@ class LicenseRenewalForm(NetBoxModelForm):
                         self.initial['payment_method'] = license_obj.payment_method
                     if 'seats_purchased' not in self.initial:
                         self.initial['seats_purchased'] = license_obj.total_licenses
-
-                    # Seats utilized defaults to 0 (will be updated after period)
-                    if 'seats_utilized' not in self.initial:
-                        self.initial['seats_utilized'] = 0
 
                     # Auto-calculate period dates
                     if 'period_start' not in self.initial:

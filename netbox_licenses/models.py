@@ -1018,6 +1018,11 @@ class LicenseRenewal(NetBoxModel):
         """Enforce immutability - renewals cannot be modified after creation"""
         if self.pk:
             raise ValidationError("Renewals are immutable and cannot be modified. Create a new renewal instead.")
+
+        # Auto-set seats_utilized from license's current consumption
+        if not self.pk and self.license_id:
+            self.seats_utilized = self.license.consumed_licenses
+
         super().save(*args, **kwargs)
 
     def clean(self):
