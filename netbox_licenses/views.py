@@ -16,148 +16,167 @@ from dcim.models import Manufacturer
 
 # Dashboard view
 class LicenseDashboardView(View):
-    """Comprehensive dashboard showing license overview with charts and statistics"""
+    """Comprehensive dashboard showing license overview with business metrics"""
     template_name = "netbox_licenses/dashboard.html"
 
     def get(self, request):
-        # Get all licenses
-        licenses = models.License.objects.all()
-        instances = models.LicenseInstance.objects.all()
+        from decimal import Decimal
+        from netbox_licenses.models import CurrencyConversionRate
 
-        # Calculate expiration status for pie chart
+        # Get all licenses with related data
+        licenses = models.License.objects.prefetch_related('instances', 'vendor').all()
+        instances = models.LicenseInstance.objects.select_related('license', 'license__vendor').all()
         today = timezone.now().date()
-        expired = 0
-        expiring_soon = 0  # Within 30 days
-        expiring_medium = 0  # Within 90 days
-        healthy = 0  # More than 90 days or no end date
 
-        for instance in instances:
-            if instance.end_date:
-                days_until = (instance.end_date - today).days
-                if days_until < 0:
-                    expired += 1
-                elif days_until <= 30:
-                    expiring_soon += 1
-                elif days_until <= 90:
-                    expiring_medium += 1
-                else:
-                    healthy += 1
+        # === HERO METRICS ===
+        total_cost_nok = Decimal('0.00')
+        unused_cost_nok = Decimal('0.00')
+        total_licenses_count = 0
+        total_utilized = 0
+        over_allocated_count = 0
+
+        for license in licenses:
+            # Convert to NOK
+            price = Decimal(str(license.price)) if license.price else Decimal('0.00')
+            rate = CurrencyConversionRate.get_rate_to_nok(license.currency)
+            if rate is None:
+                rate = Decimal('1.00')
             else:
-                healthy += 1  # No end date = healthy
+                rate = Decimal(str(rate))
 
-        # Vendor summary statistics
+            license_cost_nok = price * rate * license.total_licenses
+            total_cost_nok += license_cost_nok
+
+            # Calculate unused cost
+            unused = license.available_licenses
+            if unused > 0:
+                unused_cost_nok += price * rate * unused
+
+            # Track over-allocation
+            if license.consumed_licenses > license.total_licenses:
+                over_allocated_count += 1
+
+            total_licenses_count += license.total_licenses
+            total_utilized += license.consumed_licenses
+
+        utilization_percent = (total_utilized / total_licenses_count * 100) if total_licenses_count > 0 else 0
+
+        # === VENDOR COST DISTRIBUTION ===
         vendor_stats = []
         vendors = Manufacturer.objects.filter(licenses__isnull=False).distinct()
 
         for vendor in vendors:
             vendor_licenses = licenses.filter(vendor=vendor)
-            total_licenses = sum(l.total_licenses for l in vendor_licenses)
-            consumed_licenses = sum(l.consumed_licenses for l in vendor_licenses)
-            available_licenses = total_licenses - consumed_licenses
+            vendor_total = 0
+            vendor_consumed = 0
+            vendor_cost_nok = Decimal('0.00')
 
-            # Calculate total price in NOK using the total_monthly_commitment_nok property
-            total_price_nok = sum(float(l.total_monthly_commitment_nok) for l in vendor_licenses)
+            for license in vendor_licenses:
+                vendor_total += license.total_licenses
+                vendor_consumed += license.consumed_licenses
+
+                price = Decimal(str(license.price)) if license.price else Decimal('0.00')
+                rate = CurrencyConversionRate.get_rate_to_nok(license.currency)
+                if rate is None:
+                    rate = Decimal('1.00')
+                else:
+                    rate = Decimal(str(rate))
+
+                vendor_cost_nok += price * rate * license.total_licenses
 
             vendor_stats.append({
                 'vendor': vendor.name,
                 'vendor_id': vendor.id,
                 'license_count': vendor_licenses.count(),
-                'total_licenses': total_licenses,
-                'consumed_licenses': consumed_licenses,
-                'available_licenses': available_licenses,
-                'total_price_nok': total_price_nok,
-                'utilization_percentage': (consumed_licenses / total_licenses * 100) if total_licenses > 0 else 0
+                'total_licenses': vendor_total,
+                'consumed_licenses': vendor_consumed,
+                'total_cost_nok': float(vendor_cost_nok),
+                'utilization_percentage': (vendor_consumed / vendor_total * 100) if vendor_total > 0 else 0
             })
 
-        # Sort vendor stats by total licenses descending
-        vendor_stats.sort(key=lambda x: x['total_licenses'], reverse=True)
+        # Sort by cost descending
+        vendor_stats.sort(key=lambda x: x['total_cost_nok'], reverse=True)
 
-        # Overall statistics
-        total_licenses_count = sum(l.total_licenses for l in licenses)
-        total_consumed = sum(l.consumed_licenses for l in licenses)
-        total_available = total_licenses_count - total_consumed
+        # Calculate percentages for pie chart
+        for stat in vendor_stats:
+            stat['cost_percentage'] = (stat['total_cost_nok'] / float(total_cost_nok) * 100) if total_cost_nok > 0 else 0
 
-        # Calculate total value in NOK
-        total_value_nok = sum(stat['total_price_nok'] for stat in vendor_stats)
+        # === TOP UNDERUTILIZED LICENSES ===
+        underutilized = []
+        for license in licenses:
+            if license.available_licenses > 0 and license.total_licenses > 0:
+                waste_pct = (license.available_licenses / license.total_licenses) * 100
 
-        # Calculate subscription commitments in NOK
-        total_monthly_commitment = sum(l.total_monthly_commitment_nok for l in licenses)
-        total_yearly_commitment = sum(l.total_yearly_commitment_nok for l in licenses)
+                price = Decimal(str(license.price)) if license.price else Decimal('0.00')
+                rate = CurrencyConversionRate.get_rate_to_nok(license.currency)
+                if rate is None:
+                    rate = Decimal('1.00')
+                else:
+                    rate = Decimal(str(rate))
 
-        # Payment method statistics
+                wasted_cost = price * rate * license.available_licenses
+
+                underutilized.append({
+                    'license': license,
+                    'waste_percentage': waste_pct,
+                    'wasted_cost_nok': float(wasted_cost),
+                    'unused_seats': license.available_licenses
+                })
+
+        # Top 5 worst offenders
+        underutilized.sort(key=lambda x: x['wasted_cost_nok'], reverse=True)
+        top_underutilized = underutilized[:5]
+
+        # === EXPIRING INSTANCES ===
+        expiring_soon = []  # Within 30 days
+        recently_expired = []  # Last 30 days
+
+        for instance in instances:
+            if instance.end_date:
+                days_until = (instance.end_date - today).days
+                instance.days_remaining = days_until  # Add as attribute for template
+
+                if -30 <= days_until < 0:
+                    # Expired in last 30 days
+                    recently_expired.append(instance)
+                elif 0 <= days_until <= 90:
+                    # Expiring in next 90 days
+                    expiring_soon.append(instance)
+
+        # Sort by urgency
+        expiring_soon.sort(key=lambda x: x.end_date)
+        recently_expired.sort(key=lambda x: x.end_date, reverse=True)
+
+        # Separate auto-renew from manual
         from .choices import PaymentMethodChoices
-        payment_method_stats = {}
-        for choice_value, choice_label in PaymentMethodChoices.CHOICES:
-            method_licenses = licenses.filter(payment_method=choice_value)
-            payment_method_stats[choice_value] = {
-                'label': choice_label,
-                'count': method_licenses.count(),
-                'total_licenses': sum(l.total_licenses for l in method_licenses),
-                'consumed_licenses': sum(l.consumed_licenses for l in method_licenses)
-            }
-
-        # Auto-charge licenses for true MRC
-        auto_charge_licenses = licenses.filter(payment_method=PaymentMethodChoices.CARD_AUTO)
-        auto_charge_monthly = sum(l.total_monthly_commitment_nok for l in auto_charge_licenses)
-
-        # Manual payment licenses (invoice, manual card, etc)
-        manual_payment_licenses = licenses.exclude(payment_method__in=[PaymentMethodChoices.CARD_AUTO, PaymentMethodChoices.FREE_TRIAL])
-        manual_payment_monthly = sum(l.total_monthly_commitment_nok for l in manual_payment_licenses)
-
-        # Responsibility tracking
-        unassigned_licenses = licenses.filter(responsible_contact__isnull=True).count()
-        responsible_contacts = {}
-        for license in licenses.filter(responsible_contact__isnull=False):
-            contact = license.responsible_contact
-            if contact not in responsible_contacts:
-                responsible_contacts[contact] = {
-                    'name': str(contact),
-                    'count': 0,
-                    'total_value': 0
-                }
-            responsible_contacts[contact]['count'] += 1
-            responsible_contacts[contact]['total_value'] += float(license.price or 0)
+        expiring_auto_renew = [i for i in expiring_soon if i.license.payment_method == PaymentMethodChoices.CARD_AUTO]
+        expiring_manual = [i for i in expiring_soon if i.license.payment_method != PaymentMethodChoices.CARD_AUTO]
 
         context = {
-            # Pie chart data for expiration status
-            'expiration_chart_data': {
-                'expired': expired,
-                'expiring_soon': expiring_soon,
-                'expiring_medium': expiring_medium,
-                'healthy': healthy,
-            },
+            # Hero metrics
+            'total_cost_nok': float(total_cost_nok),
+            'unused_cost_nok': float(unused_cost_nok),
+            'total_licenses': total_licenses_count,
+            'total_utilized': total_utilized,
+            'utilization_percent': utilization_percent,
+            'over_allocated_count': over_allocated_count,
 
-            # Vendor statistics table
+            # Vendor distribution
             'vendor_stats': vendor_stats,
-            'vendor_stats_json': json.dumps(vendor_stats),
+            'vendor_stats_json': json.dumps([{
+                'vendor': v['vendor'],
+                'cost': v['total_cost_nok'],
+                'percentage': v['cost_percentage']
+            } for v in vendor_stats]),
 
-            # Overall summary cards
-            'summary': {
-                'total_licenses': total_licenses_count,
-                'total_consumed': total_consumed,
-                'total_available': total_available,
-                'total_value_nok': total_value_nok,
-                'unique_vendors': len(vendor_stats),
-                'unique_licenses': licenses.count(),
-                'total_instances': instances.count(),
-                'overall_utilization': (total_consumed / total_licenses_count * 100) if total_licenses_count > 0 else 0,
-                # NEW: Subscription commitments
-                'total_monthly_commitment': total_monthly_commitment,
-                'total_yearly_commitment': total_yearly_commitment,
-                # Payment method breakdown
-                'auto_charge_monthly': auto_charge_monthly,
-                'auto_charge_count': auto_charge_licenses.count(),
-                'manual_payment_monthly': manual_payment_monthly,
-                'manual_payment_count': manual_payment_licenses.count(),
-                # Responsibility
-                'unassigned_licenses': unassigned_licenses,
-            },
+            # Top underutilized
+            'top_underutilized': top_underutilized,
 
-            # Payment method statistics
-            'payment_method_stats': payment_method_stats,
-
-            # Responsibility tracking
-            'responsible_contacts': sorted(responsible_contacts.values(), key=lambda x: x['count'], reverse=True),
+            # Expiring instances
+            'expiring_soon_count': len(expiring_soon),
+            'expiring_auto_renew': expiring_auto_renew[:10],
+            'expiring_manual': expiring_manual[:10],
+            'recently_expired': recently_expired[:10],
         }
 
         return render(request, self.template_name, context)
