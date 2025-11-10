@@ -707,7 +707,7 @@ class LicenseRenewalForm(NetBoxModelForm):
         min_value=0,
         initial=0,
         required=False,
-        help_text="Number of seats actually in use (snapshot)"
+        help_text="Number of seats actually in use during this period (can be updated later)"
     )
 
     # Invoice tracking fields
@@ -763,47 +763,52 @@ class LicenseRenewalForm(NetBoxModelForm):
         # Auto-fill fields based on the selected license
         # Only for new renewals, not edits
         if not self.instance.pk:
-            try:
-                license_obj = self.instance.license
+            # Get license from initial data (set by view's alter_object)
+            license_id = self.initial.get('license')
 
-                # Auto-fill price, currency, payment method, and seats from license
-                if not self.initial.get('price'):
-                    self.initial['price'] = license_obj.price
-                if not self.initial.get('currency'):
-                    self.initial['currency'] = license_obj.currency
-                if not self.initial.get('payment_method'):
-                    self.initial['payment_method'] = license_obj.payment_method
-                if not self.initial.get('seats_purchased'):
-                    self.initial['seats_purchased'] = license_obj.total_licenses
-                if not self.initial.get('seats_utilized'):
-                    self.initial['seats_utilized'] = license_obj.consumed_licenses
+            if license_id:
+                try:
+                    license_obj = License.objects.get(pk=license_id)
 
-                # Auto-calculate period dates if not provided
-                if not self.initial.get('period_start'):
-                    from django.utils import timezone
-                    self.initial['period_start'] = timezone.now().date()
+                    # Auto-fill from license
+                    if 'price' not in self.initial:
+                        self.initial['price'] = license_obj.price
+                    if 'currency' not in self.initial:
+                        self.initial['currency'] = license_obj.currency
+                    if 'payment_method' not in self.initial:
+                        self.initial['payment_method'] = license_obj.payment_method
+                    if 'seats_purchased' not in self.initial:
+                        self.initial['seats_purchased'] = license_obj.total_licenses
 
-                if not self.initial.get('period_end'):
-                    from dateutil.relativedelta import relativedelta
-                    from django.utils import timezone
-                    start_date = self.initial.get('period_start') or timezone.now().date()
+                    # Seats utilized defaults to 0 (will be updated after period)
+                    if 'seats_utilized' not in self.initial:
+                        self.initial['seats_utilized'] = 0
 
-                    # Calculate end date based on billing cycle
-                    if license_obj.billing_cycle == 'monthly':
-                        end_date = start_date + relativedelta(months=1) - relativedelta(days=1)
-                    elif license_obj.billing_cycle == 'quarterly':
-                        end_date = start_date + relativedelta(months=3) - relativedelta(days=1)
-                    elif license_obj.billing_cycle == 'yearly':
-                        end_date = start_date + relativedelta(years=1) - relativedelta(days=1)
-                    else:
-                        # Default to 1 year for one_time or custom
-                        end_date = start_date + relativedelta(years=1) - relativedelta(days=1)
+                    # Auto-calculate period dates
+                    if 'period_start' not in self.initial:
+                        from django.utils import timezone
+                        self.initial['period_start'] = timezone.now().date()
 
-                    self.initial['period_end'] = end_date
+                    if 'period_end' not in self.initial:
+                        from dateutil.relativedelta import relativedelta
+                        from django.utils import timezone
+                        start_date = self.initial.get('period_start') or timezone.now().date()
 
-            except License.DoesNotExist:
-                # License not set yet, skip auto-fill
-                pass
+                        # Calculate end date based on billing cycle
+                        if license_obj.billing_cycle == 'monthly':
+                            end_date = start_date + relativedelta(months=1) - relativedelta(days=1)
+                        elif license_obj.billing_cycle == 'quarterly':
+                            end_date = start_date + relativedelta(months=3) - relativedelta(days=1)
+                        elif license_obj.billing_cycle == 'yearly':
+                            end_date = start_date + relativedelta(years=1) - relativedelta(days=1)
+                        else:
+                            # Default to 1 year for one_time or custom
+                            end_date = start_date + relativedelta(years=1) - relativedelta(days=1)
+
+                        self.initial['period_end'] = end_date
+
+                except License.DoesNotExist:
+                    pass
 
     def clean(self):
         cleaned_data = super().clean()

@@ -88,6 +88,12 @@ class License(NetBoxModel):
         help_text="When the contract/billing started (for calculating next renewal)"
     )
 
+    contract_end_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="When the contract expires (optional - leave blank for ongoing contracts)"
+    )
+
     auto_renew = models.BooleanField(
         default=False,
         help_text="Automatically renew instances when they expire (deprecated - use payment_method instead)"

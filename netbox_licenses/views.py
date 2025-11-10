@@ -449,6 +449,16 @@ class LicenseRenewalEditView(generic.ObjectEditView):
                 pass
         return obj
 
+    def get_initial(self):
+        """Pass license ID to form for auto-fill"""
+        initial = super().get_initial()
+        if 'license' in self.request.GET:
+            try:
+                initial['license'] = int(self.request.GET['license'])
+            except (ValueError, TypeError):
+                pass
+        return initial
+
     def get_extra_context(self, request, instance):
         # Add context for immutability warning if editing existing renewal
         if instance.pk:
