@@ -4,7 +4,7 @@ from django import forms
 from django.forms import DateInput, NumberInput, IntegerField, DateField, ModelChoiceField, HiddenInput, CharField, ChoiceField, DecimalField, Textarea, BooleanField, URLField
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
-from .models import License, LicenseInstance, LicenseRenewal, CurrencyConversionRate, PluginConfiguration
+from .models import License, LicenseInstance, LicensePeriod, CurrencyConversionRate, PluginConfiguration
 from .choices import CurrencyChoices, PaymentMethodChoices
 from tenancy.models import Contact, Tenant
 from dcim.models import Manufacturer
@@ -658,8 +658,8 @@ class PluginConfigurationForm(forms.ModelForm):
         ]
 
 
-class LicenseRenewalForm(NetBoxModelForm):
-    """Form for creating license renewal records"""
+class LicensePeriodForm(NetBoxModelForm):
+    """Form for creating license period records (billing/subscription periods)"""
 
     license = DynamicModelChoiceField(
         queryset=License.objects.all(),
@@ -705,7 +705,7 @@ class LicenseRenewalForm(NetBoxModelForm):
 
     # seats_utilized is auto-set from license.consumed_licenses on save - not user editable
 
-    # Invoice tracking fields
+    # Invoice tracking fields (optional)
     invoice_reference = CharField(
         max_length=200,
         required=False,
@@ -723,33 +723,15 @@ class LicenseRenewalForm(NetBoxModelForm):
         help_text="Link to invoice in accounting system"
     )
 
-    # Payment tracking
-    status = ChoiceField(
-        choices=[
-            ('pending', 'Pending Payment'),
-            ('approved', 'Approved for Payment'),
-            ('paid', 'Paid'),
-            ('cancelled', 'Cancelled'),
-        ],
-        initial='pending',
-        required=True
-    )
-
-    paid_date = DateField(
-        widget=DateInput(attrs={'type': 'date'}),
-        required=False,
-        help_text="Date payment was made"
-    )
-
     comments = CommentField()
 
     class Meta:
-        model = LicenseRenewal
+        model = LicensePeriod
         fields = [
             'license', 'period_start', 'period_end', 'price', 'currency',
             'payment_method', 'seats_purchased',
             'invoice_reference', 'invoice_file', 'invoice_url',
-            'status', 'paid_date', 'comments', 'tags'
+            'comments', 'tags'
         ]
 
     def __init__(self, *args, **kwargs):

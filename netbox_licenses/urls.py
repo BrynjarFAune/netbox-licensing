@@ -35,16 +35,16 @@ urlpatterns = [
     path('license-instances/edit/', views.LicenseInstanceBulkEditView.as_view(), name='licenseinstance_bulk_edit'),
     path('license-instances/delete/', views.LicenseInstanceBulkDeleteView.as_view(), name="licenseinstance_bulk_delete"),
 
-    # License Renewals
-    path('renewals/', views.LicenseRenewalListView.as_view(), name='licenserenewal_list'),
-    path('renewals/add/', views.LicenseRenewalEditView.as_view(), name='licenserenewal_add'),
-    path('renewals/<int:pk>/', views.LicenseRenewalView.as_view(), name='licenserenewal'),
-    path('renewals/<int:pk>/edit/', views.LicenseRenewalEditView.as_view(), name='licenserenewal_edit'),
-    path('renewals/<int:pk>/delete/', views.LicenseRenewalDeleteView.as_view(), name='licenserenewal_delete'),
-    path('renewals/<int:pk>/changelog', ObjectChangeLogView.as_view(), name='licenserenewal_changelog', kwargs={
-        'model': models.LicenseRenewal
+    # License Periods
+    path('periods/', views.LicensePeriodListView.as_view(), name='licenseperiod_list'),
+    path('periods/add/', views.LicensePeriodEditView.as_view(), name='licenseperiod_add'),
+    path('periods/<int:pk>/', views.LicensePeriodView.as_view(), name='licenseperiod'),
+    path('periods/<int:pk>/edit/', views.LicensePeriodEditView.as_view(), name='licenseperiod_edit'),
+    path('periods/<int:pk>/delete/', views.LicensePeriodDeleteView.as_view(), name='licenseperiod_delete'),
+    path('periods/<int:pk>/changelog', ObjectChangeLogView.as_view(), name='licenseperiod_changelog', kwargs={
+        'model': models.LicensePeriod
     }),
-    path('renewals/delete/', views.LicenseRenewalBulkDeleteView.as_view(), name='licenserenewal_bulk_delete'),
+    path('periods/delete/', views.LicensePeriodBulkDeleteView.as_view(), name='licenseperiod_bulk_delete'),
 
     # Reporting views
     path('reports/utilization/', views.UtilizationReportView.as_view(), name='utilization_report'),
@@ -55,7 +55,7 @@ urlpatterns = [
     path('compliance/', views.ComplianceMonitoringView.as_view(), name='compliance_monitoring'),
     path('cost-allocation/', views.CostAllocationView.as_view(), name='cost_allocation'),
     path('assigned-object-costs/', views.AssignedObjectCostView.as_view(), name='assigned_object_costs'),
-    path('renewals/', views.LicenseRenewalView.as_view(), name='license_renewals'),
+    path('renewals/', views.LicenseRenewalDashboardView.as_view(), name='license_renewals'),
 
     path('ajax/assigned-object/', views.AssignedObjectFieldView.as_view(), name='assigned-object-field'),
     

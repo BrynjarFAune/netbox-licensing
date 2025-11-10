@@ -423,21 +423,21 @@ class LicenseInstanceBulkDeleteView(generic.BulkDeleteView):
 
 
 # License Renewal Views
-class LicenseRenewalListView(generic.ObjectListView):
-    """List view for license renewals"""
-    queryset = models.LicenseRenewal.objects.prefetch_related('license', 'license__vendor')
-    table = tables.LicenseRenewalTable
+class LicensePeriodListView(generic.ObjectListView):
+    """List view for license periods"""
+    queryset = models.LicensePeriod.objects.prefetch_related('license', 'license__vendor')
+    table = tables.LicensePeriodTable
 
 
-class LicenseRenewalView(generic.ObjectView):
-    """Detail view for a single license renewal"""
-    queryset = models.LicenseRenewal.objects.prefetch_related('license', 'license__vendor')
+class LicensePeriodView(generic.ObjectView):
+    """Detail view for a single license period"""
+    queryset = models.LicensePeriod.objects.prefetch_related('license', 'license__vendor')
 
 
-class LicenseRenewalEditView(generic.ObjectEditView):
-    """Edit view for license renewals"""
-    queryset = models.LicenseRenewal.objects.all()
-    form = forms.LicenseRenewalForm
+class LicensePeriodEditView(generic.ObjectEditView):
+    """Edit view for license periods"""
+    queryset = models.LicensePeriod.objects.all()
+    form = forms.LicensePeriodForm
 
     def alter_object(self, obj, request, args, kwargs):
         """Pre-populate license from URL parameter"""
@@ -460,25 +460,25 @@ class LicenseRenewalEditView(generic.ObjectEditView):
         return initial
 
     def get_extra_context(self, request, instance):
-        # Add context for immutability warning if editing existing renewal
+        # Add context for immutability warning if editing existing period
         if instance.pk:
             messages.warning(
                 request,
-                "Warning: Renewals are immutable after creation. "
-                "Only admins can delete renewals. Any edits will fail."
+                "Warning: Periods are immutable after creation. "
+                "Only admins can delete periods. Any edits will fail."
             )
         return {}
 
 
-class LicenseRenewalDeleteView(generic.ObjectDeleteView):
-    """Delete view for license renewals (admin only)"""
-    queryset = models.LicenseRenewal.objects.all()
+class LicensePeriodDeleteView(generic.ObjectDeleteView):
+    """Delete view for license periods (admin only)"""
+    queryset = models.LicensePeriod.objects.all()
 
 
-class LicenseRenewalBulkDeleteView(generic.BulkDeleteView):
-    """Bulk delete view for license renewals"""
-    queryset = models.LicenseRenewal.objects.all()
-    table = tables.LicenseRenewalTable
+class LicensePeriodBulkDeleteView(generic.BulkDeleteView):
+    """Bulk delete view for license periods"""
+    queryset = models.LicensePeriod.objects.all()
+    table = tables.LicensePeriodTable
 
 
 # Utilization Reporting Views
@@ -809,8 +809,8 @@ class CostAllocationView(View):
         return render(request, self.template_name, context)
 
 
-class LicenseRenewalView(View):
-    """License renewal management dashboard"""
+class LicenseRenewalDashboardView(View):
+    """License renewal management dashboard (expiring instances)"""
     template_name = "netbox_licenses/license_renewals.html"
 
     def get(self, request):

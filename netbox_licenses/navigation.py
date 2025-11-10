@@ -17,10 +17,10 @@ licenseinstance_buttons = (
     ),
 )
 
-licenserenewal_buttons = (
+licenseperiod_buttons = (
     PluginMenuButton(
-        link='plugins:netbox_licenses:licenserenewal_add',
-        title='Add Renewal',
+        link='plugins:netbox_licenses:licenseperiod_add',
+        title='Add Period',
         icon_class='mdi mdi-plus-thick'
     ),
 )
@@ -65,9 +65,9 @@ menu = PluginMenu(
                 buttons=licenseinstance_buttons
             ),
             PluginMenuItem(
-                link='plugins:netbox_licenses:licenserenewal_list',
-                link_text='License Renewals',
-                buttons=licenserenewal_buttons
+                link='plugins:netbox_licenses:licenseperiod_list',
+                link_text='License Periods',
+                buttons=licenseperiod_buttons
             ),
         )),
         ('Configuration', (

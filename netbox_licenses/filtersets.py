@@ -3,7 +3,7 @@ from django.db import models
 from netbox.filtersets import NetBoxModelFilterSet
 from netbox.forms import NetBoxModelFilterSetForm
 from django import forms
-from .models import LicenseInstance, License, LicenseStatusChoices, CurrencyConversionRate
+from .models import LicenseInstance, License, LicensePeriod, LicenseStatusChoices, CurrencyConversionRate
 from .choices import PaymentMethodChoices
 from tenancy.models import Contact, Tenant
 from dcim.models import Manufacturer

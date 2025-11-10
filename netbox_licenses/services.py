@@ -8,7 +8,7 @@ from decimal import Decimal
 import logging
 
 from .models import (
-    License, LicenseInstance, LicenseRenewal, 
+    License, LicenseInstance, LicensePeriod,
     LicenseAlert, LicenseAnalytics, VendorIntegration,
     CostAllocation
 )
@@ -63,30 +63,15 @@ class LicenseLifecycleService:
     
     @staticmethod
     def create_renewal_records():
-        """Create renewal records for expiring licenses"""
-        # Find licenses with instances expiring in next 90 days that don't have pending renewals
-        expiring_instances = LicenseLifecycleService.check_expiring_licenses(90)
-        renewals_created = 0
-        
-        for instance in expiring_instances:
-            # Check if renewal record already exists
-            existing_renewal = LicenseRenewal.objects.filter(
-                license=instance.license,
-                status__in=['pending', 'approved', 'in_progress']
-            ).first()
-            
-            if not existing_renewal:
-                renewal = LicenseRenewal.objects.create(
-                    license=instance.license,
-                    renewal_date=instance.end_date - timedelta(days=30),  # Renew 30 days before expiration
-                    renewal_cost=instance.license.total_cost,
-                    currency=instance.license.currency,
-                    notes=f"Auto-generated renewal for expiring instance (ID: {instance.id})"
-                )
-                renewals_created += 1
-                logger.info(f"Created renewal record for license {instance.license.name}")
-        
-        return renewals_created
+        """
+        DEPRECATED: Period records are now created manually as billing snapshots.
+        This method is kept for backwards compatibility but does nothing.
+
+        Use LicensePeriod.objects.create() manually when you receive an invoice
+        or start a new billing/subscription period.
+        """
+        logger.warning("create_renewal_records() is deprecated - periods are now created manually")
+        return 0
     
     @staticmethod
     def process_expired_licenses():

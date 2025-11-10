@@ -82,17 +82,7 @@ class License(NetBoxModel):
         help_text="How frequently this license is billed"
     )
 
-    contract_start_date = models.DateField(
-        null=True,
-        blank=True,
-        help_text="When the contract/billing started (for calculating next renewal)"
-    )
-
-    contract_end_date = models.DateField(
-        null=True,
-        blank=True,
-        help_text="When the contract expires (optional - leave blank for ongoing contracts)"
-    )
+    # Contract dates removed - defined by LicensePeriods instead
 
     auto_renew = models.BooleanField(
         default=False,
@@ -221,33 +211,62 @@ class License(NetBoxModel):
         """Total yearly commitment converted to NOK for dashboard display"""
         return self.total_monthly_commitment_nok * 12
 
-    @property
-    def next_renewal_date(self):
-        """Calculate next renewal date based on contract start and billing cycle"""
-        if not self.contract_start_date:
-            return None
-
-        from dateutil.relativedelta import relativedelta
-
+    def get_active_period(self):
+        """Get the period covering today (if any)"""
         today = timezone.now().date()
-        start = self.contract_start_date
+        return self.periods.filter(
+            period_start__lte=today,
+            period_end__gte=today
+        ).first()
 
-        # Calculate renewal interval
-        if self.billing_cycle == 'monthly':
-            delta = relativedelta(months=1)
-        elif self.billing_cycle == 'quarterly':
-            delta = relativedelta(months=3)
-        elif self.billing_cycle == 'yearly':
-            delta = relativedelta(years=1)
-        else:
-            return None  # one_time or custom
+    @property
+    def is_active(self):
+        """License is active if there's a period covering today"""
+        return self.get_active_period() is not None
 
-        # Find next renewal date after today
-        next_date = start
-        while next_date <= today:
-            next_date += delta
+    @property
+    def license_status(self):
+        """
+        Calculate license status based on periods.
+        Returns: 'active', 'expiring_soon', 'expired'
+        """
+        today = timezone.now().date()
+        active_period = self.get_active_period()
 
-        return next_date
+        if not active_period:
+            return 'expired'
+
+        days_remaining = active_period.days_remaining
+
+        # Get thresholds from config
+        try:
+            from .models import PluginConfiguration
+            config = PluginConfiguration.get_config()
+            warning_days = config.renewal_warning_days
+        except Exception:
+            warning_days = 30  # Fallback
+
+        if days_remaining <= warning_days:
+            return 'expiring_soon'
+
+        return 'active'
+
+    @property
+    def current_period_end(self):
+        """End date of current active period (None if expired)"""
+        period = self.get_active_period()
+        return period.period_end if period else None
+
+    @property
+    def next_period_start(self):
+        """When the next period should start (after current expires)"""
+        current = self.get_active_period()
+        if current:
+            from datetime import timedelta
+            return current.period_end + timedelta(days=1)
+
+        # No active period - next should start today
+        return timezone.now().date()
 
     # EXISTING PROPERTIES
     @cached_property
@@ -899,47 +918,53 @@ class PluginConfiguration(models.Model):
             raise ValidationError("Critical renewal warning must be less than warning days")
 
 
-class LicenseRenewal(NetBoxModel):
+class LicensePeriod(NetBoxModel):
     """
-    Tracks renewal history for licenses.
-    Each renewal represents one billing period.
+    Tracks paid billing periods for licenses.
+    Each period represents one paid/invoiced time span.
+    Snapshot of license state during that period.
     Immutable once created - can only be deleted by admins.
     """
     license = models.ForeignKey(
         to='License',
         on_delete=models.CASCADE,
-        related_name='renewals',
-        help_text="License this renewal belongs to"
+        related_name='periods',
+        help_text="License this period belongs to"
     )
 
-    # Period dates
+    # Period coverage dates
     period_start = models.DateField(
-        help_text="Start date of this billing period"
+        help_text="When this paid period starts"
     )
     period_end = models.DateField(
-        help_text="End date of this billing period"
+        help_text="When this paid period ends"
     )
 
-    # Financial details
+    # Snapshot of license state at period creation
     price = models.DecimalField(
         max_digits=12,
         decimal_places=2,
-        help_text="Price for this renewal period"
+        help_text="Price paid for this period"
     )
     currency = models.CharField(
         max_length=3,
         default='NOK',
         help_text="Currency code"
     )
-
-    # Payment tracking
     payment_method = models.CharField(
-        max_length=20,
-        choices=PaymentMethodChoices,
-        help_text="How this renewal was/will be paid"
+        max_length=30,
+        choices=PaymentMethodChoices.CHOICES,
+        help_text="How this period was paid (snapshot from license)"
+    )
+    seats_purchased = models.IntegerField(
+        help_text="Total seats for this period (snapshot)"
+    )
+    seats_utilized = models.IntegerField(
+        default=0,
+        help_text="Seats in use when period was created (snapshot)"
     )
 
-    # Invoice tracking (simple for now)
+    # Invoice tracking (optional)
     invoice_reference = models.CharField(
         max_length=200,
         blank=True,
@@ -957,48 +982,20 @@ class LicenseRenewal(NetBoxModel):
         help_text="Link to invoice in accounting system"
     )
 
-    # Utilization snapshot
-    seats_purchased = models.IntegerField(
-        help_text="Total seats purchased for this period"
-    )
-    seats_utilized = models.IntegerField(
-        default=0,
-        help_text="Seats utilized at time of renewal"
-    )
-
-    # Status
-    STATUS_CHOICES = [
-        ('pending', 'Pending Payment'),
-        ('paid', 'Paid'),
-        ('cancelled', 'Cancelled'),
-    ]
-    status = models.CharField(
-        max_length=20,
-        choices=STATUS_CHOICES,
-        default='pending',
-        help_text="Payment status"
-    )
-
-    paid_date = models.DateField(
-        null=True,
-        blank=True,
-        help_text="Date payment was made"
-    )
-
     class Meta:
         ordering = ['-period_start']
-        verbose_name = "License Renewal"
-        verbose_name_plural = "License Renewals"
+        verbose_name = "License Period"
+        verbose_name_plural = "License Periods"
         indexes = [
             models.Index(fields=['license', '-period_start']),
-            models.Index(fields=['status']),
+            models.Index(fields=['period_start', 'period_end']),
         ]
 
     def __str__(self):
         return f"{self.license.name} - {self.period_start} to {self.period_end}"
 
     def get_absolute_url(self):
-        return reverse('plugins:netbox_licenses:licenserenewal', args=[self.pk])
+        return reverse('plugins:netbox_licenses:licenseperiod', args=[self.pk])
 
     @property
     def utilization_percentage(self):
@@ -1014,19 +1011,36 @@ class LicenseRenewal(NetBoxModel):
             return 0
         return self.price / self.seats_purchased
 
-    def save(self, *args, **kwargs):
-        """Enforce immutability - renewals cannot be modified after creation"""
-        if self.pk:
-            raise ValidationError("Renewals are immutable and cannot be modified. Create a new renewal instead.")
+    @property
+    def is_active(self):
+        """Check if this period covers today"""
+        today = timezone.now().date()
+        return self.period_start <= today <= self.period_end
 
-        # Auto-set seats_utilized from license's current consumption
+    @property
+    def days_remaining(self):
+        """Days until this period ends (negative if expired)"""
+        today = timezone.now().date()
+        return (self.period_end - today).days
+
+    def save(self, *args, **kwargs):
+        """Enforce immutability and auto-fill snapshot data"""
+        if self.pk:
+            raise ValidationError("License periods are immutable. Create a new period instead.")
+
+        # Auto-snapshot from license if creating new period
         if not self.pk and self.license_id:
+            # Snapshot current consumption
             self.seats_utilized = self.license.consumed_licenses
+
+            # Snapshot payment method if not set
+            if not self.payment_method:
+                self.payment_method = self.license.payment_method
 
         super().save(*args, **kwargs)
 
     def clean(self):
-        """Validate renewal data"""
+        """Validate period data"""
         from django.core.exceptions import ValidationError
         super().clean()
 
