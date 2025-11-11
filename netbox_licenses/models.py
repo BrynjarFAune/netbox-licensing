@@ -1066,6 +1066,43 @@ class LicensePeriod(NetBoxModel):
         if self.period_end and self.period_end <= self.period_start:
             raise ValidationError("Period end date must be after start date")
 
+        # Check for overlapping periods for the same license
+        if self.license_id:
+            overlapping = LicensePeriod.objects.filter(license=self.license_id)
+
+            # Exclude self if editing existing period
+            if self.pk:
+                overlapping = overlapping.exclude(pk=self.pk)
+
+            # Check for overlaps
+            for period in overlapping:
+                # Case 1: New period start falls within existing period
+                if period.period_start <= self.period_start:
+                    if period.period_end is None or (self.period_start <= period.period_end):
+                        raise ValidationError(
+                            f"Period already registered: {period.period_start.strftime('%d/%m/%Y')} - "
+                            f"{'Perpetual' if period.period_end is None else period.period_end.strftime('%d/%m/%Y')} "
+                            f"overlaps with your start date ({self.period_start.strftime('%d/%m/%Y')})"
+                        )
+
+                # Case 2: New period end falls within existing period (if not perpetual)
+                if self.period_end and period.period_start <= self.period_end:
+                    if period.period_end is None or (self.period_end <= period.period_end):
+                        raise ValidationError(
+                            f"Period already registered: {period.period_start.strftime('%d/%m/%Y')} - "
+                            f"{'Perpetual' if period.period_end is None else period.period_end.strftime('%d/%m/%Y')} "
+                            f"overlaps with your end date ({self.period_end.strftime('%d/%m/%Y')})"
+                        )
+
+                # Case 3: New period completely encompasses existing period
+                if self.period_start <= period.period_start:
+                    if self.period_end is None or (period.period_end and self.period_end >= period.period_end):
+                        raise ValidationError(
+                            f"Period already registered: {period.period_start.strftime('%d/%m/%Y')} - "
+                            f"{'Perpetual' if period.period_end is None else period.period_end.strftime('%d/%m/%Y')} "
+                            f"falls within your new period date range"
+                        )
+
         # Validate seats
         if self.seats_purchased < 0:
             raise ValidationError("Seats purchased cannot be negative")
