@@ -50,13 +50,11 @@ menu = PluginMenu(
         ('Overview', (
             PluginMenuItem(
                 link='plugins:netbox_licenses:dashboard',
-                link_text='Dashboard',
-                icon_class='mdi mdi-view-dashboard'
+                link_text='Dashboard'
             ),
             PluginMenuItem(
                 link='plugins:netbox_licenses:cost_report',
-                link_text='Cost Report',
-                icon_class='mdi mdi-chart-line'
+                link_text='Cost Report'
             ),
         )),
         ('Management', (
