@@ -993,6 +993,8 @@ class LicensePeriod(NetBoxModel):
         help_text="Link to invoice in accounting system"
     )
 
+    comments = models.TextField(blank=True)
+
     class Meta:
         ordering = ['-period_start']
         verbose_name = "License Period"
