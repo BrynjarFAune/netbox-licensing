@@ -51,7 +51,7 @@
 
                     <h6 class="card-subtitle text-muted mt-3 mb-3">Currency Synchronization</h6>
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <div class="mb-3">
                                 <div class="form-check">
                                     {{ form.currency_sync_enabled }}
@@ -62,17 +62,7 @@
                                 <small class="form-text text-muted">{{ form.currency_sync_enabled.help_text }}</small>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label for="id_currency_sync_interval_hours" class="form-label">
-                                    Sync Interval (hours)
-                                    <i class="mdi mdi-help-circle" title="{{ form.currency_sync_interval_hours.help_text }}"></i>
-                                </label>
-                                {{ form.currency_sync_interval_hours }}
-                                <small class="form-text text-muted">{{ form.currency_sync_interval_hours.help_text }}</small>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="id_currency_stale_days" class="form-label">
                                     Stale Days

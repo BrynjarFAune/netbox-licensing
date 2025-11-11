@@ -613,21 +613,14 @@ class PluginConfigurationForm(forms.ModelForm):
         required=False,
         initial=True,
         label="Enable Automatic Currency Sync",
-        help_text="Automatically sync API-sourced currency rates on schedule",
+        help_text="Automatically sync stale API-sourced currency rates on-demand when used",
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
-    )
-    currency_sync_interval_hours = IntegerField(
-        min_value=1,
-        initial=24,
-        label="Currency Sync Interval (hours)",
-        help_text="Hours between automatic currency rate synchronization",
-        widget=forms.NumberInput(attrs={'class': 'form-control'})
     )
     currency_stale_days = IntegerField(
         min_value=1,
         initial=7,
         label="Currency Stale Days",
-        help_text="Number of days before a currency rate is considered stale",
+        help_text="Number of days before a currency rate is considered stale and triggers auto-sync",
         widget=forms.NumberInput(attrs={'class': 'form-control'})
     )
     renewal_warning_days = IntegerField(
@@ -665,7 +658,6 @@ class PluginConfigurationForm(forms.ModelForm):
             'utilization_good_threshold',
             'utilization_moderate_threshold',
             'currency_sync_enabled',
-            'currency_sync_interval_hours',
             'currency_stale_days',
             'renewal_warning_days',
             'renewal_critical_days',

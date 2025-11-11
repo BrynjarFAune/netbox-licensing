@@ -880,15 +880,11 @@ class PluginConfiguration(models.Model):
     # Currency sync settings
     currency_sync_enabled = models.BooleanField(
         default=True,
-        help_text="Enable automatic currency rate synchronization"
-    )
-    currency_sync_interval_hours = models.IntegerField(
-        default=24,
-        help_text="Hours between automatic currency rate syncs"
+        help_text="Enable automatic on-demand currency rate synchronization"
     )
     currency_stale_days = models.IntegerField(
         default=7,
-        help_text="Days before a currency rate is considered stale"
+        help_text="Days before a currency rate is considered stale and triggers auto-sync"
     )
 
     # Renewal warning settings
@@ -945,10 +941,6 @@ class PluginConfiguration(models.Model):
             raise ValidationError("Excellent threshold must be higher than good threshold")
         if self.utilization_good_threshold <= self.utilization_moderate_threshold:
             raise ValidationError("Good threshold must be higher than moderate threshold")
-
-        # Validate sync interval
-        if self.currency_sync_interval_hours < 1:
-            raise ValidationError("Sync interval must be at least 1 hour")
 
         # Validate renewal days
         if self.renewal_critical_days > self.renewal_warning_days:
