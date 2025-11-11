@@ -272,9 +272,9 @@ class LicensePeriodTable(NetBoxTable):
             color = 'danger'
 
         return format_html(
-            '<span class="badge text-bg-{}">{:.1f}%</span>',
+            '<span class="badge text-bg-{}">{}</span>',
             color,
-            percentage
+            f"{percentage:.1f}%"
         )
 
     def value_utilization(self, record):
