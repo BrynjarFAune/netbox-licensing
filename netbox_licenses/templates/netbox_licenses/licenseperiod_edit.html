@@ -9,28 +9,20 @@
 
     // Wait for DOM to be ready
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('License period form auto-fill loaded');
-
         // Get the license select field - try multiple selectors
         const licenseField = document.querySelector('#id_license') ||
                            document.querySelector('select[name="license"]');
 
         if (!licenseField) {
-            console.error('License field not found');
             return;
         }
 
-        console.log('License field found:', licenseField);
-
         // Function to auto-fill fields based on license ID
         function autoFillFromLicense(licenseId) {
-            console.log('Auto-filling from license:', licenseId);
-
             if (!licenseId) return;
 
             // Fetch license details via API
             const apiUrl = `/api/plugins/licenses/licenses/${licenseId}/`;
-            console.log('Fetching from:', apiUrl);
 
             fetch(apiUrl, {
                 headers: {
@@ -45,14 +37,11 @@
                 return response.json();
             })
             .then(data => {
-                console.log('License data received:', data);
-
                 // Auto-fill seats purchased first (needed for price calculation)
                 const seatsField = document.querySelector('#id_seats_purchased') ||
                                  document.querySelector('input[name="seats_purchased"]');
                 if (seatsField && data.total_licenses) {
                     seatsField.value = data.total_licenses;
-                    console.log('Set seats_purchased to:', data.total_licenses);
                 }
 
                 // Calculate and auto-fill total price (seats × unit price)
@@ -63,30 +52,18 @@
                     const totalSeats = parseInt(data.total_licenses);
                     const totalPrice = (unitPrice * totalSeats).toFixed(2);
                     priceField.value = totalPrice;
-                    console.log('Set price to:', totalPrice, `(${unitPrice} × ${totalSeats})`);
                 }
 
                 // Auto-fill currency
                 const currencyField = document.querySelector('#id_currency') ||
                                     document.querySelector('select[name="currency"]');
-                console.log('Currency field:', currencyField);
-                console.log('Currency from API:', data.currency);
                 if (currencyField && data.currency) {
-                    console.log('Current currency value before:', currencyField.value);
-
                     // Check if Tom-Select is being used (NetBox's custom select widget)
                     if (currencyField.tomselect) {
-                        console.log('Using Tom-Select for currency');
                         currencyField.tomselect.setValue(data.currency, false);
                     } else {
-                        // Fallback to standard select
                         currencyField.value = data.currency;
                     }
-
-                    console.log('Current currency value after:', currencyField.value);
-                    console.log('Set currency to:', data.currency);
-                } else {
-                    console.error('Currency field not found or no currency in data');
                 }
 
                 // Auto-fill payment method
@@ -95,16 +72,14 @@
                 if (paymentMethodField && data.payment_method) {
                     // Check if Tom-Select is being used
                     if (paymentMethodField.tomselect) {
-                        console.log('Using Tom-Select for payment_method');
                         paymentMethodField.tomselect.setValue(data.payment_method, false);
                     } else {
                         paymentMethodField.value = data.payment_method;
                     }
-                    console.log('Set payment_method to:', data.payment_method);
                 }
             })
             .catch(error => {
-                console.error('Error fetching license details:', error);
+                // Silently fail - field will remain at default values
             });
         }
 
@@ -116,7 +91,6 @@
         // Also auto-fill on page load if license is already selected
         // (e.g., when coming from license detail page with ?license=ID)
         if (licenseField.value) {
-            console.log('License already selected on page load:', licenseField.value);
             autoFillFromLicense(licenseField.value);
         }
     });
