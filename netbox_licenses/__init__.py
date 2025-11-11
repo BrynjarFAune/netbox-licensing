@@ -14,6 +14,7 @@ class LicenseManagementConfig(PluginConfig):
         """Import signals when app is ready"""
         super().ready()
         from . import signals  # Import signals at runtime, not during module load
+        from . import jobs  # Register background jobs
 
     # Plugin-specific settings
     default_settings = {
