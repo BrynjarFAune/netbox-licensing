@@ -1,7 +1,7 @@
 import django_tables2 as tables
 from django.utils.html import format_html
 
-from netbox.tables import NetBoxTable, ChoiceFieldColumn
+from netbox.tables import NetBoxTable, ChoiceFieldColumn, TagColumn
 from .models import License, LicenseInstance, LicensePeriod, CurrencyConversionRate
 from .choices import LicenseStatusChoices
 
@@ -11,6 +11,7 @@ class LicenseTable(NetBoxTable):
     vendor = tables.Column(linkify=True)
     tenant = tables.Column(linkify=True)
     external_id = tables.Column(verbose_name="External ID", empty_values=())
+    tags = TagColumn(url_name='plugins:netbox_licenses:license_list')
     
     # UTILIZATION COLUMNS
     utilization = tables.Column(empty_values=(), verbose_name="Utilization %", orderable=False)

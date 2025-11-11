@@ -22,6 +22,12 @@ class LicenseDashboardView(View):
     def get(self, request):
         from decimal import Decimal
         from netbox_licenses.models import CurrencyConversionRate
+        from django.conf import settings
+
+        # Get configurable thresholds
+        plugin_config = settings.PLUGINS_CONFIG.get('netbox_licenses', {})
+        expiring_soon_days = plugin_config.get('dashboard_expiring_soon_days', 90)
+        recently_expired_days = plugin_config.get('dashboard_recently_expired_days', 30)
 
         # Get all licenses with related data
         licenses = models.License.objects.prefetch_related('instances', 'vendor').all()
@@ -33,7 +39,6 @@ class LicenseDashboardView(View):
         unused_cost_nok = Decimal('0.00')
         total_licenses_count = 0
         total_utilized = 0
-        over_allocated_count = 0
 
         for license in licenses:
             # Convert to NOK
@@ -51,10 +56,6 @@ class LicenseDashboardView(View):
             unused = license.available_licenses
             if unused > 0:
                 unused_cost_nok += price * rate * unused
-
-            # Track over-allocation
-            if license.consumed_licenses > license.total_licenses:
-                over_allocated_count += 1
 
             total_licenses_count += license.total_licenses
             total_utilized += license.consumed_licenses
@@ -128,26 +129,26 @@ class LicenseDashboardView(View):
         top_underutilized = underutilized[:5]
 
         # === EXPIRING INSTANCES ===
-        expiring_soon = []  # Within 30 days
-        recently_expired = []  # Last 30 days
+        expiring_soon = []
+        recently_expired = []
 
         for instance in instances:
             if instance.end_date:
                 days_until = (instance.end_date - today).days
                 instance.days_remaining = days_until  # Add as attribute for template
 
-                if -30 <= days_until < 0:
-                    # Expired in last 30 days
+                if -recently_expired_days <= days_until < 0:
+                    # Expired within configured days
                     recently_expired.append(instance)
-                elif 0 <= days_until <= 90:
-                    # Expiring in next 90 days
+                elif 0 <= days_until <= expiring_soon_days:
+                    # Expiring within configured days
                     expiring_soon.append(instance)
 
         # Sort by urgency
         expiring_soon.sort(key=lambda x: x.end_date)
         recently_expired.sort(key=lambda x: x.end_date, reverse=True)
 
-        # Separate auto-renew from manual
+        # Separate auto-renew from manual (show ALL, no limit)
         from .choices import PaymentMethodChoices
         expiring_auto_renew = [i for i in expiring_soon if i.license.payment_method == PaymentMethodChoices.CARD_AUTO]
         expiring_manual = [i for i in expiring_soon if i.license.payment_method != PaymentMethodChoices.CARD_AUTO]
@@ -159,7 +160,6 @@ class LicenseDashboardView(View):
             'total_licenses': total_licenses_count,
             'total_utilized': total_utilized,
             'utilization_percent': utilization_percent,
-            'over_allocated_count': over_allocated_count,
 
             # Vendor distribution
             'vendor_stats': vendor_stats,
@@ -172,11 +172,13 @@ class LicenseDashboardView(View):
             # Top underutilized
             'top_underutilized': top_underutilized,
 
-            # Expiring instances
+            # Expiring instances - SHOW ALL (no limit)
             'expiring_soon_count': len(expiring_soon),
-            'expiring_auto_renew': expiring_auto_renew[:10],
-            'expiring_manual': expiring_manual[:10],
-            'recently_expired': recently_expired[:10],
+            'expiring_auto_renew': expiring_auto_renew,  # All auto-renew
+            'expiring_manual': expiring_manual,  # All manual
+            'recently_expired': recently_expired,  # All recently expired
+            'expiring_soon_days': expiring_soon_days,  # For template display
+            'recently_expired_days': recently_expired_days,  # For template display
         }
 
         return render(request, self.template_name, context)

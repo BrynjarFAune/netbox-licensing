@@ -18,7 +18,7 @@
 
 <!-- Hero Metrics Row -->
 <div class="row mb-4">
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="card">
             <div class="card-body text-center">
                 <h6 class="text-muted mb-1">Total License Cost</h6>
@@ -26,7 +26,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="card">
             <div class="card-body text-center">
                 <h6 class="text-muted mb-1">Unused Licenses Cost</h6>
@@ -35,7 +35,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="card">
             <div class="card-body text-center">
                 <h6 class="text-muted mb-1">Overall Utilization</h6>
@@ -45,17 +45,6 @@
                     </span>
                 </h2>
                 <small class="text-muted">{{ total_utilized }} / {{ total_licenses }} seats</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card {% if over_allocated_count > 0 %}border-danger{% endif %}">
-            <div class="card-body text-center">
-                <h6 class="text-muted mb-1">Over-Allocated</h6>
-                <h2 class="mb-0 {% if over_allocated_count > 0 %}text-danger{% endif %}">
-                    {{ over_allocated_count }}
-                </h2>
-                <small class="text-muted">Compliance risk</small>
             </div>
         </div>
     </div>
@@ -155,7 +144,7 @@
             <div class="card-header">
                 <h5 class="mb-0">
                     <i class="mdi mdi-clock-alert-outline text-warning"></i>
-                    Expiring Soon (Manual Payment)
+                    Expiring Soon - Manual Payment ({{ expiring_soon_days }} days)
                     <span class="badge text-bg-warning ms-2">{{ expiring_manual|length }}</span>
                 </h5>
             </div>
@@ -200,7 +189,7 @@
             <div class="card-header">
                 <h5 class="mb-0">
                     <i class="mdi mdi-alert-octagon text-danger"></i>
-                    Recently Expired (Last 30 Days)
+                    Recently Expired ({{ recently_expired_days }} days)
                     <span class="badge text-bg-danger ms-2">{{ recently_expired|length }}</span>
                 </h5>
             </div>
@@ -281,17 +270,52 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (vendorData && vendorData.length > 0) {
         const ctx = document.getElementById('vendorChart');
-        new Chart(ctx, {
+        const colors = [
+            '#0d6efd', '#6610f2', '#6f42c1', '#d63384', '#dc3545',
+            '#fd7e14', '#ffc107', '#198754', '#20c997', '#0dcaf0'
+        ];
+
+        // Track which vendors are visible
+        const vendorVisibility = vendorData.map(() => true);
+
+        function updateChart() {
+            // Count how many are visible
+            const visibleCount = vendorVisibility.filter(v => v).length;
+
+            // Filter data based on visibility
+            const filteredData = vendorData
+                .map((v, i) => vendorVisibility[i] ? v : null)
+                .filter(v => v !== null);
+
+            const filteredColors = colors
+                .map((c, i) => vendorVisibility[i] ? c : null)
+                .filter(c => c !== null);
+
+            // Calculate new percentages based on visible vendors only
+            const visibleTotal = filteredData.reduce((sum, v) => sum + v.cost, 0);
+
+            chart.data.labels = filteredData.map(v => v.vendor);
+            chart.data.datasets[0].data = filteredData.map(v => v.cost);
+            chart.data.datasets[0].backgroundColor = filteredColors;
+            chart.update();
+
+            // Update tooltip percentages
+            chart.options.plugins.tooltip.callbacks.label = function(context) {
+                const label = context.label || '';
+                const value = context.parsed || 0;
+                const percentage = (value / visibleTotal * 100).toFixed(1);
+                return label + ': ' + value.toFixed(2) + ' NOK (' + percentage + '%)';
+            };
+        }
+
+        const chart = new Chart(ctx, {
             type: 'doughnut',
             data: {
                 labels: vendorData.map(v => v.vendor),
                 datasets: [{
                     label: 'Cost (NOK)',
                     data: vendorData.map(v => v.cost),
-                    backgroundColor: [
-                        '#0d6efd', '#6610f2', '#6f42c1', '#d63384', '#dc3545',
-                        '#fd7e14', '#ffc107', '#198754', '#20c997', '#0dcaf0'
-                    ]
+                    backgroundColor: colors
                 }]
             },
             options: {
@@ -300,13 +324,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 plugins: {
                     legend: {
                         position: 'bottom',
+                        onClick: function(e, legendItem, legend) {
+                            const index = legendItem.index;
+
+                            // Count how many are currently visible
+                            const visibleCount = vendorVisibility.filter(v => v).length;
+
+                            // Prevent hiding if it's the last visible vendor
+                            if (visibleCount === 1 && vendorVisibility[index]) {
+                                return; // Don't allow hiding the last one
+                            }
+
+                            // Toggle visibility
+                            vendorVisibility[index] = !vendorVisibility[index];
+                            updateChart();
+                        }
                     },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
                                 const label = context.label || '';
                                 const value = context.parsed || 0;
-                                const percentage = vendorData[context.dataIndex].percentage.toFixed(1);
+                                const total = vendorData
+                                    .map((v, i) => vendorVisibility[i] ? v.cost : 0)
+                                    .reduce((sum, c) => sum + c, 0);
+                                const percentage = (value / total * 100).toFixed(1);
                                 return label + ': ' + value.toFixed(2) + ' NOK (' + percentage + '%)';
                             }
                         }

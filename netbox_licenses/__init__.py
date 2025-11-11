@@ -27,6 +27,9 @@ class LicenseManagementConfig(PluginConfig):
         'currency_sync_enabled': True,       # Enable automatic currency rate syncing
         'currency_sync_interval': 86400,     # Sync interval in seconds (default: 24 hours)
         'currency_stale_days': 7,            # Days before rate is considered stale
+        # Dashboard thresholds
+        'dashboard_expiring_soon_days': 90,  # Show instances expiring within this many days
+        'dashboard_recently_expired_days': 30,  # Show instances expired within this many days
     }
 
     # Cache settings for performance
