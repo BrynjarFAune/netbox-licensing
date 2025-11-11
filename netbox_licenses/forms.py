@@ -770,14 +770,20 @@ class LicensePeriodForm(NetBoxModelForm):
                     license_obj = License.objects.get(pk=license_id)
 
                     # Auto-fill from license
+                    if 'seats_purchased' not in self.initial:
+                        self.initial['seats_purchased'] = license_obj.total_licenses
+
+                    # Calculate total price (seats × unit price)
                     if 'price' not in self.initial:
-                        self.initial['price'] = license_obj.price
+                        from decimal import Decimal
+                        unit_price = Decimal(str(license_obj.price)) if license_obj.price else Decimal('0.00')
+                        total_seats = license_obj.total_licenses
+                        self.initial['price'] = unit_price * total_seats
+
                     if 'currency' not in self.initial:
                         self.initial['currency'] = license_obj.currency
                     if 'payment_method' not in self.initial:
                         self.initial['payment_method'] = license_obj.payment_method
-                    if 'seats_purchased' not in self.initial:
-                        self.initial['seats_purchased'] = license_obj.total_licenses
 
                     # Auto-calculate period dates
                     if 'period_start' not in self.initial:

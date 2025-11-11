@@ -22,10 +22,9 @@
 
         console.log('License field found:', licenseField);
 
-        // Auto-fill form when license is selected
-        licenseField.addEventListener('change', function() {
-            const licenseId = this.value;
-            console.log('License changed to:', licenseId);
+        // Function to auto-fill fields based on license ID
+        function autoFillFromLicense(licenseId) {
+            console.log('Auto-filling from license:', licenseId);
 
             if (!licenseId) return;
 
@@ -48,12 +47,23 @@
             .then(data => {
                 console.log('License data received:', data);
 
-                // Auto-fill price
+                // Auto-fill seats purchased first (needed for price calculation)
+                const seatsField = document.querySelector('#id_seats_purchased') ||
+                                 document.querySelector('input[name="seats_purchased"]');
+                if (seatsField && data.total_licenses) {
+                    seatsField.value = data.total_licenses;
+                    console.log('Set seats_purchased to:', data.total_licenses);
+                }
+
+                // Calculate and auto-fill total price (seats × unit price)
                 const priceField = document.querySelector('#id_price') ||
                                  document.querySelector('input[name="price"]');
-                if (priceField && data.price) {
-                    priceField.value = data.price;
-                    console.log('Set price to:', data.price);
+                if (priceField && data.price && data.total_licenses) {
+                    const unitPrice = parseFloat(data.price);
+                    const totalSeats = parseInt(data.total_licenses);
+                    const totalPrice = (unitPrice * totalSeats).toFixed(2);
+                    priceField.value = totalPrice;
+                    console.log('Set price to:', totalPrice, `(${unitPrice} × ${totalSeats})`);
                 }
 
                 // Auto-fill currency
@@ -71,19 +81,23 @@
                     paymentMethodField.value = data.payment_method;
                     console.log('Set payment_method to:', data.payment_method);
                 }
-
-                // Auto-fill seats purchased
-                const seatsField = document.querySelector('#id_seats_purchased') ||
-                                 document.querySelector('input[name="seats_purchased"]');
-                if (seatsField && data.total_licenses) {
-                    seatsField.value = data.total_licenses;
-                    console.log('Set seats_purchased to:', data.total_licenses);
-                }
             })
             .catch(error => {
                 console.error('Error fetching license details:', error);
             });
+        }
+
+        // Auto-fill when license is changed
+        licenseField.addEventListener('change', function() {
+            autoFillFromLicense(this.value);
         });
+
+        // Also auto-fill on page load if license is already selected
+        // (e.g., when coming from license detail page with ?license=ID)
+        if (licenseField.value) {
+            console.log('License already selected on page load:', licenseField.value);
+            autoFillFromLicense(licenseField.value);
+        }
     });
 })();
 </script>
