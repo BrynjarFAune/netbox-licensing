@@ -14,10 +14,150 @@ from datetime import timedelta
 from dcim.models import Manufacturer
 
 
-# Dashboard view
+# Dashboard views
 class LicenseDashboardView(View):
-    """Comprehensive dashboard showing license overview with business metrics"""
+    """Operational dashboard for capacity planning and license allocation"""
     template_name = "netbox_licenses/dashboard.html"
+
+    def get(self, request):
+        from decimal import Decimal
+        from netbox_licenses.models import CurrencyConversionRate, PluginConfiguration
+        import json
+
+        # Get configurable thresholds from database
+        try:
+            config = PluginConfiguration.get_config()
+        except Exception:
+            # Fallback to defaults if config doesn't exist
+            config = PluginConfiguration()
+
+        licenses = models.License.objects.prefetch_related('instances', 'vendor').all()
+        today = timezone.now().date()
+
+        # === UTILIZATION OVERVIEW ===
+        total_licenses_count = 0
+        total_utilized = 0
+
+        for license in licenses:
+            total_licenses_count += license.total_licenses
+            total_utilized += license.consumed_licenses
+
+        utilization_percent = (total_utilized / total_licenses_count * 100) if total_licenses_count > 0 else 0
+
+        # === VENDOR BREAKDOWN (ALL LICENSES INCLUDING FREE/PREPAID) ===
+        vendor_stats = []
+        vendors = Manufacturer.objects.filter(licenses__isnull=False).distinct()
+
+        for vendor in vendors:
+            vendor_licenses = licenses.filter(vendor=vendor)
+            vendor_total = 0
+            vendor_consumed = 0
+
+            for license in vendor_licenses:
+                vendor_total += license.total_licenses
+                vendor_consumed += license.consumed_licenses
+
+            vendor_stats.append({
+                'vendor': vendor.name,
+                'vendor_id': vendor.id,
+                'license_count': vendor_licenses.count(),
+                'total_licenses': vendor_total,
+                'consumed_licenses': vendor_consumed,
+                'available_licenses': vendor_total - vendor_consumed,
+                'utilization_percentage': (vendor_consumed / vendor_total * 100) if vendor_total > 0 else 0
+            })
+
+        # Sort by utilization percentage (lowest first = most capacity)
+        vendor_stats.sort(key=lambda x: x['utilization_percentage'])
+
+        # === LICENSES WITH AVAILABLE CAPACITY ===
+        available_capacity = []
+        for license in licenses:
+            if license.available_licenses > 0 and license.is_active:
+                available_capacity.append({
+                    'license': license,
+                    'available_seats': license.available_licenses,
+                    'utilization_percentage': license.utilization_percentage,
+                    'payment_method': license.payment_method,
+                })
+
+        # Sort by available seats (most available first)
+        available_capacity.sort(key=lambda x: x['available_seats'], reverse=True)
+        top_available = available_capacity[:10]
+
+        # === NEARLY FULL LICENSES (>90% utilized) ===
+        nearly_full = []
+        for license in licenses:
+            if license.is_active and license.utilization_percentage >= 90 and license.available_licenses >= 0:
+                nearly_full.append({
+                    'license': license,
+                    'available_seats': license.available_licenses,
+                    'utilization_percentage': license.utilization_percentage,
+                })
+
+        # Sort by available seats (fewest first = most urgent)
+        nearly_full.sort(key=lambda x: x['available_seats'])
+
+        # === LICENSE STATUS (Period-based) ===
+        active_licenses = []
+        inactive_licenses = []
+
+        for license in licenses:
+            active_period = license.get_active_period()
+
+            license_info = {
+                'license': license,
+                'available_seats': license.available_licenses,
+                'utilization_percentage': license.utilization_percentage,
+                'payment_method': license.payment_method,
+                'current_period_end': license.current_period_end,
+            }
+
+            # Calculate days until period ends
+            if active_period and active_period.period_end:
+                license_info['days_remaining'] = active_period.days_remaining
+
+            if license.is_active:
+                active_licenses.append(license_info)
+            else:
+                inactive_licenses.append(license_info)
+
+        # Sort active by utilization (lowest first = most capacity)
+        active_licenses.sort(key=lambda x: x.get('utilization_percentage', 0))
+
+        context = {
+            # Overview metrics
+            'total_licenses': total_licenses_count,
+            'total_utilized': total_utilized,
+            'total_available': total_licenses_count - total_utilized,
+            'utilization_percent': utilization_percent,
+
+            # Vendor breakdown
+            'vendor_stats': vendor_stats,
+            'vendor_stats_json': json.dumps([{
+                'vendor': v['vendor'],
+                'available': v['available_licenses'],
+                'utilization': v['utilization_percentage']
+            } for v in vendor_stats]),
+
+            # Capacity lists
+            'top_available': top_available,
+            'nearly_full': nearly_full,
+            'active_licenses': active_licenses,
+            'inactive_licenses': inactive_licenses,
+
+            # Utilization thresholds for coloring
+            'utilization_excellent': config.utilization_excellent_threshold,
+            'utilization_good': config.utilization_good_threshold,
+            'utilization_moderate': config.utilization_moderate_threshold,
+        }
+
+        return render(request, self.template_name, context)
+
+
+class CostReportView(View):
+    """Financial dashboard showing cost metrics, waste, and savings opportunities"""
+    template_name = "netbox_licenses/cost_report.html"
 
     def get(self, request):
         from decimal import Decimal
