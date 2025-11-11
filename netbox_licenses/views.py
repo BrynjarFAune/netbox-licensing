@@ -156,6 +156,8 @@ class LicenseDashboardView(View):
                 'available_seats': license.available_licenses,
                 'responsible_contact': license.responsible_contact,
                 'current_period_end': license.current_period_end,
+                'payment_method': license.payment_method,
+                'utilization_percentage': license.utilization_percentage,
             }
 
             # Calculate days until action needed
@@ -211,6 +213,11 @@ class LicenseDashboardView(View):
             'licenses_needing_action': licenses_needing_action,
             'active_licenses': active_licenses,
             'expiring_soon_days': expiring_soon_days,
+
+            # Utilization thresholds for availability coloring
+            'utilization_excellent': config.utilization_excellent_threshold,
+            'utilization_good': config.utilization_good_threshold,
+            'utilization_moderate': config.utilization_moderate_threshold,
         }
 
         return render(request, self.template_name, context)

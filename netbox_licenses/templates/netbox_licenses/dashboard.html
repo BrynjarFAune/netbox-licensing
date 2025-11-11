@@ -247,9 +247,20 @@
                                     {% endif %}
                                 </td>
                                 <td class="text-end">
-                                    <span class="badge text-bg-{% if item.available_seats > 5 %}success{% elif item.available_seats > 0 %}warning{% else %}danger{% endif %}">
-                                        {{ item.available_seats }} seats
-                                    </span>
+                                    {% if item.payment_method == 'free_trial' %}
+                                        <span class="badge text-bg-secondary">
+                                            {{ item.available_seats }} seats
+                                        </span>
+                                    {% else %}
+                                        {% comment %}
+                                        Utilization-based coloring: Higher utilization = better (green)
+                                        Low available seats = high utilization = good (green)
+                                        High available seats = low utilization = bad (red)
+                                        {% endcomment %}
+                                        <span class="badge text-bg-{% if item.utilization_percentage >= utilization_excellent %}success{% elif item.utilization_percentage >= utilization_good %}info{% elif item.utilization_percentage >= utilization_moderate %}warning{% else %}danger{% endif %}">
+                                            {{ item.available_seats }} seats
+                                        </span>
+                                    {% endif %}
                                 </td>
                                 <td class="text-end">
                                     {% if item.current_period_end %}
