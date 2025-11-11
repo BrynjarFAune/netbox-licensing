@@ -789,17 +789,33 @@ class CurrencyConversionRate(NetBoxModel):
         return reverse('plugins:netbox_licenses:currencyconversionrate', args=[self.pk])
 
     @classmethod
-    def get_rate_to_nok(cls, currency_code):
+    def get_rate_to_nok(cls, currency_code, auto_sync=True):
         """
         Get conversion rate to NOK for the given currency.
-        Returns 1.0 for NOK itself.
-        Returns None if currency not found (caller should handle error).
+        Auto-syncs stale API-sourced rates on-demand.
+
+        Args:
+            currency_code: Currency code (e.g., 'USD', 'EUR')
+            auto_sync: If True, syncs stale API-sourced rates automatically
+
+        Returns:
+            Decimal rate to NOK, or None if currency not found
         """
         if currency_code == 'NOK':
             return Decimal('1.0')
 
         try:
             rate = cls.objects.get(currency_code=currency_code)
+
+            # Auto-sync if stale and API-sourced
+            if auto_sync and rate.source == 'api' and rate.is_stale:
+                try:
+                    from .services.currency_service import sync_currency_rate
+                    sync_currency_rate(rate)
+                except Exception:
+                    # If sync fails, still return existing rate (graceful degradation)
+                    pass
+
             return rate.rate_to_nok
         except cls.DoesNotExist:
             return None
