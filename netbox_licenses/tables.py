@@ -11,8 +11,9 @@ class LicenseTable(NetBoxTable):
     vendor = tables.Column(linkify=True)
     tenant = tables.Column(linkify=True)
     external_id = tables.Column(verbose_name="External ID", empty_values=())
+    status = tables.Column(empty_values=(), verbose_name="Status", orderable=False)
     tags = TagColumn(url_name='plugins:netbox_licenses:license_list')
-    
+
     # UTILIZATION COLUMNS
     utilization = tables.Column(empty_values=(), verbose_name="Utilization %", orderable=False)
     total_licenses = tables.Column(verbose_name="Capacity")
@@ -31,19 +32,26 @@ class LicenseTable(NetBoxTable):
     class Meta(NetBoxTable.Meta):
         model = License
         fields = (
-            "pk", "name", "vendor", "tenant", "external_id",
+            "pk", "name", "vendor", "tenant", "external_id", "status",
             "utilization", "total_licenses", "consumed_licenses", "available_licenses",
             "price", "currency", "total_cost", "payment_method", "responsible_contact",
             "tags", "created", "last_updated", "actions"
         )
         default_columns = (
-            "pk", "name", "vendor", "payment_method", "responsible_contact",
+            "pk", "name", "vendor", "status", "payment_method", "responsible_contact",
             "utilization", "total_licenses", "consumed_licenses", "available_licenses"
         )
 
     # NEW UTILIZATION RENDERING METHODS
     def render_external_id(self, record):
         return record.external_id or "—"
+
+    def render_status(self, record):
+        """Show active/inactive status badge based on periods"""
+        if record.is_active:
+            return format_html('<span class="badge text-bg-success">Active</span>')
+        else:
+            return format_html('<span class="badge text-bg-secondary">Inactive</span>')
 
     def render_utilization(self, record):
         from netbox_licenses.templatetags.license_helpers import utilization_badge
@@ -70,11 +78,21 @@ class LicenseTable(NetBoxTable):
         return record.available_licenses
 
     def render_price(self, record):
+        # Hide pricing for free/trial licenses
+        from .choices import PaymentMethodChoices
+        if record.payment_method in [PaymentMethodChoices.FREE_TRIAL, PaymentMethodChoices.PREPAID]:
+            return "—"
+
         price_value = float(record.price) if record.price else 0
         return "{} {}".format(price_value, record.currency)
 
     def render_total_cost(self, record):
         """Calculate total cost as (price × total licenses) in NOK"""
+        # Hide pricing for free/trial licenses
+        from .choices import PaymentMethodChoices
+        if record.payment_method in [PaymentMethodChoices.FREE_TRIAL, PaymentMethodChoices.PREPAID]:
+            return "—"
+
         from netbox_licenses.models import CurrencyConversionRate
 
         price = float(record.price) if record.price else 0
@@ -237,6 +255,7 @@ class LicensePeriodTable(NetBoxTable):
     license = tables.Column(linkify=True, verbose_name='License')
     period_start = tables.DateColumn(format='d/m/Y', verbose_name='Period Start')
     period_end = tables.DateColumn(format='d/m/Y', verbose_name='Period End')
+    status = tables.Column(empty_values=(), verbose_name='Status', orderable=False)
     seats_purchased = tables.Column(verbose_name='Seats')
     utilization = tables.Column(empty_values=(), verbose_name='Utilization', orderable=False)
     price = tables.Column(verbose_name='Price', empty_values=())
@@ -245,13 +264,13 @@ class LicensePeriodTable(NetBoxTable):
     class Meta(NetBoxTable.Meta):
         model = LicensePeriod
         fields = (
-            'pk', 'id', 'license', 'period_start', 'period_end',
+            'pk', 'id', 'license', 'period_start', 'period_end', 'status',
             'seats_purchased', 'utilization', 'price', 'currency',
             'payment_method', 'invoice_reference',
             'created', 'last_updated', 'actions'
         )
         default_columns = (
-            'pk', 'license', 'period_start', 'period_end',
+            'pk', 'license', 'period_start', 'period_end', 'status',
             'seats_purchased', 'utilization', 'price'
         )
 
@@ -283,6 +302,13 @@ class LicensePeriodTable(NetBoxTable):
             return "0%"
         percentage = (record.seats_utilized / record.seats_purchased) * 100
         return f"{percentage:.1f}%"
+
+    def render_status(self, record):
+        """Show active/inactive status badge"""
+        if record.is_active:
+            return format_html('<span class="badge text-bg-success">Active</span>')
+        else:
+            return format_html('<span class="badge text-bg-secondary">Inactive</span>')
 
     def render_price(self, record):
         """Format price with currency"""
