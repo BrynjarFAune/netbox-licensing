@@ -1,61 +1,90 @@
 {% extends 'generic/object_edit.html' %}
 {% load static %}
 
-{% block form %}
-{{ block.super }}
-{% endblock %}
-
 {% block javascript %}
 {{ block.super }}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const licenseField = document.getElementById('id_license');
+(function() {
+    'use strict';
 
-    if (!licenseField) return;
+    // Wait for DOM to be ready
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('License period form auto-fill loaded');
 
-    // Auto-fill form when license is selected
-    licenseField.addEventListener('change', function() {
-        const licenseId = this.value;
+        // Get the license select field - try multiple selectors
+        const licenseField = document.querySelector('#id_license') ||
+                           document.querySelector('select[name="license"]');
 
-        if (!licenseId) return;
+        if (!licenseField) {
+            console.error('License field not found');
+            return;
+        }
 
-        // Fetch license details via API
-        fetch(`/api/plugins/licenses/licenses/${licenseId}/`, {
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            // Auto-fill price
-            const priceField = document.getElementById('id_price');
-            if (priceField && data.price) {
-                priceField.value = data.price;
-            }
+        console.log('License field found:', licenseField);
 
-            // Auto-fill currency
-            const currencyField = document.getElementById('id_currency');
-            if (currencyField && data.currency) {
-                currencyField.value = data.currency;
-            }
+        // Auto-fill form when license is selected
+        licenseField.addEventListener('change', function() {
+            const licenseId = this.value;
+            console.log('License changed to:', licenseId);
 
-            // Auto-fill payment method
-            const paymentMethodField = document.getElementById('id_payment_method');
-            if (paymentMethodField && data.payment_method) {
-                paymentMethodField.value = data.payment_method;
-            }
+            if (!licenseId) return;
 
-            // Auto-fill seats purchased
-            const seatsField = document.getElementById('id_seats_purchased');
-            if (seatsField && data.total_licenses) {
-                seatsField.value = data.total_licenses;
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching license details:', error);
+            // Fetch license details via API
+            const apiUrl = `/api/plugins/licenses/licenses/${licenseId}/`;
+            console.log('Fetching from:', apiUrl);
+
+            fetch(apiUrl, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('License data received:', data);
+
+                // Auto-fill price
+                const priceField = document.querySelector('#id_price') ||
+                                 document.querySelector('input[name="price"]');
+                if (priceField && data.price) {
+                    priceField.value = data.price;
+                    console.log('Set price to:', data.price);
+                }
+
+                // Auto-fill currency
+                const currencyField = document.querySelector('#id_currency') ||
+                                    document.querySelector('select[name="currency"]');
+                if (currencyField && data.currency) {
+                    currencyField.value = data.currency;
+                    console.log('Set currency to:', data.currency);
+                }
+
+                // Auto-fill payment method
+                const paymentMethodField = document.querySelector('#id_payment_method') ||
+                                         document.querySelector('select[name="payment_method"]');
+                if (paymentMethodField && data.payment_method) {
+                    paymentMethodField.value = data.payment_method;
+                    console.log('Set payment_method to:', data.payment_method);
+                }
+
+                // Auto-fill seats purchased
+                const seatsField = document.querySelector('#id_seats_purchased') ||
+                                 document.querySelector('input[name="seats_purchased"]');
+                if (seatsField && data.total_licenses) {
+                    seatsField.value = data.total_licenses;
+                    console.log('Set seats_purchased to:', data.total_licenses);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching license details:', error);
+            });
         });
     });
-});
+})();
 </script>
 {% endblock %}

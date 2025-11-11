@@ -483,6 +483,7 @@ class LicensePeriodEditView(generic.ObjectEditView):
     """Edit view for license periods"""
     queryset = models.LicensePeriod.objects.all()
     form = forms.LicensePeriodForm
+    template_name = 'netbox_licenses/licenseperiod_edit.html'
 
     def alter_object(self, obj, request, args, kwargs):
         """Pre-populate license from URL parameter"""
