@@ -21,13 +21,17 @@ class LicenseDashboardView(View):
 
     def get(self, request):
         from decimal import Decimal
-        from netbox_licenses.models import CurrencyConversionRate
-        from django.conf import settings
+        from netbox_licenses.models import CurrencyConversionRate, PluginConfiguration
 
-        # Get configurable thresholds
-        plugin_config = settings.PLUGINS_CONFIG.get('netbox_licenses', {})
-        expiring_soon_days = plugin_config.get('dashboard_expiring_soon_days', 90)
-        recently_expired_days = plugin_config.get('dashboard_recently_expired_days', 30)
+        # Get configurable thresholds from database
+        try:
+            config = PluginConfiguration.get_config()
+            expiring_soon_days = config.dashboard_expiring_soon_days
+            recently_expired_days = config.dashboard_recently_expired_days
+        except Exception:
+            # Fallback to defaults if config doesn't exist
+            expiring_soon_days = 90
+            recently_expired_days = 30
 
         # Get all licenses with related data
         licenses = models.License.objects.prefetch_related('instances', 'vendor').all()

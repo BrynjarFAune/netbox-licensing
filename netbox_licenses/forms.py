@@ -644,6 +644,20 @@ class PluginConfigurationForm(forms.ModelForm):
         help_text="Days before expiry to show critical renewal alerts",
         widget=forms.NumberInput(attrs={'class': 'form-control'})
     )
+    dashboard_expiring_soon_days = IntegerField(
+        min_value=1,
+        initial=90,
+        label="Dashboard: Expiring Soon (days)",
+        help_text="Show instances expiring within this many days on dashboard",
+        widget=forms.NumberInput(attrs={'class': 'form-control'})
+    )
+    dashboard_recently_expired_days = IntegerField(
+        min_value=1,
+        initial=30,
+        label="Dashboard: Recently Expired (days)",
+        help_text="Show instances expired within this many days on dashboard",
+        widget=forms.NumberInput(attrs={'class': 'form-control'})
+    )
     class Meta:
         model = PluginConfiguration
         fields = [
@@ -655,6 +669,8 @@ class PluginConfigurationForm(forms.ModelForm):
             'currency_stale_days',
             'renewal_warning_days',
             'renewal_critical_days',
+            'dashboard_expiring_soon_days',
+            'dashboard_recently_expired_days',
         ]
 
 

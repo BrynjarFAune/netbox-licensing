@@ -873,6 +873,15 @@ class PluginConfiguration(models.Model):
         help_text="Days before expiry to show critical renewal alerts"
     )
 
+    # Dashboard display settings
+    dashboard_expiring_soon_days = models.IntegerField(
+        default=90,
+        help_text="Show instances expiring within this many days on dashboard"
+    )
+    dashboard_recently_expired_days = models.IntegerField(
+        default=30,
+        help_text="Show instances expired within this many days on dashboard"
+    )
 
     class Meta:
         verbose_name = "Plugin Configuration"

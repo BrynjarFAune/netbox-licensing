@@ -65,15 +65,17 @@
                     <table class="table table-sm table-hover">
                         <thead>
                             <tr>
+                                <th style="width: 30px;"><input type="checkbox" id="toggleAllVendors" checked></th>
                                 <th>Vendor</th>
                                 <th class="text-end">Licenses</th>
                                 <th class="text-end">Cost (NOK)</th>
                                 <th class="text-end">Utilization</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            {% for vendor in vendor_stats|slice:":5" %}
-                            <tr>
+                        <tbody id="vendorTableBody">
+                            {% for vendor in vendor_stats %}
+                            <tr data-vendor-index="{{ forloop.counter0 }}">
+                                <td><input type="checkbox" class="vendor-toggle" data-vendor-index="{{ forloop.counter0 }}" checked></td>
                                 <td><a href="{% url 'plugins:netbox_licenses:license_list' %}?vendor={{ vendor.vendor_id }}">{{ vendor.vendor }}</a></td>
                                 <td class="text-end">{{ vendor.license_count }}</td>
                                 <td class="text-end">{{ vendor.total_cost_nok|floatformat:2 }}</td>
@@ -276,9 +278,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const vendorVisibility = vendorData.map(() => true);
 
         function updateChart() {
-            // Count how many are visible
-            const visibleCount = vendorVisibility.filter(v => v).length;
-
             // Filter data based on visibility
             const filteredData = vendorData
                 .map((v, i) => vendorVisibility[i] ? v : null)
@@ -295,14 +294,6 @@ document.addEventListener('DOMContentLoaded', function() {
             chart.data.datasets[0].data = filteredData.map(v => v.cost);
             chart.data.datasets[0].backgroundColor = filteredColors;
             chart.update();
-
-            // Update tooltip percentages
-            chart.options.plugins.tooltip.callbacks.label = function(context) {
-                const label = context.label || '';
-                const value = context.parsed || 0;
-                const percentage = (value / visibleTotal * 100).toFixed(1);
-                return label + ': ' + value.toFixed(2) + ' NOK (' + percentage + '%)';
-            };
         }
 
         const chart = new Chart(ctx, {
@@ -320,22 +311,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 maintainAspectRatio: true,
                 plugins: {
                     legend: {
-                        position: 'bottom',
-                        onClick: function(e, legendItem, legend) {
-                            const index = legendItem.index;
-
-                            // Count how many are currently visible
-                            const visibleCount = vendorVisibility.filter(v => v).length;
-
-                            // Prevent hiding if it's the last visible vendor
-                            if (visibleCount === 1 && vendorVisibility[index]) {
-                                return; // Don't allow hiding the last one
-                            }
-
-                            // Toggle visibility
-                            vendorVisibility[index] = !vendorVisibility[index];
-                            updateChart();
-                        }
+                        display: false  // Hide legend, using checkboxes instead
                     },
                     tooltip: {
                         callbacks: {
@@ -352,6 +328,52 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             }
+        });
+
+        // Handle individual vendor checkboxes
+        document.querySelectorAll('.vendor-toggle').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const index = parseInt(this.dataset.vendorIndex);
+
+                // Count how many are currently checked
+                const checkedCount = document.querySelectorAll('.vendor-toggle:checked').length;
+
+                // Prevent unchecking if it's the last one
+                if (checkedCount === 0) {
+                    this.checked = true;
+                    return;
+                }
+
+                vendorVisibility[index] = this.checked;
+                updateChart();
+
+                // Update "toggle all" checkbox state
+                const allChecked = document.querySelectorAll('.vendor-toggle').length === checkedCount;
+                document.getElementById('toggleAllVendors').checked = allChecked;
+            });
+        });
+
+        // Handle "toggle all" checkbox
+        document.getElementById('toggleAllVendors').addEventListener('change', function() {
+            const checkAll = this.checked;
+
+            // Don't allow unchecking all
+            if (!checkAll) {
+                // Check at least the first one
+                document.querySelectorAll('.vendor-toggle').forEach((cb, i) => {
+                    cb.checked = (i === 0);
+                    vendorVisibility[i] = (i === 0);
+                });
+                this.checked = false;
+            } else {
+                // Check all
+                document.querySelectorAll('.vendor-toggle').forEach((cb, i) => {
+                    cb.checked = true;
+                    vendorVisibility[i] = true;
+                });
+            }
+
+            updateChart();
         });
     }
 });
