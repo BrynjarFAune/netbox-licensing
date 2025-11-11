@@ -937,7 +937,9 @@ class LicensePeriod(NetBoxModel):
         help_text="When this paid period starts"
     )
     period_end = models.DateField(
-        help_text="When this paid period ends"
+        null=True,
+        blank=True,
+        help_text="When this paid period ends (leave blank for perpetual/free licenses)"
     )
 
     # Snapshot of license state at period creation
@@ -1015,11 +1017,16 @@ class LicensePeriod(NetBoxModel):
     def is_active(self):
         """Check if this period covers today"""
         today = timezone.now().date()
+        if self.period_end is None:
+            # Perpetual license - active if started
+            return self.period_start <= today
         return self.period_start <= today <= self.period_end
 
     @property
     def days_remaining(self):
-        """Days until this period ends (negative if expired)"""
+        """Days until this period ends (negative if expired, None for perpetual)"""
+        if self.period_end is None:
+            return None  # Perpetual - never expires
         today = timezone.now().date()
         return (self.period_end - today).days
 

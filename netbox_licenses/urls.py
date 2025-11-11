@@ -55,7 +55,6 @@ urlpatterns = [
     path('compliance/', views.ComplianceMonitoringView.as_view(), name='compliance_monitoring'),
     path('cost-allocation/', views.CostAllocationView.as_view(), name='cost_allocation'),
     path('assigned-object-costs/', views.AssignedObjectCostView.as_view(), name='assigned_object_costs'),
-    path('renewals/', views.LicenseRenewalDashboardView.as_view(), name='license_renewals'),
 
     path('ajax/assigned-object/', views.AssignedObjectFieldView.as_view(), name='assigned-object-field'),
     

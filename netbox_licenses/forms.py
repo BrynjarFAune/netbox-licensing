@@ -674,8 +674,8 @@ class LicensePeriodForm(NetBoxModelForm):
 
     period_end = DateField(
         widget=DateInput(attrs={'type': 'date'}),
-        required=True,
-        help_text="End date of this billing period"
+        required=False,
+        help_text="End date of this billing period (leave blank for perpetual/free licenses)"
     )
 
     price = DecimalField(
