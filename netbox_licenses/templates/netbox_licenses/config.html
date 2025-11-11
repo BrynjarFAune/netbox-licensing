@@ -112,6 +112,32 @@
 
                     <hr>
 
+                    <h6 class="card-subtitle text-muted mt-3 mb-3">Dashboard Display Settings</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_dashboard_expiring_soon_days" class="form-label">
+                                    Expiring Soon (days)
+                                    <i class="mdi mdi-help-circle" title="{{ form.dashboard_expiring_soon_days.help_text }}"></i>
+                                </label>
+                                {{ form.dashboard_expiring_soon_days }}
+                                <small class="form-text text-muted">{{ form.dashboard_expiring_soon_days.help_text }}</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_dashboard_recently_expired_days" class="form-label">
+                                    Recently Expired (days)
+                                    <i class="mdi mdi-help-circle" title="{{ form.dashboard_recently_expired_days.help_text }}"></i>
+                                </label>
+                                {{ form.dashboard_recently_expired_days }}
+                                <small class="form-text text-muted">{{ form.dashboard_recently_expired_days.help_text }}</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">
                             <i class="mdi mdi-content-save"></i> Save Configuration

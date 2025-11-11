@@ -132,30 +132,53 @@ class LicenseDashboardView(View):
         underutilized.sort(key=lambda x: x['wasted_cost_nok'], reverse=True)
         top_underutilized = underutilized[:5]
 
-        # === EXPIRING INSTANCES ===
-        expiring_soon = []
-        recently_expired = []
+        # === LICENSE STATUS (Period-based) ===
+        # Licenses that need action based on their period status
+        licenses_needing_action = []
+        active_licenses = []
 
-        for instance in instances:
-            if instance.end_date:
-                days_until = (instance.end_date - today).days
-                instance.days_remaining = days_until  # Add as attribute for template
+        for license in licenses:
+            active_period = license.get_active_period()
 
-                if -recently_expired_days <= days_until < 0:
-                    # Expired within configured days
-                    recently_expired.append(instance)
-                elif 0 <= days_until <= expiring_soon_days:
-                    # Expiring within configured days
-                    expiring_soon.append(instance)
+            license_info = {
+                'license': license,
+                'active_period': active_period,
+                'is_active': license.is_active,
+                'status': license.license_status,
+                'available_seats': license.available_licenses,
+                'responsible_contact': license.responsible_contact,
+                'current_period_end': license.current_period_end,
+            }
+
+            # Calculate days until action needed
+            if active_period and active_period.period_end:
+                days_remaining = active_period.days_remaining
+                license_info['days_remaining'] = days_remaining
+
+                # Check if action needed soon
+                if 0 <= days_remaining <= expiring_soon_days:
+                    license_info['action_reason'] = 'period_expiring'
+                    licenses_needing_action.append(license_info)
+
+            elif not active_period:
+                # No active period - expired or never had one
+                license_info['action_reason'] = 'no_active_period'
+                license_info['days_remaining'] = None
+                licenses_needing_action.append(license_info)
+
+            # If no responsible contact, flag it
+            if not license.responsible_contact:
+                if license_info not in licenses_needing_action:
+                    license_info['action_reason'] = 'no_responsible_contact'
+                    licenses_needing_action.append(license_info)
+
+            # Add to active list if currently active
+            if license.is_active:
+                active_licenses.append(license_info)
 
         # Sort by urgency
-        expiring_soon.sort(key=lambda x: x.end_date)
-        recently_expired.sort(key=lambda x: x.end_date, reverse=True)
-
-        # Separate auto-renew from manual (show ALL, no limit)
-        from .choices import PaymentMethodChoices
-        expiring_auto_renew = [i for i in expiring_soon if i.license.payment_method == PaymentMethodChoices.CARD_AUTO]
-        expiring_manual = [i for i in expiring_soon if i.license.payment_method != PaymentMethodChoices.CARD_AUTO]
+        licenses_needing_action.sort(key=lambda x: x.get('days_remaining', float('inf')) if x.get('days_remaining') is not None else float('inf'))
+        active_licenses.sort(key=lambda x: x.get('days_remaining', float('inf')) if x.get('days_remaining') is not None else float('inf'))
 
         context = {
             # Hero metrics
@@ -176,13 +199,10 @@ class LicenseDashboardView(View):
             # Top underutilized
             'top_underutilized': top_underutilized,
 
-            # Expiring instances - SHOW ALL (no limit)
-            'expiring_soon_count': len(expiring_soon),
-            'expiring_auto_renew': expiring_auto_renew,  # All auto-renew
-            'expiring_manual': expiring_manual,  # All manual
-            'recently_expired': recently_expired,  # All recently expired
-            'expiring_soon_days': expiring_soon_days,  # For template display
-            'recently_expired_days': recently_expired_days,  # For template display
+            # Period-based license status
+            'licenses_needing_action': licenses_needing_action,
+            'active_licenses': active_licenses,
+            'expiring_soon_days': expiring_soon_days,
         }
 
         return render(request, self.template_name, context)

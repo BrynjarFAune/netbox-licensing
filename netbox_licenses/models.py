@@ -1060,8 +1060,8 @@ class LicensePeriod(NetBoxModel):
         from django.core.exceptions import ValidationError
         super().clean()
 
-        # Validate period dates
-        if self.period_end <= self.period_start:
+        # Validate period dates (only if period_end is set)
+        if self.period_end and self.period_end <= self.period_start:
             raise ValidationError("Period end date must be after start date")
 
         # Validate seats
