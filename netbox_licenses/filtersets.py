@@ -33,10 +33,34 @@ class LicenseFilterSet(NetBoxModelFilterSet):
         label='Has Responsible Contact'
     )
 
+    # Period-based date filters
+    active_on = django_filters.DateFilter(
+        method='filter_active_on',
+        label='Active on Date'
+    )
+    period_start__gte = django_filters.DateFilter(
+        method='filter_period_start_gte',
+        label='Period starts after'
+    )
+    period_end__lte = django_filters.DateFilter(
+        method='filter_period_end_lte',
+        label='Period ends before'
+    )
+    license_status = django_filters.ChoiceFilter(
+        choices=[
+            ('active', 'Active'),
+            ('expiring_soon', 'Expiring Soon'),
+            ('inactive', 'Inactive'),
+        ],
+        method='filter_license_status',
+        label='License Status'
+    )
+
     class Meta:
         model = License
         fields = ('id', 'name', 'vendor', 'tenant', 'external_id', 'total_licenses',
-                  'consumed_licenses', 'payment_method', 'responsible_contact')
+                  'consumed_licenses', 'payment_method', 'responsible_contact',
+                  'active_on', 'period_start__gte', 'period_end__lte', 'license_status')
     
     def filter_has_external_id(self, queryset, name, value):
         if value:
@@ -58,10 +82,41 @@ class LicenseFilterSet(NetBoxModelFilterSet):
             return queryset.filter(responsible_contact__isnull=False)
         return queryset.filter(responsible_contact__isnull=True)
 
+    def filter_active_on(self, queryset, name, value):
+        """Filter licenses that have an active period on the specified date"""
+        return queryset.filter(
+            periods__period_start__lte=value
+        ).filter(
+            models.Q(periods__period_end__gte=value) | models.Q(periods__period_end__isnull=True)
+        ).distinct()
+
+    def filter_period_start_gte(self, queryset, name, value):
+        """Filter licenses with periods starting after the specified date"""
+        return queryset.filter(periods__period_start__gte=value).distinct()
+
+    def filter_period_end_lte(self, queryset, name, value):
+        """Filter licenses with periods ending before the specified date"""
+        return queryset.filter(periods__period_end__lte=value).distinct()
+
+    def filter_license_status(self, queryset, name, value):
+        """Filter licenses by their current status"""
+        return queryset.filter(
+            pk__in=[obj.pk for obj in queryset if obj.license_status == value]
+        )
+
 
 class LicenseInstanceFilterSet(NetBoxModelFilterSet):
+    # Date range filters
     start_date__gte = django_filters.DateFilter(field_name='start_date', lookup_expr='gte')
+    start_date__lte = django_filters.DateFilter(field_name='start_date', lookup_expr='lte')
+    end_date__gte = django_filters.DateFilter(field_name='end_date', lookup_expr='gte')
     end_date__lte = django_filters.DateFilter(field_name='end_date', lookup_expr='lte')
+
+    # Active on specific date
+    active_on = django_filters.DateFilter(
+        method='filter_active_on',
+        label='Active on Date'
+    )
 
     derived_status = django_filters.MultipleChoiceFilter(
         choices=LicenseStatusChoices,
@@ -83,10 +138,19 @@ class LicenseInstanceFilterSet(NetBoxModelFilterSet):
 
     class Meta:
         model = LicenseInstance
-        fields = ('id', 'license', 'start_date', 'end_date', 'start_date__gte', 'end_date__lte', 'derived_status', 'expiry_status')
+        fields = ('id', 'license', 'start_date', 'end_date', 'start_date__gte', 'start_date__lte',
+                  'end_date__gte', 'end_date__lte', 'active_on', 'derived_status', 'expiry_status')
 
     def search(self, queryset, name, value):
         return queryset.filter(description_icontains=value)
+
+    def filter_active_on(self, queryset, name, value):
+        """Filter instances that were active on the specified date"""
+        return queryset.filter(
+            start_date__lte=value
+        ).filter(
+            models.Q(end_date__gte=value) | models.Q(end_date__isnull=True)
+        )
 
     def filter_derived_status(self, queryset, name, values):
         return queryset.filter(
@@ -123,14 +187,31 @@ class LicenseInstanceFilterForm(NetBoxModelFilterSetForm):
         required=False,
         label="Status"
     )
+    # Date range filters
+    active_on = forms.DateField(
+        required=False,
+        label="Active on Date",
+        help_text="Show instances active on this date",
+        widget=forms.DateInput(attrs={'type': 'date'})
+    )
     start_date__gte = forms.DateField(
         required=False,
-        label="Start date (after)",
+        label="Start Date (After)",
+        widget=forms.DateInput(attrs={'type': 'date'}),
+    )
+    start_date__lte = forms.DateField(
+        required=False,
+        label="Start Date (Before)",
+        widget=forms.DateInput(attrs={'type': 'date'}),
+    )
+    end_date__gte = forms.DateField(
+        required=False,
+        label="End Date (After)",
         widget=forms.DateInput(attrs={'type': 'date'}),
     )
     end_date__lte = forms.DateField(
         required=False,
-        label="End date (Before)",
+        label="End Date (Before)",
         widget=forms.DateInput(attrs={'type': 'date'}),
     )
     expiry_status = forms.ChoiceField(
@@ -187,6 +268,37 @@ class LicenseFilterForm(NetBoxModelFilterSetForm):
         required=False,
         label="Min Consumed Licenses",
         help_text="Minimum number of consumed licenses"
+    )
+
+    # Period-based date filters
+    active_on = forms.DateField(
+        required=False,
+        label="Active on Date",
+        help_text="Show licenses active on this date",
+        widget=forms.DateInput(attrs={'type': 'date'})
+    )
+    period_start__gte = forms.DateField(
+        required=False,
+        label="Period Starts After",
+        help_text="Show licenses with periods starting after this date",
+        widget=forms.DateInput(attrs={'type': 'date'})
+    )
+    period_end__lte = forms.DateField(
+        required=False,
+        label="Period Ends Before",
+        help_text="Show licenses with periods ending before this date",
+        widget=forms.DateInput(attrs={'type': 'date'})
+    )
+    license_status = forms.ChoiceField(
+        choices=[
+            ('', '-------'),
+            ('active', 'Active'),
+            ('expiring_soon', 'Expiring Soon'),
+            ('inactive', 'Inactive'),
+        ],
+        required=False,
+        label="License Status",
+        help_text="Filter by current license status"
     )
 
     class Meta:
