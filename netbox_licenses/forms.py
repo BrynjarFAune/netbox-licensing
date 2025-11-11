@@ -57,7 +57,7 @@ class LicenseForm(NetBoxModelForm):
 
     # NEW PAYMENT AND RESPONSIBILITY FIELDS
     payment_method = ChoiceField(
-        choices=PaymentMethodChoices,
+        choices=PaymentMethodChoices.CHOICES,
         initial=PaymentMethodChoices.INVOICE,
         label="Payment Method",
         help_text="How this license is paid for"
@@ -537,7 +537,7 @@ class LicenseBulkEditForm(NetBoxModelForm):
         label="Tenant"
     )
     payment_method = ChoiceField(
-        choices=[('', '---------')] + list(PaymentMethodChoices),
+        choices=[('', '---------')] + list(PaymentMethodChoices.CHOICES),
         required=False,
         label="Payment Method"
     )
@@ -701,14 +701,16 @@ class LicensePeriodForm(NetBoxModelForm):
         help_text="Cost for this renewal period"
     )
 
-    currency = ChoiceField(
-        choices=CurrencyChoices,
+    currency = CharField(
+        max_length=3,
         initial='NOK',
-        required=True
+        required=True,
+        widget=forms.Select(),
+        help_text="Currency code (must be defined in Currency Rates)"
     )
 
     payment_method = ChoiceField(
-        choices=PaymentMethodChoices,
+        choices=PaymentMethodChoices.CHOICES,
         required=True,
         help_text="How this renewal will be paid"
     )
@@ -752,6 +754,10 @@ class LicensePeriodForm(NetBoxModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        # Populate currency choices dynamically from available conversion rates
+        currencies = CurrencyConversionRate.get_available_currencies()
+        self.fields['currency'].widget.choices = [(c, c) for c in currencies]
 
         # Auto-fill fields based on the selected license
         # Only for new renewals, not edits
