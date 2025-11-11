@@ -78,9 +78,9 @@ class LicenseTable(NetBoxTable):
         return record.available_licenses
 
     def render_price(self, record):
-        # Hide pricing for free/trial licenses
+        # Hide pricing for free/trial licenses only
         from .choices import PaymentMethodChoices
-        if record.payment_method in [PaymentMethodChoices.FREE_TRIAL, PaymentMethodChoices.PREPAID]:
+        if record.payment_method == PaymentMethodChoices.FREE_TRIAL:
             return "—"
 
         price_value = float(record.price) if record.price else 0
@@ -88,9 +88,9 @@ class LicenseTable(NetBoxTable):
 
     def render_total_cost(self, record):
         """Calculate total cost as (price × total licenses) in NOK"""
-        # Hide pricing for free/trial licenses
+        # Hide pricing for free/trial licenses only
         from .choices import PaymentMethodChoices
-        if record.payment_method in [PaymentMethodChoices.FREE_TRIAL, PaymentMethodChoices.PREPAID]:
+        if record.payment_method == PaymentMethodChoices.FREE_TRIAL:
             return "—"
 
         from netbox_licenses.models import CurrencyConversionRate

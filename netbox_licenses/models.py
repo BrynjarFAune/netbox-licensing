@@ -301,10 +301,16 @@ class License(NetBoxModel):
     def clean(self):
         """Validate license data"""
         from django.core.exceptions import ValidationError
+        from decimal import Decimal
         super().clean()
 
         if self.total_licenses < 0:
             raise ValidationError("Total licenses cannot be negative")
+
+        # Force FREE_TRIAL licenses to have price=0
+        from .choices import PaymentMethodChoices
+        if self.payment_method == PaymentMethodChoices.FREE_TRIAL:
+            self.price = Decimal('0.00')
 
         # Validate currency has a conversion rate (unless it's NOK)
         if self.currency and self.currency != 'NOK':

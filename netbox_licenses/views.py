@@ -45,21 +45,24 @@ class LicenseDashboardView(View):
         total_utilized = 0
 
         for license in licenses:
-            # Convert to NOK
-            price = Decimal(str(license.price)) if license.price else Decimal('0.00')
-            rate = CurrencyConversionRate.get_rate_to_nok(license.currency)
-            if rate is None:
-                rate = Decimal('1.00')
-            else:
-                rate = Decimal(str(rate))
+            # Skip cost calculation for FREE_TRIAL licenses
+            from .choices import PaymentMethodChoices
+            if license.payment_method != PaymentMethodChoices.FREE_TRIAL:
+                # Convert to NOK
+                price = Decimal(str(license.price)) if license.price else Decimal('0.00')
+                rate = CurrencyConversionRate.get_rate_to_nok(license.currency)
+                if rate is None:
+                    rate = Decimal('1.00')
+                else:
+                    rate = Decimal(str(rate))
 
-            license_cost_nok = price * rate * license.total_licenses
-            total_cost_nok += license_cost_nok
+                license_cost_nok = price * rate * license.total_licenses
+                total_cost_nok += license_cost_nok
 
-            # Calculate unused cost
-            unused = license.available_licenses
-            if unused > 0:
-                unused_cost_nok += price * rate * unused
+                # Calculate unused cost
+                unused = license.available_licenses
+                if unused > 0:
+                    unused_cost_nok += price * rate * unused
 
             total_licenses_count += license.total_licenses
             total_utilized += license.consumed_licenses
@@ -80,14 +83,17 @@ class LicenseDashboardView(View):
                 vendor_total += license.total_licenses
                 vendor_consumed += license.consumed_licenses
 
-                price = Decimal(str(license.price)) if license.price else Decimal('0.00')
-                rate = CurrencyConversionRate.get_rate_to_nok(license.currency)
-                if rate is None:
-                    rate = Decimal('1.00')
-                else:
-                    rate = Decimal(str(rate))
+                # Skip cost calculation for FREE_TRIAL licenses
+                from .choices import PaymentMethodChoices
+                if license.payment_method != PaymentMethodChoices.FREE_TRIAL:
+                    price = Decimal(str(license.price)) if license.price else Decimal('0.00')
+                    rate = CurrencyConversionRate.get_rate_to_nok(license.currency)
+                    if rate is None:
+                        rate = Decimal('1.00')
+                    else:
+                        rate = Decimal(str(rate))
 
-                vendor_cost_nok += price * rate * license.total_licenses
+                    vendor_cost_nok += price * rate * license.total_licenses
 
             vendor_stats.append({
                 'vendor': vendor.name,
@@ -109,7 +115,9 @@ class LicenseDashboardView(View):
         # === TOP UNDERUTILIZED LICENSES ===
         underutilized = []
         for license in licenses:
-            if license.available_licenses > 0 and license.total_licenses > 0:
+            # Skip FREE_TRIAL licenses from underutilization tracking
+            from .choices import PaymentMethodChoices
+            if license.payment_method != PaymentMethodChoices.FREE_TRIAL and license.available_licenses > 0 and license.total_licenses > 0:
                 waste_pct = (license.available_licenses / license.total_licenses) * 100
 
                 price = Decimal(str(license.price)) if license.price else Decimal('0.00')
