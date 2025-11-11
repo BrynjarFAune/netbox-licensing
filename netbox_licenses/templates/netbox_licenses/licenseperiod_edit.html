@@ -69,9 +69,18 @@
                 // Auto-fill currency
                 const currencyField = document.querySelector('#id_currency') ||
                                     document.querySelector('select[name="currency"]');
+                console.log('Currency field:', currencyField);
+                console.log('Currency from API:', data.currency);
                 if (currencyField && data.currency) {
+                    console.log('Current currency value before:', currencyField.value);
                     currencyField.value = data.currency;
+                    console.log('Current currency value after:', currencyField.value);
+
+                    // Trigger change event in case the widget needs it
+                    currencyField.dispatchEvent(new Event('change', { bubbles: true }));
                     console.log('Set currency to:', data.currency);
+                } else {
+                    console.error('Currency field not found or no currency in data');
                 }
 
                 // Auto-fill payment method
