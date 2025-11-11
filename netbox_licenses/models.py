@@ -213,10 +213,12 @@ class License(NetBoxModel):
 
     def get_active_period(self):
         """Get the period covering today (if any)"""
+        from django.db.models import Q
         today = timezone.now().date()
+        # Period is active if: started and (not ended yet OR perpetual/null end date)
         return self.periods.filter(
-            period_start__lte=today,
-            period_end__gte=today
+            Q(period_start__lte=today) &
+            (Q(period_end__gte=today) | Q(period_end__isnull=True))
         ).first()
 
     @property
@@ -228,15 +230,19 @@ class License(NetBoxModel):
     def license_status(self):
         """
         Calculate license status based on periods.
-        Returns: 'active', 'expiring_soon', 'expired'
+        Returns: 'active', 'expiring_soon', 'inactive'
         """
         today = timezone.now().date()
         active_period = self.get_active_period()
 
         if not active_period:
-            return 'expired'
+            return 'inactive'
 
         days_remaining = active_period.days_remaining
+
+        # Perpetual licenses are always just 'active'
+        if days_remaining is None:
+            return 'active'
 
         # Get thresholds from config
         try:
