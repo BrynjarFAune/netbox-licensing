@@ -44,31 +44,21 @@ class LicenseDashboardView(View):
 
         utilization_percent = (total_utilized / total_licenses_count * 100) if total_licenses_count > 0 else 0
 
-        # === VENDOR BREAKDOWN (ALL LICENSES INCLUDING FREE/PREPAID) ===
-        vendor_stats = []
-        vendors = Manufacturer.objects.filter(licenses__isnull=False).distinct()
+        # === LICENSE CAPACITY CHART DATA (Top 15 by total seats) ===
+        license_chart_data = []
+        active_licenses_list = [l for l in licenses if l.is_active]
 
-        for vendor in vendors:
-            vendor_licenses = licenses.filter(vendor=vendor)
-            vendor_total = 0
-            vendor_consumed = 0
+        # Sort by total seats and take top 15
+        sorted_licenses = sorted(active_licenses_list, key=lambda x: x.total_licenses, reverse=True)[:15]
 
-            for license in vendor_licenses:
-                vendor_total += license.total_licenses
-                vendor_consumed += license.consumed_licenses
-
-            vendor_stats.append({
-                'vendor': vendor.name,
-                'vendor_id': vendor.id,
-                'license_count': vendor_licenses.count(),
-                'total_licenses': vendor_total,
-                'consumed_licenses': vendor_consumed,
-                'available_licenses': vendor_total - vendor_consumed,
-                'utilization_percentage': (vendor_consumed / vendor_total * 100) if vendor_total > 0 else 0
+        for license in sorted_licenses:
+            license_chart_data.append({
+                'name': license.name,
+                'used': license.consumed_licenses,
+                'free': license.available_licenses,
+                'total': license.total_licenses,
+                'utilization': license.utilization_percentage
             })
-
-        # Sort by utilization percentage (lowest first = most capacity)
-        vendor_stats.sort(key=lambda x: x['utilization_percentage'])
 
         # === LICENSES WITH AVAILABLE CAPACITY ===
         available_capacity = []
@@ -132,13 +122,9 @@ class LicenseDashboardView(View):
             'total_available': total_licenses_count - total_utilized,
             'utilization_percent': utilization_percent,
 
-            # Vendor breakdown
-            'vendor_stats': vendor_stats,
-            'vendor_stats_json': json.dumps([{
-                'vendor': v['vendor'],
-                'available': v['available_licenses'],
-                'utilization': v['utilization_percentage']
-            } for v in vendor_stats]),
+            # Chart data
+            'license_chart_data': license_chart_data,
+            'license_chart_json': json.dumps(license_chart_data),
 
             # Capacity lists
             'top_available': top_available,
