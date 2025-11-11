@@ -131,7 +131,7 @@ class LicensePeriodSerializer(NetBoxModelSerializer):
             'seats_purchased', 'seats_utilized',
             'invoice_reference', 'invoice_url',
             'is_active', 'days_remaining', 'utilization_percentage',
-            'created', 'last_updated'
+            'comments', 'tags', 'custom_fields', 'created', 'last_updated'
         )
 
 
