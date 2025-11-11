@@ -1,0 +1,138 @@
+{% extends 'generic/object.html' %}
+{% load helpers %}
+
+{% block breadcrumbs %}
+  {{ block.super }}
+  <li class="breadcrumb-item"><a href="{% url 'plugins:netbox_licenses:license' pk=object.license.pk %}">{{ object.license }}</a></li>
+{% endblock %}
+
+{% block extra_controls %}
+  <a href="{% url 'plugins:netbox_licenses:licenseperiod_edit' pk=object.pk %}" class="btn btn-warning">
+    <i class="mdi mdi-pencil"></i> Edit
+  </a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col col-md-6">
+    <div class="card">
+      <h5 class="card-header">License Period Details</h5>
+      <div class="card-body">
+        <table class="table table-hover attr-table">
+          <tr>
+            <th scope="row">License</th>
+            <td><a href="{% url 'plugins:netbox_licenses:license' pk=object.license.pk %}">{{ object.license }}</a></td>
+          </tr>
+          <tr>
+            <th scope="row">Period Start</th>
+            <td>{{ object.period_start|date:"d/m/Y" }}</td>
+          </tr>
+          <tr>
+            <th scope="row">Period End</th>
+            <td>
+              {% if object.period_end %}
+                {{ object.period_end|date:"d/m/Y" }}
+              {% else %}
+                <span class="text-muted">Perpetual</span>
+              {% endif %}
+            </td>
+          </tr>
+          <tr>
+            <th scope="row">Status</th>
+            <td>
+              {% if object.is_active %}
+                <span class="badge text-bg-success">Active</span>
+                {% if object.days_remaining %}
+                  <small class="text-muted">({{ object.days_remaining }} days remaining)</small>
+                {% endif %}
+              {% else %}
+                <span class="badge text-bg-danger">Expired</span>
+              {% endif %}
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col col-md-6">
+    <div class="card">
+      <h5 class="card-header">Cost & Payment</h5>
+      <div class="card-body">
+        <table class="table table-hover attr-table">
+          <tr>
+            <th scope="row">Price</th>
+            <td>{{ object.price }} {{ object.currency }}</td>
+          </tr>
+          <tr>
+            <th scope="row">Payment Method</th>
+            <td>{{ object.get_payment_method_display }}</td>
+          </tr>
+          <tr>
+            <th scope="row">Seats Purchased</th>
+            <td>{{ object.seats_purchased }}</td>
+          </tr>
+          <tr>
+            <th scope="row">Seats Utilized</th>
+            <td>
+              {{ object.seats_utilized }}
+              <span class="badge text-bg-{% if object.utilization_percentage >= 90 %}success{% elif object.utilization_percentage >= 70 %}info{% elif object.utilization_percentage >= 50 %}warning{% else %}danger{% endif %}">
+                {{ object.utilization_percentage|floatformat:1 }}%
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <th scope="row">Cost per Seat</th>
+            <td>{{ object.cost_per_seat|floatformat:2 }} {{ object.currency }}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if object.invoice_reference or object.invoice_url or object.invoice_file %}
+<div class="row">
+  <div class="col col-md-12">
+    <div class="card">
+      <h5 class="card-header">Invoice Information</h5>
+      <div class="card-body">
+        <table class="table table-hover attr-table">
+          {% if object.invoice_reference %}
+          <tr>
+            <th scope="row">Invoice Reference</th>
+            <td>{{ object.invoice_reference }}</td>
+          </tr>
+          {% endif %}
+          {% if object.invoice_url %}
+          <tr>
+            <th scope="row">Invoice URL</th>
+            <td><a href="{{ object.invoice_url }}" target="_blank">{{ object.invoice_url }} <i class="mdi mdi-open-in-new"></i></a></td>
+          </tr>
+          {% endif %}
+          {% if object.invoice_file %}
+          <tr>
+            <th scope="row">Invoice File</th>
+            <td><a href="{{ object.invoice_file.url }}" target="_blank">Download <i class="mdi mdi-download"></i></a></td>
+          </tr>
+          {% endif %}
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if object.comments %}
+<div class="row">
+  <div class="col col-md-12">
+    <div class="card">
+      <h5 class="card-header">Comments</h5>
+      <div class="card-body">
+        {{ object.comments|render_markdown }}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
