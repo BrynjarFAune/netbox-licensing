@@ -1,0 +1,61 @@
+{% extends 'generic/object_edit.html' %}
+{% load static %}
+
+{% block form %}
+{{ block.super }}
+{% endblock %}
+
+{% block javascript %}
+{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const licenseField = document.getElementById('id_license');
+
+    if (!licenseField) return;
+
+    // Auto-fill form when license is selected
+    licenseField.addEventListener('change', function() {
+        const licenseId = this.value;
+
+        if (!licenseId) return;
+
+        // Fetch license details via API
+        fetch(`/api/plugins/licenses/licenses/${licenseId}/`, {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Auto-fill price
+            const priceField = document.getElementById('id_price');
+            if (priceField && data.price) {
+                priceField.value = data.price;
+            }
+
+            // Auto-fill currency
+            const currencyField = document.getElementById('id_currency');
+            if (currencyField && data.currency) {
+                currencyField.value = data.currency;
+            }
+
+            // Auto-fill payment method
+            const paymentMethodField = document.getElementById('id_payment_method');
+            if (paymentMethodField && data.payment_method) {
+                paymentMethodField.value = data.payment_method;
+            }
+
+            // Auto-fill seats purchased
+            const seatsField = document.getElementById('id_seats_purchased');
+            if (seatsField && data.total_licenses) {
+                seatsField.value = data.total_licenses;
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching license details:', error);
+        });
+    });
+});
+</script>
+{% endblock %}

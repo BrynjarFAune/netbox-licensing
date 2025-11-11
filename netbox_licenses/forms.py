@@ -807,6 +807,11 @@ class LicensePeriodForm(NetBoxModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+
+        # If parent clean() returned None or there are errors, return early
+        if cleaned_data is None:
+            return cleaned_data
+
         period_start = cleaned_data.get('period_start')
         period_end = cleaned_data.get('period_end')
 
