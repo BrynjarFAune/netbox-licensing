@@ -4,7 +4,7 @@ from django.contrib.contenttypes.models import ContentType
 from netbox.api.serializers import NetBoxModelSerializer, WritableNestedSerializer
 from tenancy.api.serializers import ContactSerializer, TenantSerializer
 from dcim.api.serializers import ManufacturerSerializer
-from ..models import License, LicenseInstance, CurrencyConversionRate
+from ..models import License, LicenseInstance, LicensePeriod, CurrencyConversionRate
 
 class NestedLicenseSerializer(WritableNestedSerializer):
     url = serializers.HyperlinkedIdentityField(
@@ -107,6 +107,31 @@ class LicenseInstanceSerializer(NetBoxModelSerializer):
             'effective_price', 'effective_currency', 'price_in_nok', 'conversion_rate_to_nok',
             'start_date', 'end_date', 'comments', 'tags',
             'custom_fields', 'created', 'last_updated', 'custom_field_data'
+        )
+
+
+class LicensePeriodSerializer(NetBoxModelSerializer):
+    url = serializers.HyperlinkedIdentityField(
+        view_name='plugins-api:netbox_licenses-api:licenseperiod-detail'
+    )
+
+    license = serializers.PrimaryKeyRelatedField(queryset=License.objects.all())
+
+    # Computed fields
+    is_active = serializers.ReadOnlyField()
+    days_remaining = serializers.ReadOnlyField()
+    utilization_percentage = serializers.ReadOnlyField()
+
+    class Meta:
+        model = LicensePeriod
+        fields = (
+            'id', 'url', 'display', 'license',
+            'period_start', 'period_end',
+            'price', 'currency', 'payment_method',
+            'seats_purchased', 'seats_utilized',
+            'invoice_reference', 'invoice_url',
+            'is_active', 'days_remaining', 'utilization_percentage',
+            'comments', 'tags', 'custom_fields', 'created', 'last_updated'
         )
 
 

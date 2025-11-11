@@ -5,7 +5,7 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from .. import filtersets, models
-from .serializers import LicenseSerializer, LicenseInstanceSerializer, CurrencyConversionRateSerializer
+from .serializers import LicenseSerializer, LicenseInstanceSerializer, LicensePeriodSerializer, CurrencyConversionRateSerializer
 
 class LicenseViewSet(NetBoxModelViewSet):
     queryset = models.License.objects.prefetch_related(
@@ -35,6 +35,13 @@ class LicenseInstanceViewSet(NetBoxModelViewSet):
     ).order_by('license__name', 'id')
     serializer_class = LicenseInstanceSerializer
     filterset_class = filtersets.LicenseInstanceFilterSet
+
+
+class LicensePeriodViewSet(NetBoxModelViewSet):
+    queryset = models.LicensePeriod.objects.prefetch_related(
+        'license', 'license__vendor', 'tags'
+    ).order_by('-period_start')
+    serializer_class = LicensePeriodSerializer
 
 
 class CurrencyConversionRateViewSet(NetBoxModelViewSet):
