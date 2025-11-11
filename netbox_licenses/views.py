@@ -115,9 +115,11 @@ class LicenseDashboardView(View):
         # === TOP UNDERUTILIZED LICENSES ===
         underutilized = []
         for license in licenses:
-            # Skip FREE_TRIAL licenses from underutilization tracking
+            # Skip FREE_TRIAL and PREPAID licenses from underutilization tracking
+            # (no ongoing cost savings opportunity)
             from .choices import PaymentMethodChoices
-            if license.payment_method != PaymentMethodChoices.FREE_TRIAL and license.available_licenses > 0 and license.total_licenses > 0:
+            if (license.payment_method not in [PaymentMethodChoices.FREE_TRIAL, PaymentMethodChoices.PREPAID]
+                and license.available_licenses > 0 and license.total_licenses > 0):
                 waste_pct = (license.available_licenses / license.total_licenses) * 100
 
                 price = Decimal(str(license.price)) if license.price else Decimal('0.00')
