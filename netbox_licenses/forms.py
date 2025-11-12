@@ -1,5 +1,5 @@
 from netbox.forms import NetBoxModelForm, NetBoxModelFilterSetForm
-from utilities.forms.fields import CommentField, DynamicModelChoiceField, ContentTypeChoiceField, DynamicModelMultipleChoiceField
+from utilities.forms.fields import CommentField, DynamicModelChoiceField, ContentTypeChoiceField, ContentTypeMultipleChoiceField, DynamicModelMultipleChoiceField
 from utilities.forms.widgets import APISelect
 from django import forms
 from django.forms import DateInput, NumberInput, IntegerField, DateField, ModelChoiceField, HiddenInput, CharField, ChoiceField, DecimalField, Textarea, BooleanField, URLField
@@ -22,11 +22,11 @@ class LicenseForm(NetBoxModelForm):
         required=True,
         quick_add=True
     )
-    assignment_types = ContentTypeChoiceField(
+    assignment_types = ContentTypeMultipleChoiceField(
         queryset=ContentType.objects.all(),
         required=False,
         label="Assignable Object Types",
-        help_text="Select which object types can be assigned to this license"
+        help_text="Select which object types can be assigned to this license (e.g., devices, VMs)"
     )
     
     total_licenses = IntegerField(
