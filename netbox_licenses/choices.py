@@ -37,7 +37,7 @@ class LicenseStatusChoices(ChoiceSet):
     ACTIVE = 'active'
     WARNING = 'warning'
     EXPIRED = 'expired'
-    
+
     CHOICES = [
         (PENDING, 'Pending'),
         (ACTIVE, 'Active',),
@@ -51,4 +51,13 @@ class LicenseStatusChoices(ChoiceSet):
         WARNING: 'warning',
         EXPIRED: 'danger'
     }
+
+class PricingModeChoices(ChoiceSet):
+    TOTAL = 'total'
+    PER_SEAT = 'per_seat'
+
+    CHOICES = [
+        (TOTAL, 'Total License Price'),
+        (PER_SEAT, 'Price Per Seat'),
+    ]
 

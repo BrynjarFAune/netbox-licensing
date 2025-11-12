@@ -6,7 +6,7 @@ from django.forms import DateInput, NumberInput, IntegerField, DateField, ModelC
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from .models import License, LicenseInstance, LicensePeriod, CurrencyConversionRate, PluginConfiguration
-from .choices import CurrencyChoices, PaymentMethodChoices
+from .choices import CurrencyChoices, PaymentMethodChoices, PricingModeChoices
 from tenancy.models import Contact, Tenant
 from dcim.models import Manufacturer
 
@@ -28,14 +28,7 @@ class LicenseForm(NetBoxModelForm):
         label="Assignable Object Types",
         help_text="Select which object types can be assigned to this license"
     )
-    currency = CharField(
-        max_length=3,
-        initial='NOK',
-        required=True,
-        widget=forms.Select(),
-        help_text="Currency code (must be defined in Currency Rates)"
-    )
-    
+
     # NEW ENHANCEMENT FIELDS
     external_id = CharField(
         max_length=255,
@@ -82,18 +75,11 @@ class LicenseForm(NetBoxModelForm):
     class Meta:
         model = License
         fields = (
-            'name', 'vendor', 'tenant', 'assignment_types', 'price', 'currency',
+            'name', 'vendor', 'tenant', 'assignment_types',
             'billing_cycle', 'payment_method', 'payment_portal_url', 'responsible_contact',
             'external_id', 'total_licenses', 'metadata',
             'comments', 'tags'
         )
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        # Populate currency choices dynamically from available conversion rates
-        currencies = CurrencyConversionRate.get_available_currencies()
-        self.fields['currency'].widget.choices = [(c, c) for c in currencies]
 
     def clean_total_licenses(self):
         """Validate total_licenses cannot be reduced below consumed licenses"""
@@ -704,11 +690,22 @@ class LicensePeriodForm(NetBoxModelForm):
         help_text="End date of this billing period (leave blank for perpetual/free licenses)"
     )
 
+    pricing_mode = ChoiceField(
+        choices=PricingModeChoices.CHOICES,
+        initial=PricingModeChoices.PER_SEAT,
+        required=True,
+        label="Pricing Mode",
+        help_text="How is the price calculated?",
+        widget=forms.Select(attrs={'id': 'id_pricing_mode'})
+    )
+
     price = DecimalField(
         max_digits=12,
         decimal_places=2,
         required=True,
-        help_text="Cost for this renewal period"
+        label="Price",
+        help_text="Price value (label updates based on pricing mode)",
+        widget=forms.NumberInput(attrs={'id': 'id_price', 'step': '0.01'})
     )
 
     currency = CharField(
@@ -756,7 +753,7 @@ class LicensePeriodForm(NetBoxModelForm):
     class Meta:
         model = LicensePeriod
         fields = [
-            'license', 'period_start', 'period_end', 'price', 'currency',
+            'license', 'period_start', 'period_end', 'pricing_mode', 'price', 'currency',
             'payment_method', 'seats_purchased',
             'invoice_reference', 'invoice_file', 'invoice_url',
             'comments', 'tags'

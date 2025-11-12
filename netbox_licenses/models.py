@@ -10,7 +10,7 @@ from django.db import models
 from netbox.models import NetBoxModel
 from tenancy.models import Contact, Tenant
 from dcim.models import Manufacturer
-from .choices import LicenseStatusChoices, CurrencyChoices, PaymentMethodChoices
+from .choices import LicenseStatusChoices, CurrencyChoices, PaymentMethodChoices, PricingModeChoices
 
 
 class License(NetBoxModel):
@@ -32,12 +32,6 @@ class License(NetBoxModel):
         related_name='licenses_by_type',
         blank=True,
         help_text="What object types can be assigned to this license"
-    )
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    currency = models.CharField(
-        max_length=3,
-        default='NOK',
-        help_text="Currency code (e.g., NOK, USD, EUR). Must have conversion rate defined."
     )
     
     # NEW ENHANCEMENT FIELDS
@@ -147,66 +141,71 @@ class License(NetBoxModel):
         else:
             return "available"
 
-    # SUBSCRIPTION COST PROPERTIES
+    # SUBSCRIPTION COST PROPERTIES (based on active period)
+    @property
+    def active_period_total_price(self):
+        """Get total price from active period (or 0 if no active period)"""
+        active_period = self.get_active_period()
+        if not active_period:
+            return Decimal('0.00')
+        return active_period.total_price
+
+    @property
+    def active_period_per_seat_price(self):
+        """Get per-seat price from active period (or 0 if no active period)"""
+        active_period = self.get_active_period()
+        if not active_period:
+            return Decimal('0.00')
+        return active_period.per_seat_price
+
+    @property
+    def active_period_currency(self):
+        """Get currency from active period (or NOK if no active period)"""
+        active_period = self.get_active_period()
+        if not active_period:
+            return 'NOK'
+        return active_period.currency
+
     @property
     def monthly_equivalent_price(self):
-        """Normalize all pricing to monthly for comparison"""
-        if not self.price:
+        """Normalize pricing to monthly based on active period's per-seat price"""
+        per_seat = float(self.active_period_per_seat_price)
+        if per_seat == 0:
             return 0
 
         if self.billing_cycle == 'monthly':
-            return float(self.price)
+            return per_seat
         elif self.billing_cycle == 'quarterly':
-            return float(self.price) / 3
+            return per_seat / 3
         elif self.billing_cycle == 'yearly':
-            return float(self.price) / 12
+            return per_seat / 12
         elif self.billing_cycle == 'one_time':
             return 0  # No recurring cost
         else:  # custom
-            return float(self.price)  # Assume monthly for custom
-
-    @property
-    def annual_equivalent_price(self):
-        """Annual cost per license slot"""
-        return self.monthly_equivalent_price * 12
-
-    @property
-    def total_monthly_consumed_cost(self):
-        """Total monthly recurring cost for consumed licenses only"""
-        return self.monthly_equivalent_price * self.consumed_licenses
-
-    @property
-    def total_annual_consumed_cost(self):
-        """Total annual cost for consumed licenses only"""
-        return self.annual_equivalent_price * self.consumed_licenses
-
-    @property
-    def total_monthly_commitment(self):
-        """Total monthly commitment for all license slots (purchased capacity) in original currency"""
-        return self.monthly_equivalent_price * self.total_licenses
-
-    @property
-    def total_yearly_commitment(self):
-        """Total yearly commitment for all license slots (purchased capacity) in original currency"""
-        return self.annual_equivalent_price * self.total_licenses
+            return per_seat
 
     @property
     def total_monthly_commitment_nok(self):
-        """Total monthly commitment converted to NOK for dashboard display"""
-        if self.currency == 'NOK':
-            return self.total_monthly_commitment
+        """Total monthly commitment converted to NOK"""
+        per_seat_monthly = self.monthly_equivalent_price
+        if per_seat_monthly == 0:
+            return Decimal('0.00')
 
-        # Use database rates
-        from decimal import Decimal
-        rate = CurrencyConversionRate.get_rate_to_nok(self.currency)
+        total_monthly = Decimal(str(per_seat_monthly)) * self.total_licenses
+
+        # Convert to NOK
+        currency = self.active_period_currency
+        if currency == 'NOK':
+            return total_monthly
+
+        rate = CurrencyConversionRate.get_rate_to_nok(currency)
         if rate is None:
-            # Currency not found - return 0 or could raise error
-            return Decimal('0.0')
-        return self.total_monthly_commitment * float(rate)
+            return Decimal('0.00')
+        return total_monthly * rate
 
     @property
     def total_yearly_commitment_nok(self):
-        """Total yearly commitment converted to NOK for dashboard display"""
+        """Total yearly commitment converted to NOK"""
         return self.total_monthly_commitment_nok * 12
 
     def get_active_period(self):
@@ -299,25 +298,12 @@ class License(NetBoxModel):
     def clean(self):
         """Validate license data"""
         from django.core.exceptions import ValidationError
-        from decimal import Decimal
         super().clean()
 
         if self.total_licenses < 0:
             raise ValidationError("Total licenses cannot be negative")
 
-        # Force FREE_TRIAL licenses to have price=0
-        from .choices import PaymentMethodChoices
-        if self.payment_method == PaymentMethodChoices.FREE_TRIAL:
-            self.price = Decimal('0.00')
-
-        # Validate currency has a conversion rate (unless it's NOK)
-        if self.currency and self.currency != 'NOK':
-            rate = CurrencyConversionRate.get_rate_to_nok(self.currency)
-            if rate is None:
-                raise ValidationError(
-                    f"Currency '{self.currency}' is not available. "
-                    f"Please add this currency in Currency Rates before using it."
-                )
+        # Note: Pricing is now handled by LicensePeriod model, not License
 
         # consumed_licenses should be managed by signals, not manually edited
         # But we can validate if it's being set incorrectly
@@ -969,11 +955,17 @@ class LicensePeriod(NetBoxModel):
         help_text="When this paid period ends (leave blank for perpetual/free licenses)"
     )
 
-    # Snapshot of license state at period creation
+    # Pricing configuration
+    pricing_mode = models.CharField(
+        max_length=20,
+        choices=PricingModeChoices.CHOICES,
+        default=PricingModeChoices.PER_SEAT,
+        help_text="Whether price is total or per-seat"
+    )
     price = models.DecimalField(
         max_digits=12,
         decimal_places=2,
-        help_text="Price paid for this period"
+        help_text="Price for this period (total or per-seat depending on pricing_mode)"
     )
     currency = models.CharField(
         max_length=3,
@@ -1036,11 +1028,22 @@ class LicensePeriod(NetBoxModel):
         return (self.seats_utilized / self.seats_purchased) * 100
 
     @property
-    def cost_per_seat(self):
-        """Calculate cost per seat for this period"""
-        if self.seats_purchased == 0:
-            return 0
-        return self.price / self.seats_purchased
+    def total_price(self):
+        """Get total price for this period"""
+        if self.pricing_mode == PricingModeChoices.TOTAL:
+            return self.price
+        else:  # PER_SEAT
+            return self.price * self.seats_purchased
+
+    @property
+    def per_seat_price(self):
+        """Get per-seat price for this period"""
+        if self.pricing_mode == PricingModeChoices.PER_SEAT:
+            return self.price
+        else:  # TOTAL
+            if self.seats_purchased == 0:
+                return Decimal('0.00')
+            return self.price / self.seats_purchased
 
     @property
     def is_active(self):
