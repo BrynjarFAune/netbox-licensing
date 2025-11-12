@@ -547,10 +547,11 @@ class LicenseInstanceEditView(generic.ObjectEditView):
             except models.License.DoesNotExist:
                 pass
 
-        if license_obj and license_obj.assignment_type:
-            model_class = license_obj.assignment_type.model_class()
-            model_name = license_obj.assignment_type.model
-            verbose_name = model_class._meta.verbose_name.title()
+        if license_obj and license_obj.assignment_types.exists():
+            first_type = license_obj.assignment_types.first()
+            model_class = first_type.model_class()
+            model_name = first_type.model
+            verbose_name = model_class._meta.verbose_name.title() if model_class else "Object"
 
         context.update({
             "license_obj": license_obj,
@@ -570,7 +571,7 @@ class AssignedObjectFieldView(View):
             return HttpResponseBadRequest("Missing license ID")
 
         try:
-            license_obj = models.License.objects.select_related('assignment_type').get(pk=license_id)
+            license_obj = models.License.objects.prefetch_related('assignment_types').get(pk=license_id)
         except models.License.DoesNotExist:
             return HttpResponseBadRequest("Invalid license ID")
 
@@ -583,16 +584,22 @@ class AssignedObjectFieldView(View):
             instance=temp_instance
         )
 
-        # Get the assignment type info
-        model_class = license_obj.assignment_type.model_class()
-        verbose_name = model_class._meta.verbose_name.title() if model_class else "Object"
+        # Get the assignment type info (use first type)
+        first_type = license_obj.assignment_types.first()
+        if first_type:
+            model_class = first_type.model_class()
+            verbose_name = model_class._meta.verbose_name.title() if model_class else "Object"
+            model_name = first_type.model
+        else:
+            verbose_name = "Object"
+            model_name = "object"
 
         return render(
             request,
             "netbox_licenses/assigned_object_field.html",
             {
                 "form": form,
-                "model_name": license_obj.assignment_type.model,
+                "model_name": model_name,
                 "verbose_name": verbose_name,
             },
         )

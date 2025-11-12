@@ -20,8 +20,16 @@
                     <td>{{ object.tenant|linkify }}</td>
                 </tr>
                 <tr>
-                    <th scope="row">Assignment Type</th>
-                    <td>{{ object.assignment_type.model|title|default:"—" }}</td>
+                    <th scope="row">Assignment Types</th>
+                    <td>
+                        {% if object.assignment_types.all %}
+                            {% for ct in object.assignment_types.all %}
+                                {{ ct.model|title }}{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
                 </tr>
                 <tr>
                     <th scope="row">Price</th>

@@ -27,13 +27,11 @@ class License(NetBoxModel):
         on_delete=models.PROTECT,
         related_name='licenses'
     )
-    assignment_type = models.ForeignKey(
+    assignment_types = models.ManyToManyField(
         ContentType,
-        limit_choices_to={
-            "model__in": ["contact", "device", "virtualmachine", "tenant", "service"]
-        },
-        on_delete=models.PROTECT,
-        help_text="What object type will the license be assigned to"
+        related_name='licenses_by_type',
+        blank=True,
+        help_text="What object types can be assigned to this license"
     )
     price = models.DecimalField(max_digits=10, decimal_places=2)
     currency = models.CharField(

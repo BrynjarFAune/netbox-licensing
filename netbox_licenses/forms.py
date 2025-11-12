@@ -1,5 +1,6 @@
 from netbox.forms import NetBoxModelForm, NetBoxModelFilterSetForm
-from utilities.forms.fields import CommentField, DynamicModelChoiceField, ContentTypeChoiceField
+from utilities.forms.fields import CommentField, DynamicModelChoiceField, ContentTypeChoiceField, DynamicModelMultipleChoiceField
+from utilities.forms.widgets import APISelect
 from django import forms
 from django.forms import DateInput, NumberInput, IntegerField, DateField, ModelChoiceField, HiddenInput, CharField, ChoiceField, DecimalField, Textarea, BooleanField, URLField
 from django.contrib.contenttypes.models import ContentType
@@ -13,18 +14,19 @@ class LicenseForm(NetBoxModelForm):
     comments = CommentField()
     vendor = DynamicModelChoiceField(
         queryset=Manufacturer.objects.all(),
-        required=True
+        required=True,
+        selector=True
     )
     tenant = DynamicModelChoiceField(
         queryset=Tenant.objects.all(),
-        required=True
-    )
-    assignment_type = ModelChoiceField(
-        queryset=ContentType.objects.filter(model__in=[
-            "contact", "device", "virtualmachine", "tenant", "service"
-        ]),
         required=True,
-        label="Assignable Object Type"
+        selector=True
+    )
+    assignment_types = ContentTypeChoiceField(
+        queryset=ContentType.objects.all(),
+        required=False,
+        label="Assignable Object Types",
+        help_text="Select which object types can be assigned to this license"
     )
     currency = CharField(
         max_length=3,
@@ -45,8 +47,8 @@ class LicenseForm(NetBoxModelForm):
     total_licenses = IntegerField(
         min_value=1,
         initial=1,
-        label="Total Licenses",
-        help_text="Total available license slots purchased"
+        label="Seats",
+        help_text="Total available license seats purchased"
     )
     
     metadata = CharField(
@@ -80,7 +82,7 @@ class LicenseForm(NetBoxModelForm):
     class Meta:
         model = License
         fields = (
-            'name', 'vendor', 'tenant', 'assignment_type', 'price', 'currency',
+            'name', 'vendor', 'tenant', 'assignment_types', 'price', 'currency',
             'billing_cycle', 'payment_method', 'payment_portal_url', 'responsible_contact',
             'external_id', 'total_licenses', 'metadata',
             'comments', 'tags'
@@ -148,10 +150,10 @@ class LicenseInstanceForm(NetBoxModelForm):
         # Determine the license from various sources
         license_obj = self._get_license_object()
 
-        if license_obj and license_obj.assignment_type:
+        if license_obj and license_obj.assignment_types.exists():
             self._setup_assignment_fields(license_obj)
         else:
-            # No license selected or license has no assignment type
+            # No license selected or license has no assignment types
             self.fields['assigned_object_selector'].widget.attrs['disabled'] = True
             self.fields['assigned_object_selector'].help_text = "Select a license first to choose an assigned object"
 
@@ -173,7 +175,7 @@ class LicenseInstanceForm(NetBoxModelForm):
 
         if license_id:
             try:
-                return License.objects.select_related('assignment_type').get(pk=license_id)
+                return License.objects.prefetch_related('assignment_types').get(pk=license_id)
             except (License.DoesNotExist, ValueError):
                 pass
 
@@ -181,8 +183,15 @@ class LicenseInstanceForm(NetBoxModelForm):
 
 
     def _setup_assignment_fields(self, license_obj):
-        """Setup the assignment fields based on the license's assignment type"""
-        ct = license_obj.assignment_type
+        """Setup the assignment fields based on the license's assignment types"""
+        # Get the first assignment type (for now, instances still use single type)
+        # TODO: Consider allowing user to select which type to assign if multiple are available
+        assignment_types = license_obj.assignment_types.all()
+
+        if not assignment_types:
+            return
+
+        ct = assignment_types[0]  # Use first type for now
         model_class = ct.model_class()
 
         if not model_class:
@@ -226,14 +235,15 @@ class LicenseInstanceForm(NetBoxModelForm):
                     f"No available licenses. License has {license.total_licenses} total slots "
                     f"with {current_instances} already consumed.")
 
-        # Validate that if a selector is provided, it matches the license's assignment type
+        # Validate that if a selector is provided, it matches one of the license's assignment types
         if selector:
-            expected_ct = license.assignment_type
+            allowed_types = list(license.assignment_types.all())
             actual_ct = ContentType.objects.get_for_model(selector)
 
-            if expected_ct.pk != actual_ct.pk:
-                self.add_error('assigned_object_selector', 
-                               f"Selected object must be of type {expected_ct.model}, not {actual_ct.model}")
+            if not any(ct.pk == actual_ct.pk for ct in allowed_types):
+                allowed_names = ', '.join([ct.model for ct in allowed_types])
+                self.add_error('assigned_object_selector',
+                               f"Selected object must be one of: {allowed_names}")
 
         return cleaned_data
 
@@ -246,10 +256,15 @@ class LicenseInstanceForm(NetBoxModelForm):
             selector = self.cleaned_data.get('assigned_object_selector')
 
             if license:
-                # Always set the content type from the license
-                instance.assigned_object_type = license.assignment_type
-                # Set the object ID from the selector (can be None)
-                instance.assigned_object_id = selector.pk if selector else None
+                # Set the content type based on the selected object
+                if selector:
+                    instance.assigned_object_type = ContentType.objects.get_for_model(selector)
+                    instance.assigned_object_id = selector.pk
+                else:
+                    # Use first assignment type if no selector provided
+                    first_type = license.assignment_types.first()
+                    instance.assigned_object_type = first_type if first_type else None
+                    instance.assigned_object_id = None
 
                 # Handle auto_renew checkbox logic
                 license_default = license.auto_renew
@@ -355,17 +370,20 @@ class BulkLicenseInstanceForm(forms.Form):
             del self.fields['quantity']
 
         # Add static assignment fields based on quantity
-        if license.assignment_type and quantity:
-            model_class = license.assignment_type.model_class()
+        if license.assignment_types.exists() and quantity:
+            # Use first assignment type for bulk creation
+            first_type = license.assignment_types.first()
+            model_class = first_type.model_class() if first_type else None
 
-            for i in range(1, quantity + 1):
-                field_name = f'assigned_object_{i}'
-                self.fields[field_name] = DynamicModelChoiceField(
-                    queryset=model_class.objects.all(),
-                    required=True,  # Now required since we know exactly how many we need
-                    label=f"Instance {i}",
-                    help_text=f"Assign to {license.assignment_type.model}"
-                )
+            if model_class:
+                for i in range(1, quantity + 1):
+                    field_name = f'assigned_object_{i}'
+                    self.fields[field_name] = DynamicModelChoiceField(
+                        queryset=model_class.objects.all(),
+                        required=True,  # Now required since we know exactly how many we need
+                        label=f"Instance {i}",
+                        help_text=f"Assign to {first_type.model}"
+                    )
 
 
     def clean(self):
