@@ -341,14 +341,14 @@ class LicenseInstance(NetBoxModel):
 
     @property
     def license_currency(self):
-        """Returns the currency from the parent license"""
-        return self.license.currency
+        """Returns the currency from the parent license's active period"""
+        return self.license.active_period_currency
 
     @property
     def license_price(self):
-        """Returns the base price from the parent license"""
+        """Returns the per-seat price from the parent license's active period"""
         from decimal import Decimal
-        return Decimal(str(self.license.price)) if self.license.price is not None else Decimal('0.0')
+        return self.license.active_period_per_seat_price
 
     @property
     def instance_price_nok(self):
