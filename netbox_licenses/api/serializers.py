@@ -13,8 +13,8 @@ class NestedLicenseSerializer(WritableNestedSerializer):
 
     class Meta:
         model = License
-        fields = ('id', 'url', 'display', 'name', 'price', 'assignment_types')
-        brief_fields = ('id', 'url' ,'display', 'vendor', 'price')
+        fields = ('id', 'url', 'display', 'name', 'assignment_types')
+        brief_fields = ('id', 'url' ,'display', 'vendor')
 
 class NestedLicenseInstanceSerializer(WritableNestedSerializer):
     url = serializers.HyperlinkedIdentityField(
@@ -57,7 +57,6 @@ class LicenseSerializer(NetBoxModelSerializer):
         model = License
         fields = (
             'id', 'url', 'display', 'name', 'vendor', 'tenant', 'assignment_types',
-            'price', 'currency', 'price_display',
             # NEW ENHANCEMENT FIELDS
             'external_id', 'total_licenses', 'consumed_licenses', 'available_licenses',
             'utilization_percentage', 'metadata',
@@ -127,7 +126,7 @@ class LicensePeriodSerializer(NetBoxModelSerializer):
         fields = (
             'id', 'url', 'display', 'license',
             'period_start', 'period_end',
-            'price', 'currency', 'payment_method',
+            'pricing_mode', 'price', 'currency', 'payment_method',
             'seats_purchased', 'seats_utilized',
             'invoice_reference', 'invoice_url',
             'is_active', 'days_remaining', 'utilization_percentage',

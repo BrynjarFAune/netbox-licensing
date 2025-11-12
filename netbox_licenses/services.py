@@ -168,14 +168,16 @@ class ComplianceMonitoringService:
             
             if not existing_alert:
                 utilization = license.utilization_percentage
-                potential_savings = (license.total_licenses - license.consumed_licenses) * license.price
-                
+                per_seat_price = license.active_period_per_seat_price
+                currency = license.active_period_currency
+                potential_savings = (license.total_licenses - license.consumed_licenses) * per_seat_price
+
                 LicenseAlert.objects.create(
                     license=license,
                     alert_type='underutilized',
                     severity='low',
                     title=f"License {license.name} is underutilized",
-                    message=f"Only {utilization:.1f}% utilized. Potential savings: {potential_savings} {license.currency}",
+                    message=f"Only {utilization:.1f}% utilized. Potential savings: {potential_savings:.2f} {currency}",
                     alert_data={
                         'utilization_percentage': float(utilization),
                         'unused_licenses': license.available_licenses,
@@ -292,7 +294,7 @@ class AnalyticsService:
         
         for license in underutilized[:10]:  # Top 10 opportunities
             unused = license.available_licenses
-            potential_savings = unused * license.price
+            potential_savings = unused * license.active_period_per_seat_price
             
             recommendations.append({
                 'type': 'reduce_licenses',
