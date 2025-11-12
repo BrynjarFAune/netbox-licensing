@@ -174,21 +174,22 @@ class CostReportView(View):
             # Skip cost calculation for FREE_TRIAL licenses
             from .choices import PaymentMethodChoices
             if license.payment_method != PaymentMethodChoices.FREE_TRIAL:
-                # Convert to NOK
-                price = Decimal(str(license.price)) if license.price else Decimal('0.00')
-                rate = CurrencyConversionRate.get_rate_to_nok(license.currency)
+                # Use active period pricing
+                per_seat_price = Decimal(str(license.active_period_per_seat_price))
+                currency = license.active_period_currency
+                rate = CurrencyConversionRate.get_rate_to_nok(currency)
                 if rate is None:
                     rate = Decimal('1.00')
                 else:
                     rate = Decimal(str(rate))
 
-                license_cost_nok = price * rate * license.total_licenses
+                license_cost_nok = per_seat_price * rate * license.total_licenses
                 total_cost_nok += license_cost_nok
 
                 # Calculate unused cost
                 unused = license.available_licenses
                 if unused > 0:
-                    unused_cost_nok += price * rate * unused
+                    unused_cost_nok += per_seat_price * rate * unused
 
             total_licenses_count += license.total_licenses
             total_utilized += license.consumed_licenses
@@ -212,14 +213,15 @@ class CostReportView(View):
                 # Skip cost calculation for FREE_TRIAL licenses
                 from .choices import PaymentMethodChoices
                 if license.payment_method != PaymentMethodChoices.FREE_TRIAL:
-                    price = Decimal(str(license.price)) if license.price else Decimal('0.00')
-                    rate = CurrencyConversionRate.get_rate_to_nok(license.currency)
+                    per_seat_price = Decimal(str(license.active_period_per_seat_price))
+                    currency = license.active_period_currency
+                    rate = CurrencyConversionRate.get_rate_to_nok(currency)
                     if rate is None:
                         rate = Decimal('1.00')
                     else:
                         rate = Decimal(str(rate))
 
-                    vendor_cost_nok += price * rate * license.total_licenses
+                    vendor_cost_nok += per_seat_price * rate * license.total_licenses
 
             vendor_stats.append({
                 'vendor': vendor.name,
@@ -248,14 +250,15 @@ class CostReportView(View):
                 and license.available_licenses > 0 and license.total_licenses > 0):
                 waste_pct = (license.available_licenses / license.total_licenses) * 100
 
-                price = Decimal(str(license.price)) if license.price else Decimal('0.00')
-                rate = CurrencyConversionRate.get_rate_to_nok(license.currency)
+                per_seat_price = Decimal(str(license.active_period_per_seat_price))
+                currency = license.active_period_currency
+                rate = CurrencyConversionRate.get_rate_to_nok(currency)
                 if rate is None:
                     rate = Decimal('1.00')
                 else:
                     rate = Decimal(str(rate))
 
-                wasted_cost = price * rate * license.available_licenses
+                wasted_cost = per_seat_price * rate * license.available_licenses
 
                 underutilized.append({
                     'license': license,
@@ -709,10 +712,10 @@ class UtilizationReportView(View):
             }
         ).order_by('-excess_percentage')
         
-        # Calculate cost impact
-        total_license_value = sum(license.total_cost or 0 for license in licenses)
+        # Calculate cost impact using active period pricing
+        total_license_value = sum(float(license.active_period_total_price or 0) for license in licenses)
         potential_savings = sum(
-            (license.total_licenses - license.consumed_licenses) * (license.price or 0) 
+            (license.total_licenses - license.consumed_licenses) * float(license.active_period_per_seat_price or 0)
             for license in top_underutilized
         )
         
@@ -892,10 +895,10 @@ class CostAllocationView(View):
             instance_count = license.instances.count()
             license_cost = Decimal('0')
 
-            # Calculate based on total licensed capacity, not just used instances
+            # Calculate based on total licensed capacity using active period pricing
             # This shows the full investment including unutilized slots
-            license_price = license.price or Decimal('0')
-            total_license_value = Decimal(str(license_price)) * license.total_licenses
+            license_per_seat_price = license.active_period_per_seat_price
+            total_license_value = license_per_seat_price * license.total_licenses
 
             # Add to total system cost (full investment)
             license_cost = total_license_value
@@ -905,7 +908,7 @@ class CostAllocationView(View):
             for instance in license.instances.all():
                 if instance.nok_price_override:
                     # Replace the base license price with custom price for this instance
-                    custom_pricing_adjustment += Decimal(str(instance.nok_price_override)) - Decimal(str(license_price))
+                    custom_pricing_adjustment += Decimal(str(instance.nok_price_override)) - license_per_seat_price
 
             license_cost += custom_pricing_adjustment
 
@@ -930,19 +933,19 @@ class CostAllocationView(View):
         for license in licenses:
             consumed = license.instances.count()
 
-            # Calculate full license investment (all purchased slots)
-            license_price = license.price or Decimal('0')
-            total_invested_value = Decimal(str(license_price)) * license.total_licenses
+            # Calculate full license investment using active period pricing
+            license_per_seat_price = license.active_period_per_seat_price
+            total_invested_value = license_per_seat_price * license.total_licenses
 
             # Calculate actual usage value (only consumed slots)
             actual_usage_value = Decimal('0')
             for instance in license.instances.all():
-                instance_price = instance.nok_price_override or license_price
+                instance_price = instance.nok_price_override or license_per_seat_price
                 actual_usage_value += Decimal(str(instance_price))
 
             # Calculate wasted money (unutilized slots)
             unutilized_slots = license.total_licenses - consumed
-            wasted_value = Decimal(str(license_price)) * unutilized_slots
+            wasted_value = license_per_seat_price * unutilized_slots
 
             utilization_percentage = 0
             if license.total_licenses > 0:
@@ -952,8 +955,8 @@ class CostAllocationView(View):
                 'id': license.id,
                 'name': license.name,
                 'vendor': license.vendor,
-                'currency': license.currency,
-                'price': license.price,
+                'currency': license.active_period_currency,
+                'price': license.active_period_per_seat_price,
                 'total_licenses': license.total_licenses,
                 'consumed_licenses': consumed,
                 'total_value_nok': total_invested_value,  # Full investment
