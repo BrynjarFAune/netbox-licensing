@@ -9,6 +9,37 @@
 
     // Wait for DOM to be ready
     document.addEventListener('DOMContentLoaded', function() {
+        // FEATURE 1: Dynamic pricing mode label
+        const pricingModeField = document.querySelector('#id_pricing_mode') ||
+                                document.querySelector('select[name="pricing_mode"]');
+        const priceField = document.querySelector('#id_price') ||
+                          document.querySelector('input[name="price"]');
+
+        if (pricingModeField && priceField) {
+            // Find the label for the price field
+            const priceLabel = document.querySelector('label[for="id_price"]');
+
+            function updatePriceLabel() {
+                const mode = pricingModeField.value;
+                if (priceLabel) {
+                    if (mode === 'per_seat') {
+                        priceLabel.textContent = 'Price Per Seat';
+                    } else if (mode === 'total') {
+                        priceLabel.textContent = 'Total License Price';
+                    } else {
+                        priceLabel.textContent = 'Price';
+                    }
+                }
+            }
+
+            // Update label on change
+            pricingModeField.addEventListener('change', updatePriceLabel);
+
+            // Update label on page load
+            updatePriceLabel();
+        }
+
+        // FEATURE 2: Auto-fill from license
         // Get the license select field - try multiple selectors
         const licenseField = document.querySelector('#id_license') ||
                            document.querySelector('select[name="license"]');

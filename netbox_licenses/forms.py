@@ -15,26 +15,18 @@ class LicenseForm(NetBoxModelForm):
     vendor = DynamicModelChoiceField(
         queryset=Manufacturer.objects.all(),
         required=True,
-        selector=True
+        quick_add=True
     )
     tenant = DynamicModelChoiceField(
         queryset=Tenant.objects.all(),
         required=True,
-        selector=True
+        quick_add=True
     )
     assignment_types = ContentTypeChoiceField(
         queryset=ContentType.objects.all(),
         required=False,
         label="Assignable Object Types",
         help_text="Select which object types can be assigned to this license"
-    )
-
-    # NEW ENHANCEMENT FIELDS
-    external_id = CharField(
-        max_length=255,
-        required=False,
-        label="External ID",
-        help_text="Vendor-specific identifier (SKU ID, subscription ID, license key, etc.)"
     )
     
     total_licenses = IntegerField(
@@ -77,7 +69,7 @@ class LicenseForm(NetBoxModelForm):
         fields = (
             'name', 'vendor', 'tenant', 'assignment_types',
             'billing_cycle', 'payment_method', 'payment_portal_url', 'responsible_contact',
-            'external_id', 'total_licenses', 'metadata',
+            'total_licenses', 'metadata',
             'comments', 'tags'
         )
 
@@ -172,12 +164,12 @@ class LicenseInstanceForm(NetBoxModelForm):
         """Setup the assignment fields based on the license's assignment types"""
         # Get the first assignment type (for now, instances still use single type)
         # TODO: Consider allowing user to select which type to assign if multiple are available
-        assignment_types = license_obj.assignment_types.all()
+        assignment_types_qs = license_obj.assignment_types.all()
 
-        if not assignment_types:
+        if not assignment_types_qs.exists():
             return
 
-        ct = assignment_types[0]  # Use first type for now
+        ct = assignment_types_qs.first()  # Use first type for now
         model_class = ct.model_class()
 
         if not model_class:
@@ -188,8 +180,8 @@ class LicenseInstanceForm(NetBoxModelForm):
         self.fields['assigned_object_selector'].label = f"Assigned {model_class._meta.verbose_name.title()}"
 
         # If editing an existing instance, populate the selector
-        if (self.instance and self.instance.pk and 
-            self.instance.assigned_object_type_id == ct.pk and 
+        if (self.instance and self.instance.pk and
+            self.instance.assigned_object_type_id == ct.pk and
                 self.instance.assigned_object_id):
             try:
                 assigned_obj = model_class.objects.get(pk=self.instance.assigned_object_id)
