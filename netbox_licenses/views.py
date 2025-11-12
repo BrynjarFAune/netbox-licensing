@@ -444,17 +444,13 @@ class LicenseView(generic.ObjectView):
     queryset = models.License.objects.prefetch_related('instances', 'instances__assigned_object')
 
     def get_extra_context(self, request, instance):
-        # Calculate total cost in NOK
-        rate = models.CurrencyConversionRate.get_rate_to_nok(instance.currency)
-        if rate is None:
-            rate = 1
-        total_cost_nok = float(instance.price) * float(rate) * instance.total_licenses
+        # Get active period for pricing context
+        active_period = instance.get_active_period()
 
         return {
             'instance_count': instance.instances.count(),
-            'total_cost': instance.total_cost,
-            'total_cost_nok': total_cost_nok,
-            # NEW UTILIZATION CONTEXT
+            'active_period': active_period,
+            # UTILIZATION CONTEXT
             'utilization_percentage': instance.utilization_percentage,
             'available_licenses': instance.available_licenses,
             'is_underutilized': instance.utilization_percentage < 80,

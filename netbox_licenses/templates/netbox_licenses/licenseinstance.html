@@ -40,7 +40,7 @@
                         {% if object.nok_price_override %}
                             {{ object.nok_price_override }} NOK
                         {% else %}
-                            {{ object.license.price }} {{ object.license.currency }}
+                            {{ object.license.active_period_per_seat_price|floatformat:2 }} {{ object.license.active_period_currency }}
                         {% endif %}
                     </td>
                 </tr>

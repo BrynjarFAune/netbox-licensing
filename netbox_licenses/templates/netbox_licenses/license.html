@@ -32,17 +32,14 @@
                     </td>
                 </tr>
                 <tr>
-                    <th scope="row">Price</th>
-                    <td>{{ object.price }} {{ object.currency }}</td>
-                </tr>
-                <tr>
-                    <th scope="row">Total License Cost</th>
+                    <th scope="row">Active Period Pricing</th>
                     <td>
-                        {% widthratio object.price 1 object.total_licenses as total_original %}
-                        <strong>{{ total_original|floatformat:2 }} {{ object.currency }}</strong>
-                        {% if object.currency != 'NOK' %}
+                        {% if active_period %}
+                            <strong>{{ active_period.per_seat_price|floatformat:2 }} {{ active_period.currency }}</strong> per seat
                             <br>
-                            <span class="text-muted">≈ {{ total_cost_nok|floatformat:2 }} NOK</span>
+                            <span class="text-muted">Total: {{ active_period.total_price|floatformat:2 }} {{ active_period.currency }}</span>
+                        {% else %}
+                            <span class="text-muted">No active period</span>
                         {% endif %}
                     </td>
                 </tr>
@@ -320,7 +317,15 @@
                     —
                   {% endif %}
                 </td>
-                <td>{{ period.price }} {{ period.currency }}</td>
+                <td>
+                  {% if period.pricing_mode == 'per_seat' %}
+                    {{ period.per_seat_price|floatformat:2 }} {{ period.currency }}/seat
+                    <br><small class="text-muted">Total: {{ period.total_price|floatformat:2 }}</small>
+                  {% else %}
+                    {{ period.total_price|floatformat:2 }} {{ period.currency }} total
+                    <br><small class="text-muted">Per seat: {{ period.per_seat_price|floatformat:2 }}</small>
+                  {% endif %}
+                </td>
                 <td>
                   {% if period.invoice_reference %}
                     {{ period.invoice_reference }}

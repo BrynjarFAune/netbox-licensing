@@ -83,11 +83,12 @@ class LicenseTable(NetBoxTable):
         if record.payment_method == PaymentMethodChoices.FREE_TRIAL:
             return "—"
 
-        price_value = float(record.price) if record.price else 0
-        return "{} {}".format(price_value, record.currency)
+        per_seat_price = float(record.active_period_per_seat_price)
+        currency = record.active_period_currency
+        return "{:.2f} {}/seat".format(per_seat_price, currency)
 
     def render_total_cost(self, record):
-        """Calculate total cost as (price × total licenses) in NOK"""
+        """Calculate total cost from active period in NOK"""
         # Hide pricing for free/trial licenses only
         from .choices import PaymentMethodChoices
         if record.payment_method == PaymentMethodChoices.FREE_TRIAL:
@@ -95,15 +96,15 @@ class LicenseTable(NetBoxTable):
 
         from netbox_licenses.models import CurrencyConversionRate
 
-        price = float(record.price) if record.price else 0
-        total_licenses = record.total_licenses
+        total_price = float(record.active_period_total_price)
+        currency = record.active_period_currency
 
         # Get conversion rate to NOK
-        rate = CurrencyConversionRate.get_rate_to_nok(record.currency)
+        rate = CurrencyConversionRate.get_rate_to_nok(currency)
         if rate is None:
             rate = 1  # Fallback if currency not found
 
-        total_nok = price * float(rate) * total_licenses
+        total_nok = total_price * float(rate)
         return "{:,.2f} NOK".format(total_nok)
 
     def render_payment_method(self, record):
@@ -311,6 +312,10 @@ class LicensePeriodTable(NetBoxTable):
             return format_html('<span class="badge text-bg-secondary">Inactive</span>')
 
     def render_price(self, record):
-        """Format price with currency"""
-        return f"{record.price} {record.currency}"
+        """Format price with currency based on pricing mode"""
+        from .choices import PricingModeChoices
+        if record.pricing_mode == PricingModeChoices.PER_SEAT:
+            return f"{record.per_seat_price:.2f} {record.currency}/seat"
+        else:
+            return f"{record.total_price:.2f} {record.currency} total"
 
