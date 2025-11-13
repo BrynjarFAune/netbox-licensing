@@ -107,7 +107,7 @@ class LicenseInstanceForm(NetBoxModelForm):
         help_text="Select the type of object to assign"
     )
 
-    assigned_object = DynamicModelChoiceField(
+    assigned_object_selector = DynamicModelChoiceField(
         queryset=Contact.objects.all(),  # Will be updated based on license and type
         required=False,
         label="Assigned Object",
@@ -117,7 +117,7 @@ class LicenseInstanceForm(NetBoxModelForm):
     class Meta:
         model = LicenseInstance
         fields = (
-            'license', 'assigned_object_type', 'assigned_object',
+            'license', 'assigned_object_type', 'assigned_object_selector',
             'start_date', 'end_date', 'comments', 'tags'
         )
         widgets = {
@@ -159,15 +159,15 @@ class LicenseInstanceForm(NetBoxModelForm):
         if selected_ct:
             model_class = selected_ct.model_class()
             if model_class:
-                self.fields['assigned_object'].queryset = model_class.objects.all()
-                self.fields['assigned_object'].label = f"Assigned {model_class._meta.verbose_name.title()}"
+                self.fields['assigned_object_selector'].queryset = model_class.objects.all()
+                self.fields['assigned_object_selector'].label = f"Assigned {model_class._meta.verbose_name.title()}"
 
         # If editing existing instance, populate initial values
         if self.instance and self.instance.pk:
             if self.instance.assigned_object_type:
                 self.fields['assigned_object_type'].initial = self.instance.assigned_object_type
             if self.instance.assigned_object:
-                self.fields['assigned_object'].initial = self.instance.assigned_object
+                self.fields['assigned_object_selector'].initial = self.instance.assigned_object
 
     def _get_license_object(self):
         """Get the license object from form data, initial data, or existing instance"""
@@ -201,7 +201,7 @@ class LicenseInstanceForm(NetBoxModelForm):
 
         license = cleaned_data.get('license')
         assigned_object_type = cleaned_data.get('assigned_object_type')
-        assigned_object = cleaned_data.get('assigned_object')
+        assigned_object_selector = cleaned_data.get('assigned_object_selector')
 
         if not license:
             return cleaned_data
@@ -225,14 +225,14 @@ class LicenseInstanceForm(NetBoxModelForm):
                                f"Selected object type must be one of: {allowed_names}")
 
         # Validate object matches the selected type
-        if assigned_object:
-            actual_ct = ContentType.objects.get_for_model(assigned_object)
+        if assigned_object_selector:
+            actual_ct = ContentType.objects.get_for_model(assigned_object_selector)
             if assigned_object_type and actual_ct.pk != assigned_object_type.pk:
-                self.add_error('assigned_object',
+                self.add_error('assigned_object_selector',
                     f"Selected object does not match the selected object type")
 
         # Both or neither assignment fields must be provided
-        if (assigned_object_type and not assigned_object) or (assigned_object and not assigned_object_type):
+        if (assigned_object_type and not assigned_object_selector) or (assigned_object_selector and not assigned_object_type):
             self.add_error(None, "Both Object Type and Assigned Object must be provided together, or leave both empty")
 
         return cleaned_data
@@ -242,11 +242,11 @@ class LicenseInstanceForm(NetBoxModelForm):
 
         # Set the assignment fields based on the form data
         if hasattr(self, 'cleaned_data'):
-            assigned_object = self.cleaned_data.get('assigned_object')
+            assigned_object_selector = self.cleaned_data.get('assigned_object_selector')
 
-            if assigned_object:
-                instance.assigned_object_type = ContentType.objects.get_for_model(assigned_object)
-                instance.assigned_object_id = assigned_object.pk
+            if assigned_object_selector:
+                instance.assigned_object_type = ContentType.objects.get_for_model(assigned_object_selector)
+                instance.assigned_object_id = assigned_object_selector.pk
             else:
                 instance.assigned_object_type = None
                 instance.assigned_object_id = None
