@@ -2,6 +2,7 @@ from django.urls import reverse
 from django.contrib.postgres.fields import ArrayField
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 from django.utils.functional import cached_property
 from django.utils import timezone
 from datetime import timedelta
