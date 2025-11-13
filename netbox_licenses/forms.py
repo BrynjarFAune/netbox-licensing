@@ -100,11 +100,12 @@ class LicenseInstanceForm(NetBoxModelForm):
     )
 
     # This is the field the user interacts with
+    # Note: queryset will be set dynamically in __init__ based on license
     assigned_object_selector = DynamicModelChoiceField(
-        queryset=Contact.objects.none(),  # Will be populated based on license
-        required=True,
+        queryset=Contact.objects.all(),  # Default to Contact, will be updated
+        required=False,  # Will be set to True if license has assignment types
         label="Assigned Object",
-        help_text="Select an object to assign this license to (required)"
+        help_text="Select an object to assign this license to"
     )
 
 
@@ -131,8 +132,8 @@ class LicenseInstanceForm(NetBoxModelForm):
         if license_obj and license_obj.assignment_types.exists():
             self._setup_assignment_fields(license_obj)
         else:
-            # No license selected or license has no assignment types
-            self.fields['assigned_object_selector'].widget.attrs['disabled'] = True
+            # No license selected or license has no assignment types - make field optional
+            self.fields['assigned_object_selector'].required = False
             self.fields['assigned_object_selector'].help_text = "Select a license first to choose an assigned object"
 
     def _get_license_object(self):
@@ -178,6 +179,7 @@ class LicenseInstanceForm(NetBoxModelForm):
         # Update the selector field
         self.fields['assigned_object_selector'].queryset = model_class.objects.all()
         self.fields['assigned_object_selector'].label = f"Assigned {model_class._meta.verbose_name.title()}"
+        self.fields['assigned_object_selector'].required = True
 
         # If editing an existing instance, populate the selector
         if (self.instance and self.instance.pk and
