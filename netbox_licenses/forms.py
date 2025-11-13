@@ -104,14 +104,14 @@ class LicenseInstanceForm(NetBoxModelForm):
         queryset=ContentType.objects.all(),
         required=False,
         label="Object Type",
-        help_text="Type of object to assign (will be filtered based on license)"
+        help_text="Select the type of object to assign"
     )
 
     assigned_object = DynamicModelChoiceField(
-        queryset=ContentType.objects.none(),  # Will be set dynamically
+        queryset=Contact.objects.all(),  # Will be updated based on license and type
         required=False,
         label="Assigned Object",
-        help_text="Search and select the object to assign"
+        help_text="Search and select the specific object to assign"
     )
 
     class Meta:
@@ -137,21 +137,37 @@ class LicenseInstanceForm(NetBoxModelForm):
             self.fields['assigned_object_type'].queryset = allowed_types
             self.fields['assigned_object_type'].help_text = "Select from allowed object types for this license"
 
-        # If editing existing instance, populate fields
+        # Determine which content type to use for the assigned_object queryset
+        selected_ct = None
+
+        # Check if user selected a type in the form (POST data)
+        if self.data and self.data.get('assigned_object_type'):
+            try:
+                selected_ct = ContentType.objects.get(pk=self.data.get('assigned_object_type'))
+            except (ContentType.DoesNotExist, ValueError):
+                pass
+
+        # If editing existing instance, use its type
+        if not selected_ct and self.instance and self.instance.pk and self.instance.assigned_object_type:
+            selected_ct = self.instance.assigned_object_type
+
+        # Otherwise use first allowed type from license
+        if not selected_ct and license_obj and license_obj.assignment_types.exists():
+            selected_ct = license_obj.assignment_types.first()
+
+        # Set the queryset based on selected content type
+        if selected_ct:
+            model_class = selected_ct.model_class()
+            if model_class:
+                self.fields['assigned_object'].queryset = model_class.objects.all()
+                self.fields['assigned_object'].label = f"Assigned {model_class._meta.verbose_name.title()}"
+
+        # If editing existing instance, populate initial values
         if self.instance and self.instance.pk:
             if self.instance.assigned_object_type:
                 self.fields['assigned_object_type'].initial = self.instance.assigned_object_type
-            if self.instance.assigned_object_id and self.instance.assigned_object_type:
-                # Set queryset for assigned_object field based on type
-                model_class = self.instance.assigned_object_type.model_class()
-                if model_class:
-                    self.fields['assigned_object'].queryset = model_class.objects.all()
-                    # Set initial value
-                    try:
-                        obj = model_class.objects.get(pk=self.instance.assigned_object_id)
-                        self.fields['assigned_object'].initial = obj
-                    except model_class.DoesNotExist:
-                        pass
+            if self.instance.assigned_object:
+                self.fields['assigned_object'].initial = self.instance.assigned_object
 
     def _get_license_object(self):
         """Get the license object from form data, initial data, or existing instance"""
