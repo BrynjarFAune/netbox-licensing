@@ -1064,9 +1064,13 @@ class LicensePeriod(NetBoxModel):
         return (self.period_end - today).days
 
     def save(self, *args, **kwargs):
-        """Enforce immutability and auto-fill snapshot data"""
-        if self.pk:
-            raise ValidationError("License periods are immutable. Create a new period instead.")
+        """Enforce immutability for expired periods and auto-fill snapshot data"""
+        # Only prevent editing expired periods (preserve historical accuracy)
+        if self.pk and self.period_end and self.period_end < timezone.now().date():
+            raise ValidationError(
+                "Cannot edit expired periods to preserve historical accuracy. "
+                "Create a new period or edit an active/future period instead."
+            )
 
         # Auto-snapshot from license if creating new period
         if not self.pk and self.license_id:
