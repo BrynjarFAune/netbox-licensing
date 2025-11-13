@@ -14,8 +14,8 @@
         id="assigned-object-container"
         hx-get="{% url 'plugins:netbox_licenses:assigned-object-field' %}"
         hx-target="#assigned-object-container"
-        hx-trigger="change from:#id_license"
-        hx-include="[name='license']"
+        hx-trigger="change from:#id_license, change from:#id_assigned_object_type"
+        hx-include="[name='license'], [name='assigned_object_type']"
       >
         {% include 'netbox_licenses/assigned_object_field.html' %}
       </div>

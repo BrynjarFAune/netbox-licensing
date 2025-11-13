@@ -571,6 +571,8 @@ class LicenseInstanceDeleteView(generic.ObjectDeleteView):
 class AssignedObjectFieldView(View):
     def get(self, request):
         license_id = request.GET.get("license")
+        object_type_id = request.GET.get("assigned_object_type")
+
         if not license_id:
             return HttpResponseBadRequest("Missing license ID")
 
@@ -582,18 +584,32 @@ class AssignedObjectFieldView(View):
         # Create a temporary instance to get the right form initialization
         temp_instance = models.LicenseInstance(license=license_obj)
 
-        # Initialize form with the license data
+        # Initialize form with the license and object type data
+        form_data = {'license': license_obj.pk}
+        if object_type_id:
+            form_data['assigned_object_type'] = object_type_id
+
         form = forms.LicenseInstanceForm(
-            data={'license': license_obj.pk},
+            data=form_data,
             instance=temp_instance
         )
 
-        # Get the assignment type info (use first type)
-        first_type = license_obj.assignment_types.first()
-        if first_type:
-            model_class = first_type.model_class()
+        # Get the assignment type info - use selected type or first type
+        selected_type = None
+        if object_type_id:
+            try:
+                from django.contrib.contenttypes.models import ContentType
+                selected_type = ContentType.objects.get(pk=object_type_id)
+            except (ContentType.DoesNotExist, ValueError):
+                pass
+
+        if not selected_type:
+            selected_type = license_obj.assignment_types.first()
+
+        if selected_type:
+            model_class = selected_type.model_class()
             verbose_name = model_class._meta.verbose_name.title() if model_class else "Object"
-            model_name = first_type.model
+            model_name = selected_type.model
         else:
             verbose_name = "Object"
             model_name = "object"
