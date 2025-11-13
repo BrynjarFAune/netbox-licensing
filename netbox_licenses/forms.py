@@ -1,6 +1,6 @@
 from netbox.forms import NetBoxModelForm, NetBoxModelFilterSetForm
 from utilities.forms.fields import CommentField, DynamicModelChoiceField, ContentTypeChoiceField, ContentTypeMultipleChoiceField, DynamicModelMultipleChoiceField
-from utilities.forms.widgets import APISelect
+from utilities.forms.widgets import APISelect, HTMXSelect
 from django import forms
 from django.forms import DateInput, NumberInput, IntegerField, DateField, ModelChoiceField, HiddenInput, CharField, ChoiceField, DecimalField, Textarea, BooleanField, URLField
 from django.contrib.contenttypes.models import ContentType
@@ -99,20 +99,25 @@ class LicenseInstanceForm(NetBoxModelForm):
         required=True
     )
 
-    # This is the field the user interacts with
-    # Note: queryset will be set dynamically in __init__ based on license
-    assigned_object_selector = DynamicModelChoiceField(
-        queryset=Contact.objects.all(),  # Default to Contact, will be updated
-        required=False,  # Will be set to True if license has assignment types
-        label="Assigned Object",
-        help_text="Select an object to assign this license to"
+    # Generic object selector - allows selecting from multiple content types
+    assigned_object_type = ContentTypeChoiceField(
+        queryset=ContentType.objects.all(),
+        required=False,
+        label="Object Type",
+        help_text="Type of object to assign (will be filtered based on license)"
     )
 
+    assigned_object = DynamicModelChoiceField(
+        queryset=ContentType.objects.none(),  # Will be set dynamically
+        required=False,
+        label="Assigned Object",
+        help_text="Search and select the object to assign"
+    )
 
     class Meta:
         model = LicenseInstance
         fields = (
-            'license', 'assigned_object_selector',
+            'license', 'assigned_object_type', 'assigned_object',
             'start_date', 'end_date', 'comments', 'tags'
         )
         widgets = {
@@ -123,18 +128,30 @@ class LicenseInstanceForm(NetBoxModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Mark license as required (it is required at the model level)
-        self.fields['license'].required = True
-
-        # Determine the license from various sources
+        # Get license to filter allowed content types
         license_obj = self._get_license_object()
 
         if license_obj and license_obj.assignment_types.exists():
-            self._setup_assignment_fields(license_obj)
-        else:
-            # No license selected or license has no assignment types - make field optional
-            self.fields['assigned_object_selector'].required = False
-            self.fields['assigned_object_selector'].help_text = "Select a license first to choose an assigned object"
+            # Filter content types to only those allowed by the license
+            allowed_types = license_obj.assignment_types.all()
+            self.fields['assigned_object_type'].queryset = allowed_types
+            self.fields['assigned_object_type'].help_text = "Select from allowed object types for this license"
+
+        # If editing existing instance, populate fields
+        if self.instance and self.instance.pk:
+            if self.instance.assigned_object_type:
+                self.fields['assigned_object_type'].initial = self.instance.assigned_object_type
+            if self.instance.assigned_object_id and self.instance.assigned_object_type:
+                # Set queryset for assigned_object field based on type
+                model_class = self.instance.assigned_object_type.model_class()
+                if model_class:
+                    self.fields['assigned_object'].queryset = model_class.objects.all()
+                    # Set initial value
+                    try:
+                        obj = model_class.objects.get(pk=self.instance.assigned_object_id)
+                        self.fields['assigned_object'].initial = obj
+                    except model_class.DoesNotExist:
+                        pass
 
     def _get_license_object(self):
         """Get the license object from form data, initial data, or existing instance"""
@@ -160,38 +177,6 @@ class LicenseInstanceForm(NetBoxModelForm):
 
         return None
 
-
-    def _setup_assignment_fields(self, license_obj):
-        """Setup the assignment fields based on the license's assignment types"""
-        # Get the first assignment type (for now, instances still use single type)
-        # TODO: Consider allowing user to select which type to assign if multiple are available
-        assignment_types_qs = license_obj.assignment_types.all()
-
-        if not assignment_types_qs.exists():
-            return
-
-        ct = assignment_types_qs.first()  # Use first type for now
-        model_class = ct.model_class()
-
-        if not model_class:
-            return
-
-        # Update the selector field
-        self.fields['assigned_object_selector'].queryset = model_class.objects.all()
-        self.fields['assigned_object_selector'].label = f"Assigned {model_class._meta.verbose_name.title()}"
-        self.fields['assigned_object_selector'].required = True
-
-        # If editing an existing instance, populate the selector
-        if (self.instance and self.instance.pk and
-            self.instance.assigned_object_type_id == ct.pk and
-                self.instance.assigned_object_id):
-            try:
-                assigned_obj = model_class.objects.get(pk=self.instance.assigned_object_id)
-                self.fields['assigned_object_selector'].initial = assigned_obj.pk
-            except model_class.DoesNotExist:
-                # Object no longer exists, clear the assignment
-                pass
-
     def clean(self):
         cleaned_data = super().clean()
 
@@ -199,31 +184,40 @@ class LicenseInstanceForm(NetBoxModelForm):
             return cleaned_data
 
         license = cleaned_data.get('license')
-        selector = cleaned_data.get('assigned_object_selector')
+        assigned_object_type = cleaned_data.get('assigned_object_type')
+        assigned_object = cleaned_data.get('assigned_object')
 
         if not license:
-            # This should be caught by the required validation, but just in case
             return cleaned_data
-        
+
         # Check license availability for new instances
         if not self.instance.pk:  # New instance
             current_instances = license.instances.count()
             available_licenses = license.total_licenses - current_instances
-            
+
             if available_licenses <= 0:
-                self.add_error('license', 
+                self.add_error('license',
                     f"No available licenses. License has {license.total_licenses} total slots "
                     f"with {current_instances} already consumed.")
 
-        # Validate that if a selector is provided, it matches one of the license's assignment types
-        if selector:
+        # Validate assignment type is allowed by license
+        if assigned_object_type:
             allowed_types = list(license.assignment_types.all())
-            actual_ct = ContentType.objects.get_for_model(selector)
-
-            if not any(ct.pk == actual_ct.pk for ct in allowed_types):
+            if allowed_types and not any(ct.pk == assigned_object_type.pk for ct in allowed_types):
                 allowed_names = ', '.join([ct.model for ct in allowed_types])
-                self.add_error('assigned_object_selector',
-                               f"Selected object must be one of: {allowed_names}")
+                self.add_error('assigned_object_type',
+                               f"Selected object type must be one of: {allowed_names}")
+
+        # Validate object matches the selected type
+        if assigned_object:
+            actual_ct = ContentType.objects.get_for_model(assigned_object)
+            if assigned_object_type and actual_ct.pk != assigned_object_type.pk:
+                self.add_error('assigned_object',
+                    f"Selected object does not match the selected object type")
+
+        # Both or neither assignment fields must be provided
+        if (assigned_object_type and not assigned_object) or (assigned_object and not assigned_object_type):
+            self.add_error(None, "Both Object Type and Assigned Object must be provided together, or leave both empty")
 
         return cleaned_data
 
@@ -232,30 +226,14 @@ class LicenseInstanceForm(NetBoxModelForm):
 
         # Set the assignment fields based on the form data
         if hasattr(self, 'cleaned_data'):
-            license = self.cleaned_data.get('license')
-            selector = self.cleaned_data.get('assigned_object_selector')
+            assigned_object = self.cleaned_data.get('assigned_object')
 
-            if license:
-                # Set the content type based on the selected object
-                if selector:
-                    instance.assigned_object_type = ContentType.objects.get_for_model(selector)
-                    instance.assigned_object_id = selector.pk
-                else:
-                    # Use first assignment type if no selector provided
-                    first_type = license.assignment_types.first()
-                    instance.assigned_object_type = first_type if first_type else None
-                    instance.assigned_object_id = None
-
-                # Handle auto_renew checkbox logic
-                license_default = license.auto_renew
-                form_value = self.cleaned_data.get('auto_renew', False)
-
-                if form_value == license_default:
-                    # User didn't override - use license default
-                    instance.auto_renew = None
-                else:
-                    # User overrode the default
-                    instance.auto_renew = form_value
+            if assigned_object:
+                instance.assigned_object_type = ContentType.objects.get_for_model(assigned_object)
+                instance.assigned_object_id = assigned_object.pk
+            else:
+                instance.assigned_object_type = None
+                instance.assigned_object_id = None
 
         if commit:
             instance.save()
