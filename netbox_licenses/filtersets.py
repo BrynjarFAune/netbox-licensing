@@ -276,6 +276,53 @@ class LicenseFilterForm(NetBoxModelFilterSetForm):
         model = License
 
 
+class LicensePeriodFilterSet(NetBoxModelFilterSet):
+    """FilterSet for license periods"""
+
+    license = django_filters.ModelMultipleChoiceFilter(
+        queryset=License.objects.all(),
+        label='License'
+    )
+
+    status = django_filters.ChoiceFilter(
+        choices=[
+            ('active', 'Active'),
+            ('inactive', 'Inactive'),
+        ],
+        method='filter_status',
+        label='Period Status'
+    )
+
+    period_start = django_filters.DateFilter()
+    period_start__gte = django_filters.DateFilter(
+        field_name='period_start',
+        lookup_expr='gte'
+    )
+    period_start__lte = django_filters.DateFilter(
+        field_name='period_start',
+        lookup_expr='lte'
+    )
+    period_end = django_filters.DateFilter()
+    period_end__gte = django_filters.DateFilter(
+        field_name='period_end',
+        lookup_expr='gte'
+    )
+    period_end__lte = django_filters.DateFilter(
+        field_name='period_end',
+        lookup_expr='lte'
+    )
+
+    class Meta:
+        model = LicensePeriod
+        fields = ('id', 'license', 'period_start', 'period_end', 'status')
+
+    def filter_status(self, queryset, name, value):
+        """Filter periods by active/inactive status"""
+        return queryset.filter(
+            pk__in=[obj.pk for obj in queryset if (obj.is_active and value == 'active') or (not obj.is_active and value == 'inactive')]
+        )
+
+
 class CurrencyConversionRateFilterSet(NetBoxModelFilterSet):
     """FilterSet for currency conversion rates"""
 

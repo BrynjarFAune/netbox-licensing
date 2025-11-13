@@ -450,6 +450,9 @@ class LicenseView(generic.ObjectView):
         # Get active period for pricing context
         active_period = instance.get_active_period()
 
+        # Get all periods for this license
+        license_periods = models.LicensePeriod.objects.filter(license=instance).order_by('-period_start')
+
         return {
             'instance_count': instance.instances.count(),
             'active_period': active_period,
@@ -461,7 +464,9 @@ class LicenseView(generic.ObjectView):
             "instance_table": tables.LicenseInstanceTable(
                 instance.instances.all(),
                 user=request.user
-            )
+            ),
+            'license_periods': license_periods,
+            'license_periods_table': tables.LicensePeriodTable(license_periods)
         }
 
 class LicenseAddView(generic.ObjectEditView):
@@ -621,6 +626,7 @@ class LicensePeriodListView(generic.ObjectListView):
     """List view for license periods"""
     queryset = models.LicensePeriod.objects.prefetch_related('license', 'license__vendor')
     table = tables.LicensePeriodTable
+    filterset = filtersets.LicensePeriodFilterSet
 
 
 class LicensePeriodView(generic.ObjectView):

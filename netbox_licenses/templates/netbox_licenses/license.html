@@ -190,6 +190,27 @@
     </div>
 </div>
 
+<!-- License Periods -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card">
+            <h5 class="card-header">License Periods</h5>
+            <div class="card-body">
+                {% if license_periods %}
+                    {% load render_table from django_tables2 %}
+                    {% render_table license_periods_table %}
+                {% else %}
+                    <div class="text-center text-muted">
+                        <i class="mdi mdi-calendar-blank" style="font-size: 2rem;"></i>
+                        <p>No license periods recorded</p>
+                        <small>Create a period to track pricing and billing history.</small>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
 {% if object.metadata %}
 <div class="row mb-3">
     <div class="col-12">

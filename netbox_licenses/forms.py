@@ -102,9 +102,9 @@ class LicenseInstanceForm(NetBoxModelForm):
     # This is the field the user interacts with
     assigned_object_selector = DynamicModelChoiceField(
         queryset=Contact.objects.none(),  # Will be populated based on license
-        required=True,
+        required=False,  # Make optional initially, validated in clean()
         label="Assigned Object",
-        help_text="Select an object to assign this license to (required)"
+        help_text="Select an object to assign this license to"
     )
 
 
