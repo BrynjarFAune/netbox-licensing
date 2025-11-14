@@ -100,7 +100,8 @@ class LicenseInstanceForm(NetBoxModelForm):
     )
 
     # Generic object selector - allows selecting from multiple content types
-    assigned_object_type = DynamicModelChoiceField(
+    # Use regular ModelChoiceField for ContentType (no API endpoint)
+    assigned_object_type = forms.ModelChoiceField(
         queryset=ContentType.objects.none(),  # Will be populated based on license
         required=False,
         label="Object Type",
@@ -136,6 +137,8 @@ class LicenseInstanceForm(NetBoxModelForm):
             allowed_types = license_obj.assignment_types.all()
             self.fields['assigned_object_type'].queryset = allowed_types
             self.fields['assigned_object_type'].help_text = "Select from allowed object types for this license"
+            # Custom label format for ContentType
+            self.fields['assigned_object_type'].label_from_instance = lambda obj: obj.model_class()._meta.verbose_name.title() if obj.model_class() else obj.model
 
         # Determine which content type to use for the assigned_object queryset
         selected_ct = None
