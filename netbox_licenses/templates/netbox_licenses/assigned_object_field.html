@@ -1,5 +1,9 @@
 {% load form_helpers %}
 
+{% if form.fields.assigned_object_type %}
+  {% render_field form.assigned_object_type %}
+{% endif %}
+
 {% if form.fields.assigned_object_selector %}
   {% render_field form.assigned_object_selector %}
 {% endif %}
