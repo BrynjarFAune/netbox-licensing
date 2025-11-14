@@ -206,15 +206,21 @@ class LicenseInstanceForm(NetBoxModelForm):
         if not license:
             return cleaned_data
 
-        # Check license availability for new instances
+        # Check license availability for new instances (warning only, allow overallocation)
         if not self.instance.pk:  # New instance
             current_instances = license.instances.count()
             available_licenses = license.total_licenses - current_instances
 
             if available_licenses <= 0:
-                self.add_error('license',
-                    f"No available licenses. License has {license.total_licenses} total slots "
-                    f"with {current_instances} already consumed.")
+                from django.contrib import messages
+                # Add warning instead of error - allow overallocation
+                if hasattr(self, 'request'):
+                    messages.warning(
+                        self.request,
+                        f"Warning: This will overallocate the license. "
+                        f"{license.name} has {license.total_licenses} total slots "
+                        f"with {current_instances} already consumed."
+                    )
 
         # Validate assignment type is allowed by license
         if assigned_object_type:

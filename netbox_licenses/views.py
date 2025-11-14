@@ -643,6 +643,7 @@ class LicensePeriodListView(generic.ObjectListView):
     queryset = models.LicensePeriod.objects.prefetch_related('license', 'license__vendor')
     table = tables.LicensePeriodTable
     filterset = filtersets.LicensePeriodFilterSet
+    filterset_form = filtersets.LicensePeriodFilterForm
 
 
 class LicensePeriodView(generic.ObjectView):

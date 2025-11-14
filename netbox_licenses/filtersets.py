@@ -119,8 +119,7 @@ class LicenseInstanceFilterSet(NetBoxModelFilterSet):
             ('expired', 'Expired'),
             ('expiring_soon', 'Expiring Soon (≤30d)'),
             ('expiring_medium', 'Expiring (≤90d)'),
-            ('healthy', 'Healthy (>90d)'),
-            ('no_end_date', 'No End Date'),
+            ('healthy', 'Healthy (>90d or perpetual)'),
         ],
         method='filter_expiry_status',
         label='Expiry Status',
@@ -160,9 +159,10 @@ class LicenseInstanceFilterSet(NetBoxModelFilterSet):
         elif value == 'expiring_medium':
             return queryset.filter(end_date__gt=today + timedelta(days=30), end_date__lte=today + timedelta(days=90))
         elif value == 'healthy':
-            return queryset.filter(end_date__gt=today + timedelta(days=90))
-        elif value == 'no_end_date':
-            return queryset.filter(end_date__isnull=True)
+            # Healthy: either >90 days or no end date (perpetual)
+            return queryset.filter(
+                models.Q(end_date__gt=today + timedelta(days=90)) | models.Q(end_date__isnull=True)
+            )
 
         return queryset
 
@@ -197,8 +197,7 @@ class LicenseInstanceFilterForm(NetBoxModelFilterSetForm):
             ('expired', 'Expired'),
             ('expiring_soon', 'Expiring Soon (≤30d)'),
             ('expiring_medium', 'Expiring (≤90d)'),
-            ('healthy', 'Healthy (>90d)'),
-            ('no_end_date', 'No End Date'),
+            ('healthy', 'Healthy (>90d or perpetual)'),
         ],
         required=False,
         label="Expiry Status",
@@ -333,6 +332,61 @@ class LicensePeriodFilterSet(NetBoxModelFilterSet):
             return queryset.filter(period_start__gt=today)
 
         return queryset
+
+
+class LicensePeriodFilterForm(NetBoxModelFilterSetForm):
+    """Filter form for license periods"""
+    model = LicensePeriod
+
+    license = forms.ModelMultipleChoiceField(
+        queryset=License.objects.all(),
+        required=False,
+        label="License"
+    )
+    status = forms.ChoiceField(
+        choices=[
+            ('', '-------'),
+            ('active', 'Active'),
+            ('expired', 'Expired'),
+            ('pending', 'Pending'),
+        ],
+        required=False,
+        label="Period Status"
+    )
+    period_start = forms.DateField(
+        required=False,
+        label="Period Start",
+        widget=forms.DateInput(attrs={'type': 'date'})
+    )
+    period_start__gte = forms.DateField(
+        required=False,
+        label="Period Start (After)",
+        widget=forms.DateInput(attrs={'type': 'date'})
+    )
+    period_start__lte = forms.DateField(
+        required=False,
+        label="Period Start (Before)",
+        widget=forms.DateInput(attrs={'type': 'date'})
+    )
+    period_end = forms.DateField(
+        required=False,
+        label="Period End",
+        widget=forms.DateInput(attrs={'type': 'date'})
+    )
+    period_end__gte = forms.DateField(
+        required=False,
+        label="Period End (After)",
+        widget=forms.DateInput(attrs={'type': 'date'})
+    )
+    period_end__lte = forms.DateField(
+        required=False,
+        label="Period End (Before)",
+        widget=forms.DateInput(attrs={'type': 'date'})
+    )
+
+    class Meta:
+        model = LicensePeriod
+        fields = []
 
 
 class CurrencyConversionRateFilterSet(NetBoxModelFilterSet):
