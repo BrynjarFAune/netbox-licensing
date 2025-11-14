@@ -213,3 +213,15 @@ def currency_format(value, currency='NOK'):
         return f"{int_str}.{dec_str} {currency}"
     except (ValueError, TypeError):
         return f"{value} {currency}"
+
+
+@register.filter
+def basename(value):
+    """
+    Returns the base filename from a file path.
+    Example: 'uploads/invoices/2024/invoice.pdf' -> 'invoice.pdf'
+    """
+    if not value:
+        return ''
+    import os
+    return os.path.basename(str(value))
