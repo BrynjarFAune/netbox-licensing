@@ -25,7 +25,7 @@
             <div class="card">
                 <div class="card-body text-center">
                     <h6 class="text-muted mb-1">Total License Cost</h6>
-                    <h2 class="mb-0">{{ total_cost_nok|floatformat:2 }} <small class="text-muted">NOK</small></h2>
+                    <h2 class="mb-0">{{ total_cost_nok|currency_format }}</h2>
                 </div>
             </div>
         </div>
@@ -33,7 +33,7 @@
             <div class="card">
                 <div class="card-body text-center">
                     <h6 class="text-muted mb-1">Unused Licenses Cost</h6>
-                    <h2 class="mb-0 text-warning">{{ unused_cost_nok|floatformat:2 }} <small class="text-muted">NOK</small></h2>
+                    <h2 class="mb-0 text-warning">{{ unused_cost_nok|currency_format }}</h2>
                     <small class="text-muted">Potential savings</small>
                 </div>
             </div>
@@ -85,7 +85,7 @@
                                 </td>
                                 <td><a href="{% url 'plugins:netbox_licenses:license_list' %}?vendor={{ vendor.vendor_id }}">{{ vendor.vendor }}</a></td>
                                 <td class="text-end">{{ vendor.license_count }}</td>
-                                <td class="text-end">{{ vendor.total_cost_nok|floatformat:2 }}</td>
+                                <td class="text-end">{{ vendor.total_cost_nok|currency_format }}</td>
                                 <td class="text-end">
                                     <span class="badge text-bg-{% if vendor.utilization_percentage >= 90 %}success{% elif vendor.utilization_percentage >= 70 %}info{% elif vendor.utilization_percentage >= 50 %}warning{% else %}danger{% endif %}">
                                         {{ vendor.utilization_percentage|floatformat:1 }}%
@@ -275,7 +275,7 @@
                                                 {{ item.waste_percentage|floatformat:1 }}%
                                             </span>
                                         </td>
-                                        <td class="text-end text-danger">{{ item.wasted_cost_nok|floatformat:2 }} NOK</td>
+                                        <td class="text-end text-danger">{{ item.wasted_cost_nok|currency_format }}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
