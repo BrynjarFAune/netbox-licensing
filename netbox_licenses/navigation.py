@@ -31,11 +31,12 @@ currencyrate_buttons = (
         title='Add from API',
         icon_class='mdi mdi-cloud-download'
     ),
-    PluginMenuButton(
-        link='plugins:netbox_licenses:currencyconversionrate_add',
-        title='Add Manually',
-        icon_class='mdi mdi-pencil'
-    ),
+    # Manual add removed - API rates are reliable enough
+    # PluginMenuButton(
+    #     link='plugins:netbox_licenses:currencyconversionrate_add',
+    #     title='Add Manually',
+    #     icon_class='mdi mdi-pencil'
+    # ),
     PluginMenuButton(
         link='plugins:netbox_licenses:currencyconversionrate_bulk_sync',
         title='Sync All API Rates',
