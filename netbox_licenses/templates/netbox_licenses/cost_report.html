@@ -2,209 +2,67 @@
 {% load render_table from django_tables2 %}
 {% load license_helpers %}
 
-{% block title %}Cost Report{% endblock %}
+    {% block title %}Cost Report{% endblock %}
 
-{% block content %}
-<div class="row mb-3">
-    <div class="col">
-        <h1><i class="mdi mdi-chart-line"></i> Cost Report</h1>
+    {% block content %}
+    <div class="row mb-3">
+        <div class="col">
+            <h1><i class="mdi mdi-chart-line"></i> Cost Report</h1>
+        </div>
+        <div class="col text-end">
+            <a href="{% url 'plugins:netbox_licenses:dashboard' %}" class="btn btn-outline-primary">
+                <i class="mdi mdi-view-dashboard"></i> Operational Dashboard
+            </a>
+            <a href="{% url 'plugins:netbox_licenses:license_list' %}" class="btn btn-primary">
+                <i class="mdi mdi-view-list"></i> View All Licenses
+            </a>
+        </div>
     </div>
-    <div class="col text-end">
-        <a href="{% url 'plugins:netbox_licenses:dashboard' %}" class="btn btn-outline-primary">
-            <i class="mdi mdi-view-dashboard"></i> Operational Dashboard
-        </a>
-        <a href="{% url 'plugins:netbox_licenses:license_list' %}" class="btn btn-primary">
-            <i class="mdi mdi-view-list"></i> View All Licenses
-        </a>
-    </div>
-</div>
 
-<!-- Hero Metrics Row -->
-<div class="row mb-4">
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-body text-center">
-                <h6 class="text-muted mb-1">Total License Cost</h6>
-                <h2 class="mb-0">{{ total_cost_nok|floatformat:2 }} <small class="text-muted">NOK</small></h2>
+    <!-- Hero Metrics Row -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h6 class="text-muted mb-1">Total License Cost</h6>
+                    <h2 class="mb-0">{{ total_cost_nok|floatformat:2 }} <small class="text-muted">NOK</small></h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h6 class="text-muted mb-1">Unused Licenses Cost</h6>
+                    <h2 class="mb-0 text-warning">{{ unused_cost_nok|floatformat:2 }} <small class="text-muted">NOK</small></h2>
+                    <small class="text-muted">Potential savings</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h6 class="text-muted mb-1">Overall Utilization</h6>
+                    <h2 class="mb-0">
+                        <span class="{% if utilization_percent >= 90 %}text-success{% elif utilization_percent >= 70 %}text-info{% elif utilization_percent >= 50 %}text-warning{% else %}text-danger{% endif %}">
+                            {{ utilization_percent|floatformat:1 }}%
+                        </span>
+                    </h2>
+                    <small class="text-muted">{{ total_utilized }} / {{ total_licenses }} seats</small>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-body text-center">
-                <h6 class="text-muted mb-1">Unused Licenses Cost</h6>
-                <h2 class="mb-0 text-warning">{{ unused_cost_nok|floatformat:2 }} <small class="text-muted">NOK</small></h2>
-                <small class="text-muted">Potential savings</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-body text-center">
-                <h6 class="text-muted mb-1">Overall Utilization</h6>
-                <h2 class="mb-0">
-                    <span class="{% if utilization_percent >= 90 %}text-success{% elif utilization_percent >= 70 %}text-info{% elif utilization_percent >= 50 %}text-warning{% else %}text-danger{% endif %}">
-                        {{ utilization_percent|floatformat:1 }}%
-                    </span>
-                </h2>
-                <small class="text-muted">{{ total_utilized }} / {{ total_licenses }} seats</small>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- License Status Section (Period-based) -->
-<div class="row mb-4">
-    <!-- Licenses Needing Action -->
     <div class="col-md-6">
-        <div class="card {% if licenses_needing_action %}border-warning{% endif %}">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="mdi mdi-alert-circle-outline text-warning"></i>
-                    Licenses Needing Action
-                    <span class="badge text-bg-warning ms-2">{{ licenses_needing_action|length }}</span>
-                </h5>
-            </div>
-            <div class="card-body">
-                {% if licenses_needing_action %}
-                    <p class="text-muted small mb-3">These licenses require attention:</p>
-                    <div class="list-group">
-                        {% for item in licenses_needing_action %}
-                        <div class="list-group-item">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div class="flex-grow-1">
-                                    <h6 class="mb-1">
-                                        <a href="{% url 'plugins:netbox_licenses:license' pk=item.license.pk %}">{{ item.license.name }}</a>
-                                    </h6>
-                                    <small class="text-muted">
-                                        {% if item.action_reason == 'period_expiring' %}
-                                            <i class="mdi mdi-clock-alert-outline"></i> Period expiring soon
-                                        {% elif item.action_reason == 'no_active_period' %}
-                                            <i class="mdi mdi-alert-octagon"></i> No active period
-                                        {% elif item.action_reason == 'no_responsible_contact' %}
-                                            <i class="mdi mdi-account-alert"></i> No responsible contact assigned
-                                        {% endif %}
-                                    </small>
-                                    <br>
-                                    <small class="text-muted">
-                                        Responsible:
-                                        {% if item.responsible_contact %}
-                                            {{ item.responsible_contact }}
-                                        {% else %}
-                                            <span class="text-danger">Not assigned</span>
-                                        {% endif %}
-                                    </small>
-                                </div>
-                                <div class="text-end">
-                                    {% if item.is_active %}
-                                        <span class="badge text-bg-{% if item.days_remaining <= 7 %}danger{% elif item.days_remaining <= 30 %}warning{% else %}info{% endif %}">
-                                            {% if item.current_period_end %}
-                                                {{ item.current_period_end|date:"d/m/Y" }}
-                                            {% else %}
-                                                Perpetual
-                                            {% endif %}
-                                        </span>
-                                        {% if item.days_remaining %}
-                                            <br><small class="text-muted">{{ item.days_remaining }} days</small>
-                                        {% endif %}
-                                    {% else %}
-                                        <span class="badge text-bg-danger">Inactive</span>
-                                    {% endif %}
-                                    <br>
-                                    <small class="text-muted">{{ item.available_seats }} seats available</small>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <div class="text-center text-success py-4">
-                        <i class="mdi mdi-check-circle" style="font-size: 3rem;"></i>
-                        <p>All licenses in good standing!</p>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
+        <!-- Vendor Cost Distribution -->
 
-    <!-- Active Licenses Overview -->
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="mdi mdi-certificate-outline text-success"></i>
-                    Active Licenses
-                    <span class="badge text-bg-success ms-2">{{ active_licenses|length }}</span>
-                </h5>
-            </div>
-            <div class="card-body">
-                {% if active_licenses %}
-                    <p class="text-muted small mb-3">Currently active license coverage:</p>
-                    <table class="table table-sm table-hover">
-                        <thead>
-                            <tr>
-                                <th>License</th>
-                                <th class="text-end">Available</th>
-                                <th class="text-end">Period Ends</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in active_licenses %}
-                            <tr>
-                                <td>
-                                    <a href="{% url 'plugins:netbox_licenses:license' pk=item.license.pk %}">{{ item.license.name }}</a>
-                                    {% if not item.responsible_contact %}
-                                        <i class="mdi mdi-alert text-warning" title="No responsible contact"></i>
-                                    {% endif %}
-                                </td>
-                                <td class="text-end">
-                                    {% if item.payment_method == 'free_trial' %}
-                                        <span class="badge text-bg-secondary">
-                                            {{ item.available_seats }} seats
-                                        </span>
-                                    {% else %}
-                                        {% comment %}
-                                        Utilization-based coloring: Higher utilization = better (green)
-                                        Low available seats = high utilization = good (green)
-                                        High available seats = low utilization = bad (red)
-                                        {% endcomment %}
-                                        <span class="badge text-bg-{% if item.utilization_percentage >= utilization_excellent %}success{% elif item.utilization_percentage >= utilization_good %}info{% elif item.utilization_percentage >= utilization_moderate %}warning{% else %}danger{% endif %}">
-                                            {{ item.available_seats }} seats
-                                        </span>
-                                    {% endif %}
-                                </td>
-                                <td class="text-end">
-                                    {% if item.current_period_end %}
-                                        {{ item.current_period_end|date:"d/m/Y" }}
-                                        {% if item.days_remaining <= 30 %}
-                                            <i class="mdi mdi-clock-alert text-warning"></i>
-                                        {% endif %}
-                                    {% else %}
-                                        <span class="text-muted">Perpetual</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                {% else %}
-                    <p class="text-muted text-center py-3">No active licenses</p>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Middle Section: Vendor Distribution + Top Underutilized -->
-<div class="row mb-4">
-    <!-- Vendor Cost Distribution -->
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="mdi mdi-chart-pie"></i> Vendor Cost Distribution</h5>
-            </div>
-            <div class="card-body">
-                {% if vendor_stats %}
+        <div class="row-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="mdi mdi-chart-pie"></i> Vendor Cost Distribution</h5>
+                </div>
+                <div class="card-body">
+                    {% if vendor_stats %}
                     <canvas id="vendorChart" style="max-height: 300px;"></canvas>
                     <hr>
                     <table class="table table-sm table-hover">
@@ -237,21 +95,164 @@
                             {% endfor %}
                         </tbody>
                     </table>
-                {% else %}
+                    {% else %}
                     <p class="text-muted text-center py-4">No vendor data available</p>
-                {% endif %}
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Top Underutilized Licenses -->
+    <!-- License Status Section (Period-based) -->
     <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="mdi mdi-alert-circle-outline text-warning"></i> Top Underutilized Licenses</h5>
+        <div class="row-md-4">
+
+            <!-- Licenses Needing Action -->
+            <div class="col-md-6">
+                <div class="card {% if licenses_needing_action %}border-warning{% endif %}">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="mdi mdi-alert-circle-outline text-warning"></i>
+                            Licenses Needing Action
+                            <span class="badge text-bg-warning ms-2">{{ licenses_needing_action|length }}</span>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if licenses_needing_action %}
+                        <p class="text-muted small mb-3">These licenses require attention:</p>
+                        <div class="list-group">
+                            {% for item in licenses_needing_action %}
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">
+                                            <a href="{% url 'plugins:netbox_licenses:license' pk=item.license.pk %}">{{ item.license.name }}</a>
+                                        </h6>
+                                        <small class="text-muted">
+                                            {% if item.action_reason == 'period_expiring' %}
+                                            <i class="mdi mdi-clock-alert-outline"></i> Period expiring soon
+                                            {% elif item.action_reason == 'no_active_period' %}
+                                            <i class="mdi mdi-alert-octagon"></i> No active period
+                                            {% elif item.action_reason == 'no_responsible_contact' %}
+                                            <i class="mdi mdi-account-alert"></i> No responsible contact assigned
+                                            {% endif %}
+                                        </small>
+                                        <br>
+                                        <small class="text-muted">
+                                            Responsible:
+                                            {% if item.responsible_contact %}
+                                            {{ item.responsible_contact }}
+                                            {% else %}
+                                            <span class="text-danger">Not assigned</span>
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                    <div class="text-end">
+                                        {% if item.is_active %}
+                                        <span class="badge text-bg-{% if item.days_remaining <= 7 %}danger{% elif item.days_remaining <= 30 %}warning{% else %}info{% endif %}">
+                                            {% if item.current_period_end %}
+                                            {{ item.current_period_end|date:"d/m/Y" }}
+                                            {% else %}
+                                            Perpetual
+                                            {% endif %}
+                                        </span>
+                                        {% if item.days_remaining %}
+                                        <br><small class="text-muted">{{ item.days_remaining }} days</small>
+                                        {% endif %}
+                                        {% else %}
+                                        <span class="badge text-bg-danger">Inactive</span>
+                                        {% endif %}
+                                        <br>
+                                        <small class="text-muted">{{ item.available_seats }} seats available</small>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="text-center text-success py-4">
+                            <i class="mdi mdi-check-circle" style="font-size: 3rem;"></i>
+                            <p>All licenses in good standing!</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
-            <div class="card-body">
-                {% if top_underutilized %}
+        </div>
+        <!-- Active Licenses Overview -->
+        <div class="row-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="mdi mdi-certificate-outline text-success"></i>
+                        Active Licenses
+                        <span class="badge text-bg-success ms-2">{{ active_licenses|length }}</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if active_licenses %}
+                    <p class="text-muted small mb-3">Currently active license coverage:</p>
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>License</th>
+                                <th class="text-end">Available</th>
+                                <th class="text-end">Period Ends</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in active_licenses %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'plugins:netbox_licenses:license' pk=item.license.pk %}">{{ item.license.name }}</a>
+                                    {% if not item.responsible_contact %}
+                                    <i class="mdi mdi-alert text-warning" title="No responsible contact"></i>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if item.payment_method == 'free_trial' %}
+                                    <span class="badge text-bg-secondary">
+                                        {{ item.available_seats }} seats
+                                    </span>
+                                    {% else %}
+                                    {% comment %}
+                                    Utilization-based coloring: Higher utilization = better (green)
+                                    Low available seats = high utilization = good (green)
+                                    High available seats = low utilization = bad (red)
+                                    {% endcomment %}
+                                    <span class="badge text-bg-{% if item.utilization_percentage >= utilization_excellent %}success{% elif item.utilization_percentage >= utilization_good %}info{% elif item.utilization_percentage >= utilization_moderate %}warning{% else %}danger{% endif %}">
+                                        {{ item.available_seats }} seats
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if item.current_period_end %}
+                                    {{ item.current_period_end|date:"d/m/Y" }}
+                                    {% if item.days_remaining <= 30 %}
+                                    <i class="mdi mdi-clock-alert text-warning"></i>
+                                    {% endif %}
+                                    {% else %}
+                                    <span class="text-muted">Perpetual</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p class="text-muted text-center py-3">No active licenses</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="row mb-4">
+            <!-- Top Underutilized Licenses -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="mdi mdi-alert-circle-outline text-warning"></i> Top Underutilized Licenses</h5>
+                </div>
+                <div class="card-body">
+                    {% if top_underutilized %}
                     <table class="table table-sm table-hover">
                         <thead>
                             <tr>
@@ -276,51 +277,52 @@
                             {% endfor %}
                         </tbody>
                     </table>
-                {% else %}
+                    {% else %}
                     <div class="text-center text-success py-4">
                         <i class="mdi mdi-check-circle" style="font-size: 3rem;"></i>
                         <p>All licenses are fully utilized!</p>
                     </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
-
-
-<!-- Quick Actions -->
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="mdi mdi-lightning-bolt"></i> Quick Actions</h5>
-            </div>
-            <div class="card-body">
-                <div class="d-flex flex-wrap gap-2">
-                    <a href="{% url 'plugins:netbox_licenses:license_add' %}" class="btn btn-success">
-                        <i class="mdi mdi-plus-thick"></i> Add License
-                    </a>
-                    <a href="{% url 'plugins:netbox_licenses:licenseinstance_add' %}" class="btn btn-info">
-                        <i class="mdi mdi-plus-thick"></i> Add Instance
-                    </a>
-                    <a href="{% url 'plugins:netbox_licenses:licenseperiod_add' %}" class="btn btn-warning">
-                        <i class="mdi mdi-calendar-plus"></i> Record Billing Period
-                    </a>
-                    <a href="{% url 'plugins:netbox_licenses:utilization_report' %}" class="btn btn-outline-primary">
-                        <i class="mdi mdi-chart-bar"></i> Utilization Report
-                    </a>
-                    <a href="{% url 'plugins:netbox_licenses:currencyconversionrate_list' %}" class="btn btn-outline-secondary">
-                        <i class="mdi mdi-currency-usd"></i> Currency Rates
-                    </a>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Chart.js for Vendor Pie Chart -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script>
+
+
+    <!-- Quick Actions -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="mdi mdi-lightning-bolt"></i> Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="{% url 'plugins:netbox_licenses:license_add' %}" class="btn btn-success">
+                            <i class="mdi mdi-plus-thick"></i> Add License
+                        </a>
+                        <a href="{% url 'plugins:netbox_licenses:licenseinstance_add' %}" class="btn btn-info">
+                            <i class="mdi mdi-plus-thick"></i> Add Instance
+                        </a>
+                        <a href="{% url 'plugins:netbox_licenses:licenseperiod_add' %}" class="btn btn-warning">
+                            <i class="mdi mdi-calendar-plus"></i> Record Billing Period
+                        </a>
+                        <a href="{% url 'plugins:netbox_licenses:utilization_report' %}" class="btn btn-outline-primary">
+                            <i class="mdi mdi-chart-bar"></i> Utilization Report
+                        </a>
+                        <a href="{% url 'plugins:netbox_licenses:currencyconversionrate_list' %}" class="btn btn-outline-secondary">
+                            <i class="mdi mdi-currency-usd"></i> Currency Rates
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart.js for Vendor Pie Chart -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
 document.addEventListener('DOMContentLoaded', function() {
     const vendorData = {{ vendor_stats_json|safe }};
 
@@ -337,12 +339,12 @@ document.addEventListener('DOMContentLoaded', function() {
         function updateChart() {
             // Filter data based on visibility
             const filteredData = vendorData
-                .map((v, i) => vendorVisibility[i] ? v : null)
-                .filter(v => v !== null);
+            .map((v, i) => vendorVisibility[i] ? v : null)
+            .filter(v => v !== null);
 
             const filteredColors = colors
-                .map((c, i) => vendorVisibility[i] ? c : null)
-                .filter(c => c !== null);
+            .map((c, i) => vendorVisibility[i] ? c : null)
+            .filter(c => c !== null);
 
             // Calculate new percentages based on visible vendors only
             const visibleTotal = filteredData.reduce((sum, v) => sum + v.cost, 0);
@@ -376,8 +378,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                 const label = context.label || '';
                                 const value = context.parsed || 0;
                                 const total = vendorData
-                                    .map((v, i) => vendorVisibility[i] ? v.cost : 0)
-                                    .reduce((sum, c) => sum + c, 0);
+                                .map((v, i) => vendorVisibility[i] ? v.cost : 0)
+                                .reduce((sum, c) => sum + c, 0);
                                 const percentage = (value / total * 100).toFixed(1);
                                 return label + ': ' + value.toFixed(2) + ' NOK (' + percentage + '%)';
                             }
@@ -405,8 +407,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateChart();
             });
         });
-    }
+        }
 });
-</script>
+    </script>
 
-{% endblock %}
+    {% endblock %}
