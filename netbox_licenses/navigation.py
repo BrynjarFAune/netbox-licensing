@@ -47,16 +47,16 @@ currencyrate_buttons = (
 menu = PluginMenu(
     label='License Management',
     groups=(
-        ('Overview', (
-            PluginMenuItem(
-                link='plugins:netbox_licenses:cost_report',
-                link_text='Dashboard'
-            ),
-            PluginMenuItem(
-                link='plugins:netbox_licenses:dashboard',
-                link_text='Utilization Report'
-            ),
-        )),
+        # ('Overview', (
+        #     PluginMenuItem(
+        #         link='plugins:netbox_licenses:cost_report',
+        #         link_text='Dashboard'
+        #     ),
+        #     PluginMenuItem(
+        #         link='plugins:netbox_licenses:dashboard',
+        #         link_text='Utilization Report'
+        #     ),
+        # )),
         ('Management', (
             PluginMenuItem(
                 link='plugins:netbox_licenses:license_list',
