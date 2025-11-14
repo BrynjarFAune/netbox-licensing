@@ -113,7 +113,15 @@
           {% if object.invoice_file %}
           <tr>
             <th scope="row">Invoice File</th>
-            <td><a href="{{ object.invoice_file.url }}" target="_blank">Download <i class="mdi mdi-download"></i></a></td>
+            <td>
+              <div><strong>{{ object.invoice_file.name|basename }}</strong></div>
+              <div class="text-muted small">Size: {{ object.invoice_file.size|filesizeformat }}</div>
+              <div class="mt-2">
+                <a href="{{ object.invoice_file.url }}" target="_blank" class="btn btn-sm btn-primary">
+                  <i class="mdi mdi-download"></i> Download
+                </a>
+              </div>
+            </td>
           </tr>
           {% endif %}
         </table>

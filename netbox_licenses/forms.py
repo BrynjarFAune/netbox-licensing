@@ -701,7 +701,25 @@ class LicensePeriodForm(NetBoxModelForm):
         initial='NOK',
         required=True,
         widget=forms.Select(),
-        help_text="Currency code (must be defined in Currency Rates)"
+        help_text="Native currency code (as invoiced)"
+    )
+
+    price_nok = DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        required=False,
+        label="Price (NOK Override)",
+        help_text="Optional: manually set NOK price. Leave blank to auto-convert from native currency.",
+        widget=forms.NumberInput(attrs={'step': '0.01'})
+    )
+
+    conversion_rate = DecimalField(
+        max_digits=10,
+        decimal_places=6,
+        required=False,
+        label="Conversion Rate",
+        help_text="Optional: conversion rate (1 native = X NOK). Auto-calculated if left blank.",
+        widget=forms.NumberInput(attrs={'step': '0.000001'})
     )
 
     payment_method = ChoiceField(
@@ -742,7 +760,7 @@ class LicensePeriodForm(NetBoxModelForm):
         model = LicensePeriod
         fields = [
             'license', 'period_start', 'period_end', 'pricing_mode', 'price', 'currency',
-            'payment_method', 'seats_purchased',
+            'price_nok', 'conversion_rate', 'payment_method', 'seats_purchased',
             'invoice_reference', 'invoice_file', 'invoice_url',
             'comments', 'tags'
         ]

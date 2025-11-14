@@ -963,16 +963,35 @@ class LicensePeriod(NetBoxModel):
         default=PricingModeChoices.PER_SEAT,
         help_text="Whether price is total or per-seat"
     )
+
+    # Native currency pricing (original/invoiced amount)
     price = models.DecimalField(
         max_digits=12,
         decimal_places=2,
-        help_text="Price for this period (total or per-seat depending on pricing_mode)"
+        help_text="Native price for this period (as invoiced)"
     )
     currency = models.CharField(
         max_length=3,
         default='NOK',
-        help_text="Currency code"
+        help_text="Native currency code"
     )
+
+    # NOK pricing (for internal cost tracking)
+    price_nok = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Price in NOK (auto-converted or manually set). Leave blank to auto-calculate."
+    )
+    conversion_rate = models.DecimalField(
+        max_digits=10,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        help_text="Conversion rate used (1 native currency = X NOK). Auto-filled if not set."
+    )
+
     payment_method = models.CharField(
         max_length=30,
         choices=PaymentMethodChoices.CHOICES,
@@ -1080,6 +1099,27 @@ class LicensePeriod(NetBoxModel):
             # Snapshot payment method if not set
             if not self.payment_method:
                 self.payment_method = self.license.payment_method
+
+        # Auto-calculate NOK price and conversion rate if not manually set
+        if self.price and self.currency:
+            if self.currency == 'NOK':
+                # Native currency is already NOK
+                self.price_nok = self.price
+                self.conversion_rate = Decimal('1.0')
+            elif not self.price_nok:
+                # Auto-convert to NOK using database rates
+                rate = CurrencyConversionRate.get_rate_to_nok(self.currency)
+                if rate:
+                    self.conversion_rate = rate
+                    self.price_nok = self.price * rate
+                else:
+                    # No rate available - leave blank
+                    self.price_nok = None
+                    self.conversion_rate = None
+            elif not self.conversion_rate and self.price_nok:
+                # Manual NOK price set - calculate implied rate
+                if self.price > 0:
+                    self.conversion_rate = self.price_nok / self.price
 
         super().save(*args, **kwargs)
 
