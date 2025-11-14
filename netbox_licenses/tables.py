@@ -109,13 +109,18 @@ class LicenseTable(NetBoxTable):
 
     def render_payment_method(self, record):
         from django.utils.html import format_html
+        from .choices import PaymentMethodChoices
         method = record.get_payment_method_display()
-        if record.payment_method == 'card_auto':
+
+        # Green for automatic operations
+        if record.payment_method == PaymentMethodChoices.CARD_AUTO:
             return format_html('<span class="badge text-bg-success">{}</span>', method)
-        elif record.payment_method in ['invoice', 'card_manual']:
+        # Yellow for manual operations
+        elif record.payment_method in [PaymentMethodChoices.INVOICE, PaymentMethodChoices.CARD_MANUAL, PaymentMethodChoices.BANK_TRANSFER]:
             return format_html('<span class="badge text-bg-warning">{}</span>', method)
-        elif record.payment_method == 'free_trial':
-            return format_html('<span class="badge text-bg-info">{}</span>', method)
+        # Gray for one-time purchases and free licenses (no action required)
+        elif record.payment_method in [PaymentMethodChoices.PREPAID, PaymentMethodChoices.FREE_TRIAL]:
+            return format_html('<span class="badge text-bg-secondary">{}</span>', method)
         else:
             return format_html('<span class="badge text-bg-secondary">{}</span>', method)
 
@@ -135,7 +140,6 @@ class LicenseInstanceTable(NetBoxTable):
     start_date = tables.DateColumn(format='d/m/Y')
     end_date = tables.DateColumn(format='d/m/Y')
     status = tables.Column(verbose_name="Status", orderable=False, accessor='derived_status')
-    auto_renew_status = tables.Column(empty_values=(), verbose_name="Auto-Renew", orderable=False)
     instance_price_nok = tables.Column(empty_values=(), verbose_name="Price (NOK)")
 
     def render_assigned_object(self, record):
@@ -149,45 +153,11 @@ class LicenseInstanceTable(NetBoxTable):
         model = LicenseInstance
         fields = (
             'pk', 'id', 'license', 'assigned_object', 'start_date', 'end_date', 'status',
-            'auto_renew_status', 'instance_price_nok', 'actions'
+            'instance_price_nok', 'actions'
         )
         default_columns = (
-            'pk', 'license', 'assigned_object', 'status', 'auto_renew_status', 'end_date'
+            'pk', 'license', 'assigned_object', 'status', 'end_date'
         )
-
-    def render_auto_renew_status(self, record):
-        """Show payment method status from parent license"""
-        if not record.license:
-            return "—"
-
-        payment_method = record.license.payment_method
-
-        # Auto-charging payment methods
-        if payment_method == 'card_auto':
-            return format_html('<span class="badge text-bg-success">Auto-Charge</span>')
-        elif payment_method in ['invoice', 'card_manual', 'bank_transfer']:
-            return format_html('<span class="badge text-bg-warning">Manual</span>')
-        elif payment_method == 'prepaid':
-            return format_html('<span class="badge text-bg-info">Prepaid</span>')
-        elif payment_method == 'free_trial':
-            return format_html('<span class="badge text-bg-secondary">Trial</span>')
-        else:
-            return format_html('<span class="badge text-bg-secondary">{}</span>', payment_method)
-
-    def value_auto_renew_status(self, record):
-        """Plain text value for CSV export"""
-        if not record.license:
-            return "—"
-        payment_method = record.license.payment_method
-        if payment_method == 'card_auto':
-            return "Auto-Charge"
-        elif payment_method in ['invoice', 'card_manual', 'bank_transfer']:
-            return "Manual"
-        elif payment_method == 'prepaid':
-            return "Prepaid"
-        elif payment_method == 'free_trial':
-            return "Trial"
-        return payment_method
 
     def render_instance_price_nok(self, record):
         price = record.instance_price_nok
@@ -305,11 +275,19 @@ class LicensePeriodTable(NetBoxTable):
         return f"{percentage:.1f}%"
 
     def render_status(self, record):
-        """Show active/inactive status badge"""
-        if record.is_active:
-            return format_html('<span class="badge text-bg-success">Active</span>')
+        """Show active/expired/pending status badge"""
+        from django.utils import timezone
+        today = timezone.now().date()
+
+        if record.period_start > today:
+            # Period hasn't started yet
+            return format_html('<span class="badge text-bg-info">Pending</span>')
+        elif record.period_end and record.period_end < today:
+            # Period has ended
+            return format_html('<span class="badge text-bg-danger">Expired</span>')
         else:
-            return format_html('<span class="badge text-bg-secondary">Inactive</span>')
+            # Currently active
+            return format_html('<span class="badge text-bg-success">Active</span>')
 
     def render_price(self, record):
         """Format price with currency based on pricing mode"""

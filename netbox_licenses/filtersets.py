@@ -287,7 +287,8 @@ class LicensePeriodFilterSet(NetBoxModelFilterSet):
     status = django_filters.ChoiceFilter(
         choices=[
             ('active', 'Active'),
-            ('inactive', 'Inactive'),
+            ('expired', 'Expired'),
+            ('pending', 'Pending'),
         ],
         method='filter_status',
         label='Period Status'
@@ -317,10 +318,21 @@ class LicensePeriodFilterSet(NetBoxModelFilterSet):
         fields = ('id', 'license', 'period_start', 'period_end', 'status')
 
     def filter_status(self, queryset, name, value):
-        """Filter periods by active/inactive status"""
-        return queryset.filter(
-            pk__in=[obj.pk for obj in queryset if (obj.is_active and value == 'active') or (not obj.is_active and value == 'inactive')]
-        )
+        """Filter periods by active/expired/pending status"""
+        from django.utils import timezone
+        today = timezone.now().date()
+
+        if value == 'active':
+            # Currently active: started but not ended
+            return queryset.filter(period_start__lte=today).exclude(period_end__lt=today)
+        elif value == 'expired':
+            # Expired: period_end is in the past
+            return queryset.filter(period_end__lt=today)
+        elif value == 'pending':
+            # Pending: period_start is in the future
+            return queryset.filter(period_start__gt=today)
+
+        return queryset
 
 
 class CurrencyConversionRateFilterSet(NetBoxModelFilterSet):
