@@ -100,15 +100,15 @@ class LicenseInstanceForm(NetBoxModelForm):
     )
 
     # Generic object selector - allows selecting from multiple content types
-    assigned_object_type = ContentTypeChoiceField(
-        queryset=ContentType.objects.all(),
+    assigned_object_type = DynamicModelChoiceField(
+        queryset=ContentType.objects.none(),  # Will be populated based on license
         required=False,
         label="Object Type",
         help_text="Select the type of object to assign"
     )
 
     assigned_object_selector = DynamicModelChoiceField(
-        queryset=Contact.objects.all(),  # Will be updated based on license and type
+        queryset=Contact.objects.none(),  # Will be updated based on license and type
         required=False,
         label="Assigned Object",
         help_text="Search and select the specific object to assign"
