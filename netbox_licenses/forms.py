@@ -711,12 +711,12 @@ class LicensePeriodForm(NetBoxModelForm):
         widget=forms.NumberInput(attrs={'id': 'id_price', 'step': '0.01'})
     )
 
-    currency = CharField(
-        max_length=3,
-        initial='NOK',
+    currency = DynamicModelChoiceField(
+        queryset=CurrencyConversionRate.objects.all(),
         required=True,
-        widget=forms.Select(),
-        help_text="Native currency code (as invoiced)"
+        quick_add=True,
+        label="Currency",
+        help_text="Native currency (as invoiced). Use quick-add to import new currencies from API."
     )
 
     price_nok = DecimalField(
@@ -783,9 +783,7 @@ class LicensePeriodForm(NetBoxModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Populate currency choices dynamically from available conversion rates
-        currencies = CurrencyConversionRate.get_available_currencies()
-        self.fields['currency'].widget.choices = [(c, c) for c in currencies]
+        # Currency is now a ForeignKey with quick_add support - no manual choices needed
 
         # Auto-fill fields based on the selected license
         # Only for new renewals, not edits

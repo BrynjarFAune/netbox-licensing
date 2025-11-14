@@ -970,10 +970,12 @@ class LicensePeriod(NetBoxModel):
         decimal_places=2,
         help_text="Native price for this period (as invoiced)"
     )
-    currency = models.CharField(
-        max_length=3,
-        default='NOK',
-        help_text="Native currency code"
+    currency = models.ForeignKey(
+        to='CurrencyConversionRate',
+        on_delete=models.PROTECT,
+        related_name='license_periods',
+        help_text="Native currency for this period",
+        to_field='currency_code'
     )
 
     # NOK pricing (for internal cost tracking)
@@ -1102,20 +1104,14 @@ class LicensePeriod(NetBoxModel):
 
         # Auto-calculate NOK price and conversion rate if not manually set
         if self.price and self.currency:
-            if self.currency == 'NOK':
+            if self.currency.currency_code == 'NOK':
                 # Native currency is already NOK
                 self.price_nok = self.price
                 self.conversion_rate = Decimal('1.0')
             elif not self.price_nok:
-                # Auto-convert to NOK using database rates
-                rate = CurrencyConversionRate.get_rate_to_nok(self.currency)
-                if rate:
-                    self.conversion_rate = rate
-                    self.price_nok = self.price * rate
-                else:
-                    # No rate available - leave blank
-                    self.price_nok = None
-                    self.conversion_rate = None
+                # Auto-convert to NOK using the currency's rate
+                self.conversion_rate = self.currency.rate_to_nok
+                self.price_nok = self.price * self.currency.rate_to_nok
             elif not self.conversion_rate and self.price_nok:
                 # Manual NOK price set - calculate implied rate
                 if self.price > 0:
