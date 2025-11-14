@@ -240,26 +240,32 @@ class LicenseInstanceForm(NetBoxModelForm):
                 self.add_error('assigned_object_selector',
                     f"Selected object does not match the selected object type")
 
-        # Both or neither assignment fields must be provided
-        if (assigned_object_type and not assigned_object_selector) or (assigned_object_selector and not assigned_object_type):
-            self.add_error(None, "Both Object Type and Assigned Object must be provided together, or leave both empty")
+        # Assignment is required for instances
+        if not assigned_object_selector:
+            self.add_error('assigned_object_selector', "An assigned object is required for license instances")
+
+        if not assigned_object_type:
+            self.add_error('assigned_object_type', "Object type is required for license instances")
 
         return cleaned_data
 
-    def save(self, commit=True):
-        instance = super().save(commit=False)
-
-        # Set the assignment fields based on the form data
+    def _post_clean(self):
+        """Override to set GenericForeignKey fields before model validation"""
+        # Set the assignment fields BEFORE calling super()._post_clean()
+        # This allows model validation to see these fields
         if hasattr(self, 'cleaned_data'):
             assigned_object_selector = self.cleaned_data.get('assigned_object_selector')
 
             if assigned_object_selector:
-                instance.assigned_object_type = ContentType.objects.get_for_model(assigned_object_selector)
-                instance.assigned_object_id = assigned_object_selector.pk
-            else:
-                instance.assigned_object_type = None
-                instance.assigned_object_id = None
+                self.instance.assigned_object_type = ContentType.objects.get_for_model(assigned_object_selector)
+                self.instance.assigned_object_id = assigned_object_selector.pk
 
+        super()._post_clean()
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+
+        # Assignment fields already set in _post_clean()
         if commit:
             instance.save()
             self.save_m2m()
