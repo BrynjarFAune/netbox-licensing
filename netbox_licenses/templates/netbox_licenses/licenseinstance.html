@@ -37,10 +37,10 @@
                 <tr>
                     <th scope="row">Price (NOK)</th>
                     <td>
-                        {% if object.nok_price_override %}
-                            {{ object.nok_price_override }} NOK
-                        {% else %}
-                            {{ object.license.active_period_per_seat_price|floatformat:2 }} {{ object.license.active_period_currency }}
+                        {% load license_helpers %}
+                        {{ object.instance_price_nok|currency_format }}
+                        {% if object.license.active_period_currency != 'NOK' %}
+                        <br><small class="text-muted">Native: {{ object.license.active_period_per_seat_price|floatformat:2 }} {{ object.license.active_period_currency }}</small>
                         {% endif %}
                     </td>
                 </tr>
