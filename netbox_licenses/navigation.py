@@ -49,12 +49,12 @@ menu = PluginMenu(
     groups=(
         ('Overview', (
             PluginMenuItem(
-                link='plugins:netbox_licenses:dashboard',
+                link='plugins:netbox_licenses:cost_report',
                 link_text='Dashboard'
             ),
             PluginMenuItem(
-                link='plugins:netbox_licenses:cost_report',
-                link_text='Cost Report'
+                link='plugins:netbox_licenses:dashboard',
+                link_text='Utilization Report'
             ),
         )),
         ('Management', (

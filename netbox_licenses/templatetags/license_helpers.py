@@ -185,3 +185,31 @@ def auto_renew_badge(value):
         return format_html('<span class="badge text-bg-info"><i class="mdi mdi-refresh-auto"></i> Auto-renew</span>')
     else:
         return format_html('<span class="badge text-bg-secondary">Manual renewal</span>')
+
+
+@register.filter
+def currency_format(value, currency='NOK'):
+    """
+    Formats currency with thousand separators using apostrophes.
+    Example: 106996924.96 NOK -> 106'996'924.96 NOK
+    """
+    if value is None:
+        return f"0.00 {currency}"
+
+    try:
+        # Convert to float to handle Decimal/string
+        num_value = float(str(value))
+
+        # Split into integer and decimal parts
+        int_part = int(num_value)
+        dec_part = num_value - int_part
+
+        # Format integer part with apostrophe separators
+        int_str = f"{int_part:,}".replace(',', "'")
+
+        # Format decimal part (always 2 decimals)
+        dec_str = f"{dec_part:.2f}".split('.')[1]
+
+        return f"{int_str}.{dec_str} {currency}"
+    except (ValueError, TypeError):
+        return f"{value} {currency}"
