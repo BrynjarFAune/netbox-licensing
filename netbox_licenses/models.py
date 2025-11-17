@@ -743,7 +743,7 @@ class CurrencyConversionRate(NetBoxModel):
     )
     rate_to_nok = models.DecimalField(
         max_digits=12,
-        decimal_places=6,
+        decimal_places=2,
         help_text="Conversion rate: 1 [currency] = X NOK"
     )
     source = models.CharField(
@@ -769,7 +769,7 @@ class CurrencyConversionRate(NetBoxModel):
         ]
 
     def __str__(self):
-        return f"{self.currency_code} → NOK: {self.rate_to_nok} ({self.get_source_display()})"
+        return f"{self.currency_code} → NOK: {float(self.rate_to_nok):.2f}"
 
     def get_absolute_url(self):
         return reverse('plugins:netbox_licenses:currencyconversionrate', args=[self.pk])
