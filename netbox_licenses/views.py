@@ -657,6 +657,12 @@ class LicensePeriodEditView(generic.ObjectEditView):
     form = forms.LicensePeriodForm
     template_name = 'netbox_licenses/licenseperiod_edit.html'
 
+    def get_extra_context(self, request, instance):
+        context = super().get_extra_context(request, instance)
+        # Add existing currencies for autocomplete
+        context['existing_currencies'] = models.CurrencyConversionRate.objects.all().order_by('currency_code')
+        return context
+
     def alter_object(self, obj, request, args, kwargs):
         """Pre-populate license from URL parameter"""
         if not obj.pk and 'license' in request.GET:

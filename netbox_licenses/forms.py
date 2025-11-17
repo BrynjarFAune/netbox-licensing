@@ -711,12 +711,19 @@ class LicensePeriodForm(NetBoxModelForm):
         widget=forms.NumberInput(attrs={'id': 'id_price', 'step': '0.01'})
     )
 
-    currency = DynamicModelChoiceField(
-        queryset=CurrencyConversionRate.objects.all(),
+    currency = CharField(
+        max_length=3,
         required=True,
-        quick_add=True,
         label="Currency",
-        help_text="Native currency (as invoiced). Use quick-add to import new currencies from API."
+        help_text="ISO 4217 currency code (e.g., USD, EUR, GBP). Enter 3-letter code and click sync to import from API.",
+        widget=forms.TextInput(attrs={
+            'placeholder': 'USD',
+            'maxlength': '3',
+            'style': 'text-transform: uppercase;',
+            'class': 'form-control currency-code-input',
+            'autocomplete': 'off',
+            'list': 'currency-datalist'
+        })
     )
 
     price_nok = DecimalField(
@@ -837,6 +844,23 @@ class LicensePeriodForm(NetBoxModelForm):
 
                 except License.DoesNotExist:
                     pass
+
+    def clean_currency(self):
+        """Convert currency code to CurrencyConversionRate object"""
+        currency_code = self.cleaned_data.get('currency', '').upper()
+
+        if not currency_code:
+            raise ValidationError("Currency code is required")
+
+        # Look up the currency
+        try:
+            currency = CurrencyConversionRate.objects.get(currency_code=currency_code)
+        except CurrencyConversionRate.DoesNotExist:
+            raise ValidationError(
+                f"Currency '{currency_code}' not found. Please click the sync button to import it from the API."
+            )
+
+        return currency
 
     def clean(self):
         cleaned_data = super().clean()

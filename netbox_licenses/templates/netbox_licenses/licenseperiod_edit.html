@@ -3,17 +3,125 @@
 
 {% block form %}
 {{ block.super }}
+
+<!-- Datalist for currency autocomplete -->
+<datalist id="currency-datalist">
+    {% for currency in existing_currencies %}
+    <option value="{{ currency.currency_code }}">{{ currency.currency_code }} ({{ currency.rate_to_nok|floatformat:2 }} NOK)</option>
+    {% endfor %}
+</datalist>
+
 <style>
-.currency-import-btn {
-    margin-left: 8px;
-    vertical-align: middle;
-}
 .currency-field-wrapper {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
 }
+.currency-code-input {
+    flex: 0 0 120px;
+}
+.currency-sync-btn {
+    opacity: 0.5;
+    pointer-events: none;
+    transition: opacity 0.2s;
+}
+.currency-sync-btn.active {
+    opacity: 1;
+    pointer-events: all;
+}
+.currency-sync-btn.syncing {
+    pointer-events: none;
+}
 </style>
+
+<script>
+// Wrap currency field with sync button
+document.addEventListener('DOMContentLoaded', function() {
+    const currencyInput = document.querySelector('.currency-code-input');
+    if (!currencyInput) return;
+
+    // Create wrapper
+    const wrapper = document.createElement('div');
+    wrapper.className = 'currency-field-wrapper';
+
+    // Create sync button
+    const syncBtn = document.createElement('button');
+    syncBtn.type = 'button';
+    syncBtn.className = 'btn btn-sm btn-primary currency-sync-btn';
+    syncBtn.innerHTML = '<i class="mdi mdi-sync"></i>';
+    syncBtn.title = 'Sync currency from Norges Bank API';
+
+    // Wrap the input
+    currencyInput.parentNode.insertBefore(wrapper, currencyInput);
+    wrapper.appendChild(currencyInput);
+    wrapper.appendChild(syncBtn);
+
+    // Enable/disable sync button based on input length
+    function updateSyncButton() {
+        const code = currencyInput.value.trim();
+        if (code.length === 3) {
+            syncBtn.classList.add('active');
+        } else {
+            syncBtn.classList.remove('active');
+        }
+    }
+
+    currencyInput.addEventListener('input', updateSyncButton);
+    currencyInput.addEventListener('keyup', function(e) {
+        if (e.key === 'Enter' && currencyInput.value.trim().length === 3) {
+            e.preventDefault();
+            syncBtn.click();
+        }
+    });
+
+    // Sync button click handler
+    syncBtn.addEventListener('click', async function() {
+        const code = currencyInput.value.trim().toUpperCase();
+        if (code.length !== 3) return;
+
+        syncBtn.classList.add('syncing');
+        syncBtn.innerHTML = '<i class="mdi mdi-loading mdi-spin"></i>';
+
+        try {
+            const response = await fetch('/plugins/licenses/currency-rates/add-api/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({ currency_code: code })
+            });
+
+            if (response.ok) {
+                // Success - show checkmark briefly
+                syncBtn.innerHTML = '<i class="mdi mdi-check"></i>';
+                syncBtn.classList.remove('syncing');
+                syncBtn.classList.add('btn-success');
+
+                setTimeout(() => {
+                    syncBtn.innerHTML = '<i class="mdi mdi-sync"></i>';
+                    syncBtn.classList.remove('btn-success');
+                }, 1500);
+            } else {
+                throw new Error('Failed to sync currency');
+            }
+        } catch (error) {
+            syncBtn.innerHTML = '<i class="mdi mdi-alert"></i>';
+            syncBtn.classList.remove('syncing');
+            syncBtn.classList.add('btn-danger');
+            alert('Failed to sync currency: ' + error.message);
+
+            setTimeout(() => {
+                syncBtn.innerHTML = '<i class="mdi mdi-sync"></i>';
+                syncBtn.classList.remove('btn-danger');
+            }, 2000);
+        }
+    });
+
+    // Initial state
+    updateSyncButton();
+});
+</script>
 {% endblock %}
 
 {% block javascript %}
