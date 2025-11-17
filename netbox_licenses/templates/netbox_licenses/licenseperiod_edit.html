@@ -87,12 +87,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
                 body: JSON.stringify({ currency_code: code })
             });
 
-            if (response.ok) {
+            const data = await response.json();
+
+            if (response.ok && data.success) {
                 // Success - show checkmark briefly
                 syncBtn.innerHTML = '<i class="mdi mdi-check"></i>';
                 syncBtn.classList.remove('syncing');
@@ -103,7 +106,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     syncBtn.classList.remove('btn-success');
                 }, 1500);
             } else {
-                throw new Error('Failed to sync currency');
+                throw new Error(data.error || 'Failed to sync currency');
             }
         } catch (error) {
             syncBtn.innerHTML = '<i class="mdi mdi-alert"></i>';

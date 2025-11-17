@@ -1136,6 +1136,36 @@ class CurrencyConversionRateAddAPIView(View):
         })
 
     def post(self, request):
+        import json
+        from django.http import JsonResponse
+        from netbox_licenses.services.currency_service import create_currency_from_api, NorgesBankAPIError
+        from django.core.exceptions import ValidationError
+
+        # Handle AJAX request from period form
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.content_type == 'application/json':
+            try:
+                data = json.loads(request.body)
+                currency_code = data.get('currency_code', '').upper()
+
+                if not currency_code or len(currency_code) != 3:
+                    return JsonResponse({'error': 'Invalid currency code'}, status=400)
+
+                # Use the currency service function directly
+                currency = create_currency_from_api(currency_code)
+                return JsonResponse({
+                    'success': True,
+                    'currency_code': currency.currency_code,
+                    'rate_to_nok': str(currency.rate_to_nok)
+                })
+
+            except ValidationError as e:
+                return JsonResponse({'error': str(e)}, status=400)
+            except NorgesBankAPIError as e:
+                return JsonResponse({'error': str(e)}, status=400)
+            except Exception as e:
+                return JsonResponse({'error': f'Error: {str(e)}'}, status=500)
+
+        # Handle regular form submission
         form = forms.CurrencyConversionRateAPIForm(request.POST)
 
         if form.is_valid():
