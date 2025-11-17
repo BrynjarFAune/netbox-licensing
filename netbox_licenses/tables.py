@@ -281,7 +281,6 @@ class LicensePeriodTable(NetBoxTable):
         if record.seats_purchased == 0:
             return "—"
 
-        # Use live utilization for active periods, snapshot for others
         percentage = record.utilization_percentage
 
         if percentage >= 90:
@@ -293,19 +292,11 @@ class LicensePeriodTable(NetBoxTable):
         else:
             color = 'danger'
 
-        # Show "(live)" indicator for active periods using format_html
-        if record.is_active:
-            return format_html(
-                '<span class="badge text-bg-{}">{}</span> <small class="text-muted">(live)</small>',
-                color,
-                f"{percentage:.1f}%"
-            )
-        else:
-            return format_html(
-                '<span class="badge text-bg-{}">{}</span>',
-                color,
-                f"{percentage:.1f}%"
-            )
+        return format_html(
+            '<span class="badge text-bg-{}">{}</span>',
+            color,
+            f"{percentage:.1f}%"
+        )
 
     def value_utilization(self, record):
         """Plain text value for CSV export"""
