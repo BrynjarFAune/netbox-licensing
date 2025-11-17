@@ -1046,16 +1046,27 @@ class LicensePeriod(NetBoxModel):
     @property
     def current_seats_utilized(self):
         """
-        Get current seat utilization.
-        For active periods, show live count from license.
-        For expired/future periods, show snapshot.
+        Count instances that overlap with this period's date range.
+        An instance overlaps if its date range intersects with the period.
         """
-        if self.is_active and self.license_id:
-            # Active period - show live utilization
-            return self.license.consumed_licenses
-        else:
-            # Expired or future period - show snapshot
+        if not self.license_id:
             return self.seats_utilized
+
+        from django.db.models import Q
+        from datetime import date
+
+        # Get period end date (use far future for perpetual)
+        period_end = self.period_end if self.period_end else date(9999, 12, 31)
+
+        # Count instances where:
+        # - instance starts before period ends AND
+        # - instance ends after period starts (or is open-ended)
+        overlapping_instances = self.license.instances.filter(
+            Q(start_date__lt=period_end) &
+            (Q(end_date__gte=self.period_start) | Q(end_date__isnull=True))
+        ).count()
+
+        return overlapping_instances
 
     @property
     def utilization_percentage(self):

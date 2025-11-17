@@ -277,7 +277,7 @@ class LicensePeriodTable(NetBoxTable):
         )
 
     def render_utilization(self, record):
-        """Show utilization percentage for this renewal period (live for active, snapshot for expired)"""
+        """Show utilization percentage for this renewal period (based on overlapping instances)"""
         if record.seats_purchased == 0:
             return "—"
 
@@ -293,15 +293,19 @@ class LicensePeriodTable(NetBoxTable):
         else:
             color = 'danger'
 
-        # Show "(live)" indicator for active periods
-        live_indicator = ' <small class="text-muted">(live)</small>' if record.is_active else ''
-
-        return format_html(
-            '<span class="badge text-bg-{}">{}</span>{}',
-            color,
-            f"{percentage:.1f}%",
-            live_indicator
-        )
+        # Show "(live)" indicator for active periods using format_html
+        if record.is_active:
+            return format_html(
+                '<span class="badge text-bg-{}">{}</span> <small class="text-muted">(live)</small>',
+                color,
+                f"{percentage:.1f}%"
+            )
+        else:
+            return format_html(
+                '<span class="badge text-bg-{}">{}</span>',
+                color,
+                f"{percentage:.1f}%"
+            )
 
     def value_utilization(self, record):
         """Plain text value for CSV export"""
