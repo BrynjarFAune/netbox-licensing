@@ -33,8 +33,8 @@ class NestedLicenseInstanceSerializer(WritableNestedSerializer):
 
     class Meta:
         model = LicenseInstance
-        fields = ('id', 'url', 'display', 'name', 'effective_price')
-        brief_fields = ('id', 'url', 'display', 'license', 'assigned_object')
+        fields = ('id', 'url', 'display')
+        brief_fields = ('id', 'url', 'display')
 
 class LicenseSerializer(NetBoxModelSerializer):
     url = serializers.HyperlinkedIdentityField(
@@ -80,7 +80,7 @@ class LicenseSerializer(NetBoxModelSerializer):
             'external_id', 'total_licenses', 'consumed_licenses', 'available_licenses',
             'utilization_percentage', 'metadata',
             # Lifecycle fields
-            'billing_cycle', 'auto_renew', 'is_active', 'license_status',
+            'billing_cycle', 'is_active', 'license_status',
             # Payment fields
             'payment_method', 'payment_portal_url', 'responsible_contact',
             # Active period pricing (computed)
@@ -94,50 +94,38 @@ class LicenseInstanceSerializer(NetBoxModelSerializer):
         view_name='plugins-api:netbox_licenses-api:licenseinstance-detail'
     )
 
+    # GenericForeignKey fields for assignment
     assigned_object_type = serializers.PrimaryKeyRelatedField(queryset=ContentType.objects.all())
     assigned_object_id = serializers.IntegerField(required=False, allow_null=True)
-    license = serializers.PrimaryKeyRelatedField(queryset=License.objects.all())
-    effective_price = serializers.SerializerMethodField(read_only=True)
-    effective_currency = serializers.SerializerMethodField(read_only=True)
-    price_in_nok = serializers.SerializerMethodField(read_only=True)
-    conversion_rate_to_nok = serializers.SerializerMethodField(read_only=True)
+    assigned_object = serializers.SerializerMethodField(read_only=True)
 
-    def get_effective_price(self, obj):
-        try:
-            return float(obj.instance_price_nok)
-        except (ValueError, TypeError, AttributeError):
-            return 0.0
+    # Related objects
+    license = NestedLicenseSerializer(nested=True)
 
-    def get_effective_currency(self, obj):
-        try:
-            # Currency is now in periods, get from license's active period
-            return obj.license.active_period_currency
-        except (AttributeError):
-            return 'NOK'
+    # Computed pricing fields (from model properties)
+    license_price = serializers.ReadOnlyField()
+    license_currency = serializers.ReadOnlyField()
+    instance_price_nok = serializers.ReadOnlyField()
+    is_active = serializers.ReadOnlyField()
+    derived_status = serializers.ReadOnlyField()
 
-    def get_price_in_nok(self, obj):
-        try:
-            return float(obj.instance_price_nok)
-        except (ValueError, TypeError, AttributeError):
-            return 0.0
-
-    def get_conversion_rate_to_nok(self, obj):
-        try:
-            # Get conversion rate from active period
-            active_period = obj.license.get_active_period()
-            if active_period and active_period.conversion_rate:
-                return float(active_period.conversion_rate)
-        except (AttributeError, ValueError):
-            pass
-        return 1.0
+    def get_assigned_object(self, obj):
+        if obj.assigned_object:
+            return {
+                'type': obj.assigned_object_type.model,
+                'id': obj.assigned_object_id,
+                'display': str(obj.assigned_object)
+            }
+        return None
 
     class Meta:
         model = LicenseInstance
         fields = (
-            'id', 'url', 'display_url', 'display', 'assigned_object_type', 'assigned_object_id', 'license',
-            'effective_price', 'effective_currency', 'price_in_nok', 'conversion_rate_to_nok',
-            'start_date', 'end_date', 'comments', 'tags',
-            'custom_fields', 'created', 'last_updated', 'custom_field_data'
+            'id', 'url', 'display',
+            'license', 'assigned_object_type', 'assigned_object_id', 'assigned_object',
+            'start_date', 'end_date', 'is_active', 'derived_status',
+            'license_price', 'license_currency', 'instance_price_nok',
+            'comments', 'tags', 'custom_fields', 'created', 'last_updated'
         )
 
 
