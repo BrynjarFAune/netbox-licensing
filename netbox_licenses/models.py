@@ -1044,11 +1044,25 @@ class LicensePeriod(NetBoxModel):
         return reverse('plugins:netbox_licenses:licenseperiod', args=[self.pk])
 
     @property
+    def current_seats_utilized(self):
+        """
+        Get current seat utilization.
+        For active periods, show live count from license.
+        For expired/future periods, show snapshot.
+        """
+        if self.is_active and self.license_id:
+            # Active period - show live utilization
+            return self.license.consumed_licenses
+        else:
+            # Expired or future period - show snapshot
+            return self.seats_utilized
+
+    @property
     def utilization_percentage(self):
-        """Calculate utilization for this period"""
+        """Calculate utilization for this period (live for active, snapshot for expired)"""
         if self.seats_purchased == 0:
             return 0
-        return (self.seats_utilized / self.seats_purchased) * 100
+        return (self.current_seats_utilized / self.seats_purchased) * 100
 
     @property
     def total_price(self):

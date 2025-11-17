@@ -1,32 +1,30 @@
-{% extends 'generic/object_edit.html' %}
+{% extends 'base/layout.html' %}
 {% load render_field from form_helpers %}
 
 {% block title %}Add Currency from Norges Bank API{% endblock %}
 
 {% block content %}
-<form method="post">
-    {% csrf_token %}
+<div class="container-fluid">
+    <form method="post">
+        {% csrf_token %}
 
-    <div class="card">
-        <div class="card-header">
-            <h5 class="mb-0">Fetch Currency Rate from Norges Bank API</h5>
-        </div>
-        <div class="card-body">
+        <div class="mb-3">
             <p class="text-muted">
                 Enter a currency code (e.g., USD, EUR, GBP) to automatically fetch the current exchange rate from Norges Bank.
             </p>
-            {% render_field form.currency_code %}
-            {% render_field form.notes %}
         </div>
-    </div>
 
-    <div class="text-end mt-3">
-        <button type="submit" class="btn btn-primary">
-            <i class="mdi mdi-cloud-download"></i> Fetch from API
-        </button>
-        <a href="{% url 'plugins:netbox_licenses:currencyconversionrate_list' %}" class="btn btn-outline-secondary">
-            Cancel
-        </a>
-    </div>
-</form>
+        {% render_field form.currency_code %}
+        {% render_field form.notes %}
+
+        <div class="text-end mt-3">
+            <button type="submit" class="btn btn-primary">
+                <i class="mdi mdi-cloud-download"></i> Fetch from API
+            </button>
+            <button type="button" class="btn btn-outline-secondary" onclick="window.close()">
+                Cancel
+            </button>
+        </div>
+    </form>
+</div>
 {% endblock %}
