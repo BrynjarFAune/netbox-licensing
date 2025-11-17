@@ -63,7 +63,13 @@
         <table class="table table-hover attr-table">
           <tr>
             <th scope="row">Price</th>
-            <td>{{ object.price }} {{ object.currency }}</td>
+            <td>
+              {% if object.currency.currency_code == 'NOK' %}
+                {{ object.price|floatformat:2 }} NOK
+              {% else %}
+                {{ object.price|floatformat:2 }} {{ object.currency.currency_code }} → {{ object.price_nok|floatformat:2 }} NOK
+              {% endif %}
+            </td>
           </tr>
           <tr>
             <th scope="row">Payment Method</th>
@@ -84,7 +90,14 @@
           </tr>
           <tr>
             <th scope="row">Cost per Seat</th>
-            <td>{{ object.cost_per_seat|floatformat:2 }} {{ object.currency }}</td>
+            <td>
+              {% if object.currency.currency_code == 'NOK' %}
+                {{ object.per_seat_price|floatformat:2 }} NOK
+              {% else %}
+                {% widthratio object.price_nok 1 object.seats_purchased as per_seat_nok %}
+                {{ object.per_seat_price|floatformat:2 }} {{ object.currency.currency_code }} → {{ per_seat_nok|floatformat:2 }} NOK
+              {% endif %}
+            </td>
           </tr>
         </table>
       </div>
