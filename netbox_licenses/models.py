@@ -741,6 +741,11 @@ class CurrencyConversionRate(NetBoxModel):
         unique=True,
         help_text="ISO 4217 currency code (e.g., USD, EUR, GBP)"
     )
+    description = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Full currency name (e.g., 'United States Dollar', 'Euro')"
+    )
     rate_to_nok = models.DecimalField(
         max_digits=12,
         decimal_places=2,
@@ -769,6 +774,8 @@ class CurrencyConversionRate(NetBoxModel):
         ]
 
     def __str__(self):
+        if self.description:
+            return f"{self.currency_code} ({self.description}) → NOK: {float(self.rate_to_nok):.2f}"
         return f"{self.currency_code} → NOK: {float(self.rate_to_nok):.2f}"
 
     def get_absolute_url(self):

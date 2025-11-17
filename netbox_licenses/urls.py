@@ -66,11 +66,8 @@ urlpatterns = [
 
     # Currency Conversion Rates
     path('currency-rates/', views.CurrencyConversionRateListView.as_view(), name='currencyconversionrate_list'),
-    path('currency-rates/add/', views.CurrencyConversionRateAddAPIView.as_view(), name='currencyconversionrate_add'),  # Use API form for quick-add
-    path('currency-rates/add-manual/', views.CurrencyConversionRateEditView.as_view(), name='currencyconversionrate_add_manual'),  # Keep manual form available
-    path('currency-rates/add-api/', views.CurrencyConversionRateAddAPIView.as_view(), name='currencyconversionrate_add_api'),  # Kept for backwards compatibility
+    path('currency-rates/add-api/', views.CurrencyConversionRateAddAPIView.as_view(), name='currencyconversionrate_add_api'),  # API sync endpoint
     path('currency-rates/<int:pk>/', views.CurrencyConversionRateView.as_view(), name='currencyconversionrate'),
-    path('currency-rates/<int:pk>/edit/', views.CurrencyConversionRateEditView.as_view(), name='currencyconversionrate_edit'),
     path('currency-rates/<int:pk>/delete/', views.CurrencyConversionRateDeleteView.as_view(), name='currencyconversionrate_delete'),
     path('currency-rates/<int:pk>/sync/', views.CurrencyConversionRateSyncView.as_view(), name='currencyconversionrate_sync'),
     path('currency-rates/<int:pk>/changelog', ObjectChangeLogView.as_view(), name='currencyconversionrate_changelog', kwargs={

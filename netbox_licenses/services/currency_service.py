@@ -18,6 +18,44 @@ class NorgesBankAPIError(Exception):
     pass
 
 
+# Common currency descriptions (ISO 4217)
+CURRENCY_DESCRIPTIONS = {
+    'USD': 'United States Dollar',
+    'EUR': 'Euro',
+    'GBP': 'British Pound Sterling',
+    'JPY': 'Japanese Yen',
+    'CHF': 'Swiss Franc',
+    'CAD': 'Canadian Dollar',
+    'AUD': 'Australian Dollar',
+    'NZD': 'New Zealand Dollar',
+    'SEK': 'Swedish Krona',
+    'DKK': 'Danish Krone',
+    'ISK': 'Icelandic Króna',
+    'CNY': 'Chinese Yuan',
+    'HKD': 'Hong Kong Dollar',
+    'SGD': 'Singapore Dollar',
+    'INR': 'Indian Rupee',
+    'KRW': 'South Korean Won',
+    'BRL': 'Brazilian Real',
+    'MXN': 'Mexican Peso',
+    'ZAR': 'South African Rand',
+    'RUB': 'Russian Ruble',
+    'PLN': 'Polish Zloty',
+    'CZK': 'Czech Koruna',
+    'HUF': 'Hungarian Forint',
+    'RON': 'Romanian Leu',
+    'TRY': 'Turkish Lira',
+    'THB': 'Thai Baht',
+    'MYR': 'Malaysian Ringgit',
+    'PHP': 'Philippine Peso',
+    'IDR': 'Indonesian Rupiah',
+    'ILS': 'Israeli New Shekel',
+    'AED': 'UAE Dirham',
+    'SAR': 'Saudi Riyal',
+    'NOK': 'Norwegian Krone',
+}
+
+
 def fetch_currency_rate_from_api(currency_code):
     """
     Fetch the latest exchange rate for a currency from Norges Bank API.
@@ -204,13 +242,17 @@ def create_currency_from_api(currency_code, notes=''):
     # Fetch rate from API
     rate = fetch_currency_rate_from_api(currency_code)
 
+    # Get currency description
+    description = CURRENCY_DESCRIPTIONS.get(currency_code, '')
+
     # Create the currency rate
     currency_rate = CurrencyConversionRate.objects.create(
         currency_code=currency_code,
+        description=description,
         rate_to_nok=rate,
         source='api',
         notes=notes
     )
 
-    logger.info(f"Created new currency {currency_code} with rate {rate} NOK")
+    logger.info(f"Created new currency {currency_code} ({description}) with rate {rate} NOK")
     return currency_rate

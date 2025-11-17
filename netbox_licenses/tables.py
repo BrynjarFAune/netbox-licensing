@@ -219,7 +219,8 @@ class LicenseInstanceTable(NetBoxTable):
 class CurrencyConversionRateTable(NetBoxTable):
     """Table for displaying currency conversion rates"""
     # pk column provided automatically by NetBoxTable
-    currency_code = tables.Column(linkify=True, verbose_name='Currency')
+    currency_code = tables.Column(linkify=True, verbose_name='Code')
+    description = tables.Column(verbose_name='Currency', empty_values=())
     rate_to_nok = tables.Column(verbose_name='Rate to NOK')
     source = tables.Column(verbose_name='Source', empty_values=())
     last_updated = tables.DateTimeColumn(format='d/m/Y H:i', verbose_name='Last Updated')
@@ -227,8 +228,12 @@ class CurrencyConversionRateTable(NetBoxTable):
 
     class Meta(NetBoxTable.Meta):
         model = CurrencyConversionRate
-        fields = ('pk', 'currency_code', 'rate_to_nok', 'source', 'last_updated', 'status', 'actions')
-        default_columns = ('currency_code', 'rate_to_nok', 'source', 'last_updated', 'status')
+        fields = ('pk', 'currency_code', 'description', 'rate_to_nok', 'source', 'last_updated', 'status', 'actions')
+        default_columns = ('currency_code', 'description', 'rate_to_nok', 'source', 'last_updated', 'status')
+
+    def render_description(self, record):
+        """Show description or dash if empty"""
+        return record.description or "—"
 
     def render_source(self, record):
         if record.source == 'manual':
