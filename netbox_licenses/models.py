@@ -1094,6 +1094,13 @@ class LicensePeriod(NetBoxModel):
             return self.price / self.seats_purchased
 
     @property
+    def per_seat_price_nok(self):
+        """Get per-seat price in NOK"""
+        if self.seats_purchased == 0:
+            return Decimal('0.00')
+        return self.price_nok / self.seats_purchased
+
+    @property
     def is_active(self):
         """Check if this period covers today"""
         today = timezone.now().date()

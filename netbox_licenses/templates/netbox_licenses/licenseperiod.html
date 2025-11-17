@@ -94,8 +94,7 @@
               {% if object.currency.currency_code == 'NOK' %}
                 {{ object.per_seat_price|floatformat:2 }} NOK
               {% else %}
-                {% widthratio object.price_nok 1 object.seats_purchased as per_seat_nok %}
-                {{ object.per_seat_price|floatformat:2 }} {{ object.currency.currency_code }} → {{ per_seat_nok|floatformat:2 }} NOK
+                {{ object.per_seat_price|floatformat:2 }} {{ object.currency.currency_code }} → {{ object.per_seat_price_nok|floatformat:2 }} NOK
               {% endif %}
             </td>
           </tr>
