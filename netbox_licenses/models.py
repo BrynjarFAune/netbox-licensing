@@ -1137,34 +1137,27 @@ class LicensePeriod(NetBoxModel):
             if self.pk:
                 overlapping = overlapping.exclude(pk=self.pk)
 
-            # Check for overlaps (allow adjacent periods where end_date == start_date)
+            # Check for overlaps with simplified logic
+            # Two periods overlap if one starts before the other ends
+            # Allow adjacent periods where one ends the same day another starts
             for period in overlapping:
-                # Case 1: New period start falls within existing period
-                if period.period_start < self.period_start:
-                    if period.period_end is None or (self.period_start < period.period_end):
-                        raise ValidationError(
-                            f"Period already registered: {period.period_start.strftime('%d/%m/%Y')} - "
-                            f"{'Perpetual' if period.period_end is None else period.period_end.strftime('%d/%m/%Y')} "
-                            f"overlaps with your start date ({self.period_start.strftime('%d/%m/%Y')})"
-                        )
+                # Get period end dates (use a far future date for perpetual periods)
+                from datetime import date
+                self_end = self.period_end if self.period_end else date(9999, 12, 31)
+                period_end = period.period_end if period.period_end else date(9999, 12, 31)
 
-                # Case 2: New period end falls within existing period (if not perpetual)
-                if self.period_end and period.period_start < self.period_end:
-                    if period.period_end is None or (self.period_end < period.period_end):
-                        raise ValidationError(
-                            f"Period already registered: {period.period_start.strftime('%d/%m/%Y')} - "
-                            f"{'Perpetual' if period.period_end is None else period.period_end.strftime('%d/%m/%Y')} "
-                            f"overlaps with your end date ({self.period_end.strftime('%d/%m/%Y')})"
-                        )
-
-                # Case 3: New period completely encompasses existing period
-                if self.period_start < period.period_start:
-                    if self.period_end is None or (period.period_end and self.period_end > period.period_end):
-                        raise ValidationError(
-                            f"Period already registered: {period.period_start.strftime('%d/%m/%Y')} - "
-                            f"{'Perpetual' if period.period_end is None else period.period_end.strftime('%d/%m/%Y')} "
-                            f"falls within your new period date range"
-                        )
+                # Periods overlap if:
+                # - self starts before period ends AND
+                # - period starts before self ends AND
+                # - they don't just touch (end_date == start_date is allowed)
+                if (self.period_start < period_end and
+                    period.period_start < self_end):
+                    raise ValidationError(
+                        f"Period overlaps with existing period: "
+                        f"{period.period_start.strftime('%d/%m/%Y')} - "
+                        f"{'Perpetual' if period.period_end is None else period.period_end.strftime('%d/%m/%Y')}. "
+                        f"Periods can be adjacent (ending the same day another starts) but cannot overlap."
+                    )
 
         # Validate seats
         if self.seats_purchased < 0:
