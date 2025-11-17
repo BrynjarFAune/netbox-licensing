@@ -17,12 +17,12 @@ class LicenseTable(NetBoxTable):
     # UTILIZATION COLUMNS
     utilization = tables.Column(empty_values=(), verbose_name="Utilization %", orderable=False)
     total_licenses = tables.Column(verbose_name="Capacity")
-    consumed_licenses = tables.Column(verbose_name="Instances")
-    available_licenses = tables.Column(empty_values=(), verbose_name="Available")
+    consumed_licenses = tables.Column(verbose_name="Used Seats")
+    available_licenses = tables.Column(empty_values=(), verbose_name="Free Seats")
 
     # COST COLUMNS
     price = tables.Column(verbose_name="Unit Price", empty_values=())
-    currency = tables.Column(verbose_name="Currency")
+    currency = tables.Column(verbose_name="Currency", empty_values=())
     total_cost = tables.Column(empty_values=(), verbose_name="Total Cost (NOK)")
 
     # PAYMENT AND RESPONSIBILITY COLUMNS
@@ -62,34 +62,49 @@ class LicenseTable(NetBoxTable):
         return f"{record.utilization_percentage:.1f}%"
 
     def render_available_licenses(self, record):
-        from django.utils.html import format_html
-        from netbox_licenses.templatetags.license_helpers import availability_color
-
+        """Render free seats without color coding"""
         available = record.available_licenses
-        color_class = availability_color(available)
-
         if available < 0:
-            return format_html('<span class="{}"><i class="mdi mdi-alert"></i> {}</span>', color_class, available)
+            return format_html('<span class="text-danger"><i class="mdi mdi-alert"></i> {}</span>', available)
         else:
-            return format_html('<span class="{}">{}</span>', color_class, available)
+            return available
 
     def value_available_licenses(self, record):
         """Plain text value for CSV export"""
         return record.available_licenses
 
     def render_price(self, record):
-        # Hide pricing for free/trial licenses only
+        """Render unit price as 'XXX.XX CUR → YYY.YY NOK'"""
         from .choices import PaymentMethodChoices
         if record.payment_method == PaymentMethodChoices.FREE_TRIAL:
             return "—"
 
+        from netbox_licenses.models import CurrencyConversionRate
+
         per_seat_price = float(record.active_period_per_seat_price)
         currency = record.active_period_currency
-        return "{:.2f} {}/seat".format(per_seat_price, currency)
+
+        # If already in NOK, just show NOK price
+        if currency == 'NOK':
+            price_str = f"{per_seat_price:,.2f}".replace(',', "'")
+            return f"{price_str} NOK"
+
+        # Convert to NOK and show both
+        rate = CurrencyConversionRate.get_rate_to_nok(currency)
+        if rate:
+            nok_price = per_seat_price * float(rate)
+            native_str = f"{per_seat_price:.2f}"
+            nok_str = f"{nok_price:,.2f}".replace(',', "'")
+            return format_html('{} {} → {} NOK', native_str, currency, nok_str)
+        else:
+            return f"{per_seat_price:.2f} {currency}"
+
+    def render_currency(self, record):
+        """Display just the currency code"""
+        return record.active_period_currency or "—"
 
     def render_total_cost(self, record):
-        """Calculate total cost from active period in NOK"""
-        # Hide pricing for free/trial licenses only
+        """Display total cost in NOK only with apostrophe separators"""
         from .choices import PaymentMethodChoices
         if record.payment_method == PaymentMethodChoices.FREE_TRIAL:
             return "—"
@@ -105,7 +120,9 @@ class LicenseTable(NetBoxTable):
             rate = 1  # Fallback if currency not found
 
         total_nok = total_price * float(rate)
-        return "{:,.2f} NOK".format(total_nok)
+        # Format with apostrophe as thousand separator
+        formatted = f"{total_nok:,.2f}".replace(',', "'")
+        return f"{formatted} NOK"
 
     def render_payment_method(self, record):
         from django.utils.html import format_html
