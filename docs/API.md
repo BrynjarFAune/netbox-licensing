@@ -1,22 +1,8 @@
 # NetBox Licensing Plugin - API Documentation
 
-## Base URL
-
-```
-http://your-netbox-instance/api/plugins/licenses/
-```
-
-**Important:** Always include the trailing slash `/` in API endpoints or you'll get a 301 redirect.
-
-## Authentication
-
-Use NetBox's token authentication:
-
-```bash
-curl -H "Authorization: Token YOUR_API_TOKEN" \
-     -H "Content-Type: application/json" \
-     http://your-netbox-instance/api/plugins/licenses/licenses/
-```
+**Base URL:** `/api/plugins/licenses/`
+**Auth:** Token header `Authorization: Token YOUR_API_TOKEN`
+**Important:** Always include trailing slash `/` or you get 301 redirects
 
 ---
 
@@ -24,78 +10,33 @@ curl -H "Authorization: Token YOUR_API_TOKEN" \
 
 **Endpoint:** `/api/plugins/licenses/licenses/`
 
-### Fields
+### Required Fields
+- `name` (string) - License name
+- `vendor` (int) - Vendor/Manufacturer ID
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | string | ✅ | License name |
-| `vendor` | integer (FK) | ✅ | Vendor/Manufacturer ID |
-| `tenant` | integer (FK) | ❌ | Tenant ID |
-| `assignment_types` | array[integer] | ❌ | ContentType IDs for assignable object types |
-| `external_id` | string | ❌ | Vendor-specific identifier (SKU, subscription ID, etc.) |
-| `total_licenses` | integer | ❌ | Total available seats (default: 1) |
-| `billing_cycle` | string | ❌ | `monthly`, `quarterly`, `yearly`, `one_time`, `custom` |
-| `payment_method` | string | ❌ | `invoice`, `card_auto`, `card_manual`, `bank_transfer`, `prepaid`, `free_trial` |
-| `payment_portal_url` | string (URL) | ❌ | Link to payment/subscription portal |
-| `responsible_contact` | integer (FK) | ❌ | Contact ID for responsible person |
-| `metadata` | object (JSON) | ❌ | Vendor-specific data |
-| `comments` | string | ❌ | Free-form comments |
-| `tags` | array | ❌ | Tag IDs or names |
+### Optional Fields
+- `tenant` (int), `assignment_types` (array), `external_id` (string)
+- `total_licenses` (int, default: 1), `billing_cycle` (string), `payment_method` (string)
+- `payment_portal_url` (URL), `responsible_contact` (int), `metadata` (JSON)
+- `comments` (string), `tags` (array)
 
-### Read-Only Fields
-
-- `id`, `url`, `display`, `created`, `last_updated`
-- `consumed_licenses` - Currently assigned instances (auto-calculated)
-- `available_licenses` - Free seats remaining
-- `utilization_percentage` - Usage percentage
-- `is_active` - Has an active period covering today
-- `license_status` - `active`, `expiring_soon`, or `inactive`
-- `active_period_per_seat_price` - Per-seat price from active period
-- `active_period_total_price` - Total price from active period
-- `active_period_currency` - Currency code from active period
+### Read-Only
+- `consumed_licenses`, `available_licenses`, `utilization_percentage`
+- `is_active`, `license_status`, `active_period_per_seat_price`, `active_period_currency`
 
 ### Examples
 
-**List all licenses:**
 ```bash
-GET /api/plugins/licenses/licenses/
-```
-
-**Get specific license:**
-```bash
-GET /api/plugins/licenses/licenses/123/
-```
-
-**Create license:**
-```bash
+# Create
 POST /api/plugins/licenses/licenses/
-Content-Type: application/json
+{"name": "Microsoft 365", "vendor": 5, "total_licenses": 100}
 
-{
-  "name": "Microsoft 365 E5",
-  "vendor": 5,
-  "tenant": 2,
-  "total_licenses": 100,
-  "billing_cycle": "yearly",
-  "payment_method": "invoice",
-  "responsible_contact": 10,
-  "external_id": "MS-E5-2024",
-  "metadata": {
-    "features": ["Teams", "SharePoint", "Advanced Security"],
-    "max_mailbox_size_gb": 100
-  }
-}
-```
-
-**Update license:**
-```bash
+# Update
 PATCH /api/plugins/licenses/licenses/123/
-Content-Type: application/json
+{"total_licenses": 150}
 
-{
-  "total_licenses": 150,
-  "comments": "Increased capacity for Q1 2025"
-}
+# List
+GET /api/plugins/licenses/licenses/?vendor_id=5
 ```
 
 ---
@@ -104,85 +45,56 @@ Content-Type: application/json
 
 **Endpoint:** `/api/plugins/licenses/license-periods/`
 
-Periods represent paid billing cycles and store pricing snapshots.
+Periods are billing cycles that store pricing snapshots.
 
-### Fields
+### Required Fields
+- `license` (int) - License ID
+- `period_start` (date) - YYYY-MM-DD format
+- `pricing_mode` (string) - `per_seat` or `total`
+- `price` (decimal) - Price in native currency
+- `currency` (int) - CurrencyConversionRate ID
+- `seats_purchased` (int) - Number of seats
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `license` | integer (FK) | ✅ | License ID |
-| `period_start` | date | ✅ | Start date (YYYY-MM-DD) |
-| `period_end` | date | ❌ | End date (null = perpetual) |
-| `pricing_mode` | string | ✅ | `per_seat` or `total` |
-| `price` | decimal | ✅ | Price in native currency |
-| `currency` | integer (FK) | ✅ | CurrencyConversionRate ID |
-| `seats_purchased` | integer | ✅ | Number of seats for this period |
-| `payment_method` | string | ❌ | Payment method (snapshot from license) |
-| `invoice_reference` | string | ❌ | Invoice number |
-| `invoice_url` | string (URL) | ❌ | Link to invoice |
-| `invoice_file` | file | ❌ | Uploaded invoice PDF/image |
-| `comments` | string | ❌ | Notes about this period |
-| `tags` | array | ❌ | Tag IDs or names |
+### Optional Fields
+- `period_end` (date, null = perpetual)
+- `payment_method`, `invoice_reference`, `invoice_url`, `invoice_file`
+- `comments`, `tags`
 
-### Read-Only Fields
+### Read-Only
+- `price_nok`, `conversion_rate`, `current_seats_utilized`, `utilization_percentage`
+- `is_active`, `days_remaining`, `total_price`, `per_seat_price`
 
-- `id`, `url`, `display`, `created`, `last_updated`
-- `price_nok` - Auto-converted NOK price
-- `conversion_rate` - Exchange rate used (1 native = X NOK)
-- `seats_utilized` - Snapshot of usage when period created
-- `current_seats_utilized` - Live count of overlapping instances
-- `is_active` - Covers today's date
-- `days_remaining` - Days until expiration (null if perpetual)
-- `utilization_percentage` - Current usage vs purchased seats
-- `total_price` - Total cost (price × seats if per_seat mode)
-- `per_seat_price` - Per-seat cost (price ÷ seats if total mode)
-
-### Validation Rules
-
+### Validation
 - `period_end` must be after `period_start`
-- Periods for the same license **cannot overlap** (adjacent OK)
-- Expired periods cannot be edited (preserves history)
+- Periods cannot overlap (adjacent OK)
+- Expired periods cannot be edited
 
 ### Examples
 
-**Create period (auto-fill from API):**
 ```bash
+# Create period
 POST /api/plugins/licenses/license-periods/
-Content-Type: application/json
-
 {
   "license": 123,
   "period_start": "2025-01-01",
   "period_end": "2025-12-31",
   "pricing_mode": "per_seat",
   "price": "30.00",
-  "currency": 2,  # Currency ID (e.g., USD)
-  "seats_purchased": 100,
-  "payment_method": "invoice",
-  "invoice_reference": "INV-2025-001"
+  "currency": 2,
+  "seats_purchased": 100
 }
-```
 
-**Create perpetual period:**
-```bash
+# Perpetual license
 POST /api/plugins/licenses/license-periods/
-Content-Type: application/json
-
 {
   "license": 456,
   "period_start": "2024-11-01",
-  "period_end": null,  # Perpetual - never expires
+  "period_end": null,
   "pricing_mode": "total",
   "price": "5000.00",
-  "currency": 1,  # NOK
-  "seats_purchased": 50,
-  "payment_method": "prepaid"
+  "currency": 1,
+  "seats_purchased": 50
 }
-```
-
-**List periods for a license:**
-```bash
-GET /api/plugins/licenses/license-periods/?license_id=123
 ```
 
 ---
@@ -191,205 +103,89 @@ GET /api/plugins/licenses/license-periods/?license_id=123
 
 **Endpoint:** `/api/plugins/licenses/license-instances/`
 
-Instances represent individual license assignments to users, devices, or other objects.
+Instances assign licenses to users, devices, or other objects.
 
-### Fields
+### Required Fields
+- `license` (int) - License ID
+- `assigned_object_type` (int) - ContentType ID
+- `assigned_object_id` (int) - Assigned object's ID
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `license` | integer (FK) | ✅ | License ID |
-| `assigned_object_type` | integer (FK) | ✅ | ContentType ID (e.g., User, Device) |
-| `assigned_object_id` | integer | ✅ | ID of the assigned object |
-| `start_date` | date | ❌ | Assignment start date (default: today) |
-| `end_date` | date | ❌ | Assignment end date (null = active) |
-| `comments` | string | ❌ | Assignment notes |
-| `tags` | array | ❌ | Tag IDs or names |
+### Optional Fields
+- `start_date` (date, default: today)
+- `end_date` (date, null = active)
+- `comments`, `tags`
 
-### Read-Only Fields
-
-- `id`, `url`, `display`, `created`, `last_updated`
-- `assigned_object` - Full object representation (type, id, display)
-- `license_price` - Per-seat price from license's active period
-- `license_currency` - Currency code from license's active period
-- `instance_price_nok` - Price in NOK (auto-converted)
-- `is_active` - Assignment is currently active
-- `derived_status` - `active`, `pending`, `expired`, or `expiring_soon`
+### Read-Only
+- `assigned_object` (full representation)
+- `license_price`, `license_currency`, `instance_price_nok`
+- `is_active`, `derived_status`
 
 ### Examples
 
-**Assign license to user:**
 ```bash
+# Assign to user
 POST /api/plugins/licenses/license-instances/
-Content-Type: application/json
-
 {
   "license": 123,
-  "assigned_object_type": 15,  # ContentType for User
-  "assigned_object_id": 42,    # User ID
-  "start_date": "2024-11-14",
-  "comments": "Assigned for new employee onboarding"
+  "assigned_object_type": 15,  # User ContentType
+  "assigned_object_id": 42,
+  "start_date": "2024-11-14"
 }
-```
 
-**End an assignment:**
-```bash
+# End assignment
 PATCH /api/plugins/licenses/license-instances/789/
-Content-Type: application/json
+{"end_date": "2025-01-31"}
 
-{
-  "end_date": "2025-01-31",
-  "comments": "Employee offboarding"
-}
-```
-
-**List instances for a license:**
-```bash
-GET /api/plugins/licenses/license-instances/?license_id=123
-```
-
-**Filter by status:**
-```bash
-GET /api/plugins/licenses/license-instances/?status=active
-```
-
-**Get assigned object info:**
-```json
-{
-  "id": 789,
-  "license": {...},
-  "assigned_object": {
-    "type": "user",
-    "id": 42,
-    "display": "john.doe"
-  },
-  "license_price": "30.00",
-  "license_currency": "USD",
-  "instance_price_nok": "316.29",
-  "is_active": true,
-  "derived_status": "active"
-}
+# Get ContentType IDs
+GET /api/extras/content-types/?model=user
+GET /api/extras/content-types/?model=device
 ```
 
 ---
 
-## Currency Conversion Rates
+## Currency Rates
 
 **Endpoint:** `/api/plugins/licenses/currency-rates/`
 
-### Fields
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `currency_code` | string | ✅ | ISO 4217 code (USD, EUR, GBP, etc.) |
-| `rate_to_nok` | decimal | ✅ | Exchange rate (1 CURRENCY = X NOK) |
-| `source` | string | ❌ | `api` or `manual` (default: api) |
-| `notes` | string | ❌ | Optional notes |
-
-### Read-Only Fields
-
-- `id`, `url`, `display`, `created`, `last_updated`
-- `is_stale` - Rate older than 7 days
-- `can_sync` - Can be updated from API (source=api)
-
-### Examples
-
-**Fetch from Norges Bank API (recommended):**
 ```bash
+# Fetch from API (recommended)
 POST /api/plugins/licenses/currency-rates/add-api/
-Content-Type: application/json
+{"currency_code": "USD"}
 
-{
-  "currency_code": "USD"
-}
-```
-
-**Manual entry:**
-```bash
+# Manual entry
 POST /api/plugins/licenses/currency-rates/
-Content-Type: application/json
-
-{
-  "currency_code": "USD",
-  "rate_to_nok": 10.52,
-  "source": "manual",
-  "notes": "Fixed rate for Q1 2025"
-}
+{"currency_code": "USD", "rate_to_nok": 10.52, "source": "manual"}
 ```
 
 ---
 
 ## Common Patterns
 
-### Get ContentType IDs
-
-```bash
-GET /api/extras/content-types/?model=user
-GET /api/extras/content-types/?model=device
-```
-
-### Bulk Operations
-
-Most endpoints support bulk create/update/delete:
-
+**Bulk create:**
 ```bash
 POST /api/plugins/licenses/license-instances/
-Content-Type: application/json
-
 [
   {"license": 123, "assigned_object_type": 15, "assigned_object_id": 1},
-  {"license": 123, "assigned_object_type": 15, "assigned_object_id": 2},
-  {"license": 123, "assigned_object_type": 15, "assigned_object_id": 3}
+  {"license": 123, "assigned_object_type": 15, "assigned_object_id": 2}
 ]
 ```
 
-### Filtering & Pagination
-
+**Filtering:**
 ```bash
-# Filter by multiple fields
 GET /api/plugins/licenses/licenses/?vendor_id=5&is_active=true
-
-# Pagination
-GET /api/plugins/licenses/licenses/?limit=50&offset=100
-
-# Ordering
-GET /api/plugins/licenses/licenses/?ordering=-created
+GET /api/plugins/licenses/license-instances/?license_id=123&status=active
 ```
 
----
-
-## Error Responses
-
-### Validation Error (400)
-```json
-{
-  "period_end": ["Period end date must be after start date"],
-  "total_licenses": ["Cannot reduce total licenses to 50. There are currently 75 licenses in use."]
-}
-```
-
-### Not Found (404)
-```json
-{
-  "detail": "Not found."
-}
-```
-
-### Overlapping Period (400)
-```json
-{
-  "period_start": ["Period overlaps with existing period: 01/01/2025 - 31/12/2025. Periods can be adjacent (ending the same day another starts) but cannot overlap."]
-}
+**Pagination:**
+```bash
+GET /api/plugins/licenses/licenses/?limit=50&offset=100&ordering=-created
 ```
 
 ---
 
 ## Tips
 
-1. **Always use trailing slashes** in URLs
-2. **Use nested serializers for reads, IDs for writes:**
-   - Read: `"vendor": {"id": 5, "name": "Microsoft"}`
-   - Write: `"vendor": 5`
-3. **Dates use ISO format:** `YYYY-MM-DD`
-4. **Currency auto-conversion:** Periods auto-calculate `price_nok` from currency rates
-5. **Period validation:** System prevents overlapping periods automatically
-6. **Utilization is live:** Period utilization counts overlapping instances in real-time
+- **Dates:** Use `YYYY-MM-DD` format
+- **Nested reads, ID writes:** Response has nested objects, requests use IDs
+- **Auto-conversion:** Periods auto-calculate `price_nok` from currency rates
+- **Live utilization:** Period utilization counts overlapping instances in real-time
