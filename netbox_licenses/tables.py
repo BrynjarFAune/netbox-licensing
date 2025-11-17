@@ -260,20 +260,22 @@ class LicensePeriodTable(NetBoxTable):
     status = tables.Column(empty_values=(), verbose_name='Status', orderable=False)
     seats_purchased = tables.Column(verbose_name='Seats')
     utilization = tables.Column(empty_values=(), verbose_name='Utilization', orderable=False)
-    price = tables.Column(verbose_name='Price', empty_values=())
+    price = tables.Column(verbose_name='Unit Price', empty_values=())
+    currency = tables.Column(verbose_name='Currency', empty_values=())
+    total_cost = tables.Column(empty_values=(), verbose_name='Total Cost (NOK)')
     invoice_reference = tables.Column(verbose_name='Invoice #')
 
     class Meta(NetBoxTable.Meta):
         model = LicensePeriod
         fields = (
             'pk', 'id', 'license', 'period_start', 'period_end', 'status',
-            'seats_purchased', 'utilization', 'price', 'currency',
+            'seats_purchased', 'utilization', 'price', 'currency', 'total_cost',
             'payment_method', 'invoice_reference',
             'created', 'last_updated', 'actions'
         )
         default_columns = (
             'pk', 'license', 'period_start', 'period_end', 'status',
-            'seats_purchased', 'utilization', 'price'
+            'seats_purchased', 'utilization', 'price', 'currency'
         )
 
     def render_utilization(self, record):
@@ -321,10 +323,43 @@ class LicensePeriodTable(NetBoxTable):
             return format_html('<span class="badge text-bg-success">Active</span>')
 
     def render_price(self, record):
-        """Format price with currency based on pricing mode"""
-        from .choices import PricingModeChoices
-        if record.pricing_mode == PricingModeChoices.PER_SEAT:
-            return f"{record.per_seat_price:.2f} {record.currency}/seat"
+        """Render per-seat price as 'XXX.XX CUR → YYY.YY NOK' (2 decimals)"""
+        per_seat_price = float(record.per_seat_price)
+        currency_code = record.currency.currency_code if record.currency else 'NOK'
+
+        # If already in NOK, just show NOK price
+        if currency_code == 'NOK':
+            price_str = f"{per_seat_price:,.2f}".replace(',', "'")
+            return f"{price_str} NOK"
+
+        # Convert per-seat price to NOK and show both
+        if record.conversion_rate:
+            nok_per_seat = per_seat_price * float(record.conversion_rate)
+            native_str = f"{per_seat_price:.2f}"
+            nok_str = f"{nok_per_seat:,.2f}".replace(',', "'")
+            return format_html('{} {} → {} NOK', native_str, currency_code, nok_str)
         else:
-            return f"{record.total_price:.2f} {record.currency} total"
+            return f"{per_seat_price:.2f} {currency_code}"
+
+    def render_currency(self, record):
+        """Display currency code with conversion rate to NOK (2 decimals)"""
+        currency_code = record.currency.currency_code if record.currency else 'NOK'
+
+        if currency_code == 'NOK':
+            return "NOK"
+
+        # Show conversion rate with 2 decimals
+        if record.conversion_rate:
+            return f"{currency_code} → NOK: {float(record.conversion_rate):.2f}"
+        else:
+            return currency_code
+
+    def render_total_cost(self, record):
+        """Display total cost in NOK only with apostrophe separators"""
+        if not record.price_nok:
+            return "—"
+
+        total_nok = float(record.price_nok)
+        formatted = f"{total_nok:,.2f}".replace(',', "'")
+        return f"{formatted} NOK"
 
