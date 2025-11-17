@@ -2,7 +2,7 @@
 
 **Base URL:** `/api/plugins/licenses/`
 **Auth:** Token header `Authorization: Token YOUR_API_TOKEN`
-**Important:** Always include trailing slash `/` or you get 301 redirects
+**CRITICAL:** Always include trailing slash `/` - POST/PATCH/DELETE will 500 error without it
 
 ---
 
