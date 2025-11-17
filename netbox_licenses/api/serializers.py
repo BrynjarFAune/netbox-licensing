@@ -135,7 +135,12 @@ class LicensePeriodSerializer(NetBoxModelSerializer):
     )
 
     license = serializers.PrimaryKeyRelatedField(queryset=License.objects.all())
-    currency = NestedCurrencyConversionRateSerializer(nested=True)
+
+    # Accept currency_code string for writes, return nested object for reads
+    currency = serializers.SlugRelatedField(
+        slug_field='currency_code',
+        queryset=CurrencyConversionRate.objects.all()
+    )
 
     # Computed fields
     is_active = serializers.ReadOnlyField()

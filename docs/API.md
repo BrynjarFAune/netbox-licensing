@@ -52,12 +52,13 @@ Periods are billing cycles that store pricing snapshots.
 - `period_start` (date) - YYYY-MM-DD format
 - `pricing_mode` (string) - `per_seat` or `total`
 - `price` (decimal) - Price in native currency
-- `currency` (int) - CurrencyConversionRate ID
+- `currency` (string) - Currency code (e.g., "USD", "EUR", "NOK")
 - `seats_purchased` (int) - Number of seats
+- `payment_method` (string) - Payment method choice
 
 ### Optional Fields
 - `period_end` (date, null = perpetual)
-- `payment_method`, `invoice_reference`, `invoice_url`, `invoice_file`
+- `invoice_reference`, `invoice_url`, `invoice_file`
 - `comments`, `tags`
 
 ### Read-Only
@@ -80,8 +81,9 @@ POST /api/plugins/licenses/license-periods/
   "period_end": "2025-12-31",
   "pricing_mode": "per_seat",
   "price": "30.00",
-  "currency": 2,
-  "seats_purchased": 100
+  "currency": "USD",
+  "seats_purchased": 100,
+  "payment_method": "invoice"
 }
 
 # Perpetual license
@@ -92,8 +94,9 @@ POST /api/plugins/licenses/license-periods/
   "period_end": null,
   "pricing_mode": "total",
   "price": "5000.00",
-  "currency": 1,
-  "seats_purchased": 50
+  "currency": "NOK",
+  "seats_purchased": 50,
+  "payment_method": "prepaid"
 }
 ```
 
