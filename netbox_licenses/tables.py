@@ -74,7 +74,7 @@ class LicenseTable(NetBoxTable):
         return record.available_licenses
 
     def render_price(self, record):
-        """Render unit price as 'XXX.XX CUR → YYY.YY NOK'"""
+        """Render per-seat price as 'XXX.XX CUR → YYY.YYY NOK' (max 3 decimals)"""
         from .choices import PaymentMethodChoices
         if record.payment_method == PaymentMethodChoices.FREE_TRIAL:
             return "—"
@@ -86,15 +86,15 @@ class LicenseTable(NetBoxTable):
 
         # If already in NOK, just show NOK price
         if currency == 'NOK':
-            price_str = f"{per_seat_price:,.2f}".replace(',', "'")
+            price_str = f"{per_seat_price:,.3f}".replace(',', "'").rstrip('0').rstrip('.')
             return f"{price_str} NOK"
 
-        # Convert to NOK and show both
+        # Convert per-seat price to NOK and show both
         rate = CurrencyConversionRate.get_rate_to_nok(currency)
         if rate:
-            nok_price = per_seat_price * float(rate)
+            nok_per_seat = per_seat_price * float(rate)
             native_str = f"{per_seat_price:.2f}"
-            nok_str = f"{nok_price:,.2f}".replace(',', "'")
+            nok_str = f"{nok_per_seat:,.3f}".replace(',', "'").rstrip('0').rstrip('.')
             return format_html('{} {} → {} NOK', native_str, currency, nok_str)
         else:
             return f"{per_seat_price:.2f} {currency}"
