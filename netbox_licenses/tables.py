@@ -74,7 +74,7 @@ class LicenseTable(NetBoxTable):
         return record.available_licenses
 
     def render_price(self, record):
-        """Render per-seat price as 'XXX.XX CUR → YYY.YYY NOK' (max 3 decimals)"""
+        """Render per-seat price as 'XXX.XX CUR → YYY.YY NOK' (max 2 decimals)"""
         from .choices import PaymentMethodChoices
         if record.payment_method == PaymentMethodChoices.FREE_TRIAL:
             return "—"
@@ -86,7 +86,7 @@ class LicenseTable(NetBoxTable):
 
         # If already in NOK, just show NOK price
         if currency == 'NOK':
-            price_str = f"{per_seat_price:,.3f}".replace(',', "'").rstrip('0').rstrip('.')
+            price_str = f"{per_seat_price:,.2f}".replace(',', "'")
             return f"{price_str} NOK"
 
         # Convert per-seat price to NOK and show both
@@ -94,14 +94,28 @@ class LicenseTable(NetBoxTable):
         if rate:
             nok_per_seat = per_seat_price * float(rate)
             native_str = f"{per_seat_price:.2f}"
-            nok_str = f"{nok_per_seat:,.3f}".replace(',', "'").rstrip('0').rstrip('.')
+            nok_str = f"{nok_per_seat:,.2f}".replace(',', "'")
             return format_html('{} {} → {} NOK', native_str, currency, nok_str)
         else:
             return f"{per_seat_price:.2f} {currency}"
 
     def render_currency(self, record):
-        """Display just the currency code"""
-        return record.active_period_currency or "—"
+        """Display currency code with conversion rate to NOK (2 decimals)"""
+        from netbox_licenses.models import CurrencyConversionRate
+
+        currency = record.active_period_currency
+        if not currency:
+            return "—"
+
+        if currency == 'NOK':
+            return "NOK"
+
+        # Show conversion rate with 2 decimals
+        rate = CurrencyConversionRate.get_rate_to_nok(currency)
+        if rate:
+            return f"{currency} → NOK: {float(rate):.2f}"
+        else:
+            return currency
 
     def render_total_cost(self, record):
         """Display total cost in NOK only with apostrophe separators"""

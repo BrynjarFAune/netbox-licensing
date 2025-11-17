@@ -161,11 +161,12 @@ class License(NetBoxModel):
 
     @property
     def active_period_currency(self):
-        """Get currency from active period (or NOK if no active period)"""
+        """Get currency code from active period (or NOK if no active period)"""
         active_period = self.get_active_period()
         if not active_period:
             return 'NOK'
-        return active_period.currency
+        # currency is now a ForeignKey to CurrencyConversionRate
+        return active_period.currency.currency_code if active_period.currency else 'NOK'
 
     @property
     def monthly_equivalent_price(self):
