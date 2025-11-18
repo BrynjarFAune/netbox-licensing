@@ -3,7 +3,7 @@
 {% load buttons %}
 {% load perms %}
 
-{% block extra_controls %}
+{% block control-buttons %}
   {# Override to hide clone and edit buttons - currencies are API-only #}
   {% if perms.extras.add_bookmark and object.bookmarks %}
     {% bookmark_button object %}
