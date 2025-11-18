@@ -102,7 +102,7 @@ class LicenseInstanceForm(NetBoxModelForm):
     # Hidden field - automatically set based on license's assignment_type
     assigned_object_type = forms.ModelChoiceField(
         queryset=ContentType.objects.none(),
-        required=True,
+        required=False,
         widget=forms.HiddenInput()
     )
 
