@@ -251,44 +251,14 @@ class LicenseInstanceBulkEditForm(NetBoxModelForm):
         nullable_fields = ['end_date', 'comments']
 
 
-class QuantitySelectionForm(forms.Form):
-    """Simple form to select quantity for bulk creation"""
+class BulkLicenseInstanceForm(forms.Form):
+    """Form for bulk creation of license instances"""
+
     quantity = forms.IntegerField(
         min_value=1,
         label="How many instances?",
-        help_text="Number of license instances to create",
-        widget=forms.NumberInput(attrs={
-            'min': '1',
-            'step': '1',
-            'class': 'form-control',
-            'oninput': 'this.value = this.value.replace(/[^0-9]/g, "")'
-        })
+        help_text="Number of license instances to create"
     )
-
-    def __init__(self, license, *args, **kwargs):
-        self.license = license
-        super().__init__(*args, **kwargs)
-
-        max_available = license.available_licenses
-        self.fields['quantity'].widget.attrs['max'] = max_available
-        self.fields['quantity'].help_text = f"Number of instances to create (max {max_available} available)"
-
-        if max_available <= 0:
-            self.fields['quantity'].widget.attrs['disabled'] = True
-            self.fields['quantity'].help_text = "No license slots available"
-
-    def clean_quantity(self):
-        quantity = self.cleaned_data.get('quantity')
-        max_available = self.license.available_licenses
-
-        if quantity > max_available:
-            # Auto-clamp to maximum available instead of raising error
-            quantity = max_available
-
-        return quantity
-
-class BulkLicenseInstanceForm(forms.Form):
-    """Form for bulk creation of license instances"""
 
     # Common settings applied to all instances
     start_date = forms.DateField(
@@ -303,37 +273,37 @@ class BulkLicenseInstanceForm(forms.Form):
         label="End Date"
     )
 
-
     comments = forms.CharField(
         required=False,
         widget=forms.Textarea(attrs={'rows': 3}),
         label="Comments"
     )
 
-    def __init__(self, license, quantity=None, *args, **kwargs):
+    def __init__(self, license, *args, **kwargs):
         self.license = license
-        self.quantity = quantity
         super().__init__(*args, **kwargs)
 
-        # Remove the dynamic quantity field since it's now passed as parameter
-        if 'quantity' in self.fields:
-            del self.fields['quantity']
+        # Set quantity field limits
+        max_available = license.available_licenses
+        self.fields['quantity'].widget.attrs['max'] = max_available
+        self.fields['quantity'].help_text = f"Number of instances to create (max {max_available} available)"
 
-        # Add static assignment fields based on quantity
-        if license.assignment_type and quantity:
-            # Use the assignment type for bulk creation
-            assignment_type = license.assignment_type
-            model_class = assignment_type.model_class() if assignment_type else None
+        if max_available <= 0:
+            self.fields['quantity'].widget.attrs['disabled'] = True
+            self.fields['quantity'].help_text = "No license slots available"
 
-            if model_class:
-                for i in range(1, quantity + 1):
-                    field_name = f'assigned_object_{i}'
-                    self.fields[field_name] = DynamicModelChoiceField(
-                        queryset=model_class.objects.all(),
-                        required=True,  # Now required since we know exactly how many we need
-                        label=f"Instance {i}",
-                        help_text=f"Assign to {first_type.model}"
-                    )
+        # Add dynamic assignment fields
+        if license.assignment_type:
+            model_class = license.assignment_type.model_class()
+
+            for i in range(1, min(max_available + 1, 21)):  # Cap at 20 for UI sanity
+                field_name = f'assigned_object_{i}'
+                self.fields[field_name] = DynamicModelChoiceField(
+                    queryset=model_class.objects.all(),
+                    required=False,  # JavaScript makes them required dynamically
+                    label=f"Instance {i}",
+                    help_text=f"Assign to {license.assignment_type.model}"
+                )
 
 
     def clean(self):
@@ -343,8 +313,8 @@ class BulkLicenseInstanceForm(forms.Form):
         if not cleaned_data:
             return cleaned_data
 
-        # Use the quantity passed to the form
-        quantity = self.quantity or 0
+        # Use the quantity from the form
+        quantity = cleaned_data.get('quantity', 0)
 
         if quantity > self.license.available_licenses:
             raise forms.ValidationError(
@@ -367,7 +337,7 @@ class BulkLicenseInstanceForm(forms.Form):
 
     def save(self, commit=True):
         """Create multiple license instances"""
-        quantity = self.quantity or 0
+        quantity = self.cleaned_data.get('quantity', 0)
         instances = []
 
         for i in range(1, quantity + 1):

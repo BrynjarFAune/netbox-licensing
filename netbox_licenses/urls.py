@@ -20,7 +20,6 @@ urlpatterns = [
         'model': models.License
     }),
     path('licenses/<int:pk>/bulk-add-instances/', views.LicenseBulkAddInstancesView.as_view(), name='license_bulk_add_instances'),
-    path('licenses/<int:pk>/bulk-add-instances/<int:quantity>/', views.LicenseBulkAddInstancesFormView.as_view(), name='license_bulk_add_instances_form'),
     path('licenses/edit/', views.LicenseBulkEditView.as_view(), name='license_bulk_edit'),
     path('licenses/delete/', views.LicenseBulkDeleteView.as_view(), name='license_bulk_delete'),
 

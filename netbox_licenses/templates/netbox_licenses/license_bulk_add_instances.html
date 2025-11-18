@@ -65,40 +65,31 @@
             <!-- Dynamic Assignment Fields -->
             <div id="assignment-fields">
                 <h6>Assign to:</h6>
-                <!-- Debug: Show available assignment fields -->
-                <div class="alert alert-info" style="font-size: 0.8em;">
-                    <strong>Debug - ALL fields:</strong>
-                    {% for field in form %}
-                        {{ field.name }},
-                    {% endfor %}
-                    <br><strong>Assignment fields:</strong>
-                    {% for field in form %}
-                        {% if "assigned_object" in field.name %}
-                            [{{ field.name }}:{{ field.name|length }}],
-                        {% endif %}
-                    {% endfor %}
-                </div>
-                <div class="assignment-fields-container">
-                    {% for field in form %}
-                        {% if "assigned_object" in field.name %}
-                            <div class="mb-3 assignment-field" data-field-index="{{ field.name|slice:"16:" }}" style="display: none;">
-                                {% render_field field %}
-                            </div>
-                        {% endif %}
-                    {% endfor %}
-                </div>
+                {% for field in form %}
+                    {% if "assigned_object_" in field.name %}
+                        <div class="mb-3 assignment-field" style="{% if not forloop.first %}display: none;{% endif %}">
+                            {% render_field field %}
+                        </div>
+                    {% endif %}
+                {% endfor %}
             </div>
 
             <!-- Common Settings -->
             <hr>
             <h6>Apply to All Instances:</h6>
 
-            {% render_field form.start_date %}
-            {% render_field form.end_date %}
-            {% render_field form.nok_price_override %}
-            {% render_field form.auto_renew %}
-            {% render_field form.comments %}
-            {% render_field form.tags %}
+            <div class="row">
+                <div class="col-md-6">
+                    {% render_field form.start_date %}
+                </div>
+                <div class="col-md-6">
+                    {% render_field form.end_date %}
+                </div>
+            </div>
+
+            <div class="mb-3">
+                {% render_field form.comments %}
+            </div>
 
             <div class="text-end">
                 <button type="submit" class="btn btn-success">
@@ -122,19 +113,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateVisibleFields() {
         const quantity = parseInt(quantityField.value) || 0;
-
         assignmentFields.forEach((field, index) => {
-            const fieldIndex = parseInt(field.dataset.fieldIndex) || (index + 1);
-
-            if (fieldIndex <= quantity) {
+            if (index < quantity) {
                 field.style.display = 'block';
                 // Make the field required
-                const input = field.querySelector('select');
+                const input = field.querySelector('select, input');
                 if (input) input.required = true;
             } else {
                 field.style.display = 'none';
-                // Remove requirement and clear value
-                const input = field.querySelector('select');
+                // Remove requirement
+                const input = field.querySelector('select, input');
                 if (input) {
                     input.required = false;
                     input.value = '';
@@ -146,17 +134,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update on page load
     updateVisibleFields();
 
-    // Update when quantity field loses focus (blur) or changes
-    quantityField.addEventListener('blur', updateVisibleFields);
+    // Update when quantity changes
+    quantityField.addEventListener('input', updateVisibleFields);
     quantityField.addEventListener('change', updateVisibleFields);
-
-    // Also update on input for immediate feedback
-    quantityField.addEventListener('input', function() {
-        // Only update if the value is a valid number
-        if (quantityField.value && !isNaN(quantityField.value)) {
-            updateVisibleFields();
-        }
-    });
 });
 </script>
 {% endblock %}
