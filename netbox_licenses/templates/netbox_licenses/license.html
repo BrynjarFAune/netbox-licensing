@@ -33,9 +33,16 @@
                     <th scope="row">Active Period Pricing</th>
                     <td>
                         {% if active_period %}
-                            <strong>{{ active_period.per_seat_price|floatformat:2 }} {{ active_period.currency }}</strong> per seat
+                            <strong>{{ active_period.per_seat_price|floatformat:2 }} {{ active_period.currency.currency_code }}</strong> per seat
+                            {% if active_period.currency.currency_code != 'NOK' %}
+                                <span class="text-muted">({{ active_period.per_seat_price_nok|floatformat:2 }} NOK)</span>
+                            {% endif %}
                             <br>
-                            <span class="text-muted">Total: {{ active_period.total_price|floatformat:2 }} {{ active_period.currency }}</span>
+                            <span class="text-muted">Total: {{ active_period.total_price|floatformat:2 }} {{ active_period.currency.currency_code }}
+                            {% if active_period.currency.currency_code != 'NOK' %}
+                                ({{ active_period.price_nok|floatformat:2 }} NOK)
+                            {% endif %}
+                            </span>
                         {% else %}
                             <span class="text-muted">No active period</span>
                         {% endif %}
