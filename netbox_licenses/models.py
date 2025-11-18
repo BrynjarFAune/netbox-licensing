@@ -71,8 +71,8 @@ class License(NetBoxModel):
     billing_cycle = models.CharField(
         max_length=20,
         choices=BILLING_CYCLE_CHOICES,
-        default='monthly',
-        help_text="How frequently this license is billed"
+        blank=True,
+        help_text="How frequently this license is billed (optional - for reference only)"
     )
 
     # Contract dates removed - defined by LicensePeriods instead
@@ -170,21 +170,12 @@ class License(NetBoxModel):
 
     @property
     def monthly_equivalent_price(self):
-        """Normalize pricing to monthly based on active period's per-seat price"""
-        per_seat = float(self.active_period_per_seat_price)
-        if per_seat == 0:
-            return 0
-
-        if self.billing_cycle == 'monthly':
-            return per_seat
-        elif self.billing_cycle == 'quarterly':
-            return per_seat / 3
-        elif self.billing_cycle == 'yearly':
-            return per_seat / 12
-        elif self.billing_cycle == 'one_time':
-            return 0  # No recurring cost
-        else:  # custom
-            return per_seat
+        """
+        Get per-seat price from active period.
+        Note: This doesn't normalize to monthly - just returns per-seat price.
+        Use period dates for actual billing calculations.
+        """
+        return float(self.active_period_per_seat_price)
 
     @property
     def total_monthly_commitment_nok(self):

@@ -819,28 +819,10 @@ class LicensePeriodForm(NetBoxModelForm):
                     if 'payment_method' not in self.initial:
                         self.initial['payment_method'] = license_obj.payment_method
 
-                    # Auto-calculate period dates
+                    # Auto-set period start date only
                     if 'period_start' not in self.initial:
                         from django.utils import timezone
                         self.initial['period_start'] = timezone.now().date()
-
-                    if 'period_end' not in self.initial:
-                        from dateutil.relativedelta import relativedelta
-                        from django.utils import timezone
-                        start_date = self.initial.get('period_start') or timezone.now().date()
-
-                        # Calculate end date based on billing cycle
-                        if license_obj.billing_cycle == 'monthly':
-                            end_date = start_date + relativedelta(months=1) - relativedelta(days=1)
-                        elif license_obj.billing_cycle == 'quarterly':
-                            end_date = start_date + relativedelta(months=3) - relativedelta(days=1)
-                        elif license_obj.billing_cycle == 'yearly':
-                            end_date = start_date + relativedelta(years=1) - relativedelta(days=1)
-                        else:
-                            # Default to 1 year for one_time or custom
-                            end_date = start_date + relativedelta(years=1) - relativedelta(days=1)
-
-                        self.initial['period_end'] = end_date
 
                 except License.DoesNotExist:
                     pass

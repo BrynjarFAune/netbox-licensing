@@ -396,15 +396,6 @@ class AssignedObjectCostView(View):
 
             # Calculate monthly cost for this instance
             monthly_cost = instance.license.monthly_equivalent_price
-            if instance.nok_price_override:
-                # Convert NOK price to monthly equivalent if needed
-                if instance.license.billing_cycle == 'yearly':
-                    monthly_cost = float(instance.nok_price_override) / 12
-                elif instance.license.billing_cycle == 'quarterly':
-                    monthly_cost = float(instance.nok_price_override) / 3
-                else:
-                    monthly_cost = float(instance.nok_price_override)
-
             obj_data['total_monthly_cost'] += monthly_cost
 
         # Convert to list and sort by cost
