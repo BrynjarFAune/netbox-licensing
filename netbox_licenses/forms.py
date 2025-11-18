@@ -108,7 +108,7 @@ class LicenseInstanceForm(NetBoxModelForm):
 
     assigned_object_selector = DynamicModelChoiceField(
         queryset=Contact.objects.none(),  # Will be updated based on license and type
-        required=False,
+        required=True,
         label="Assigned Object",
         help_text="Search and select the specific object to assign"
     )
