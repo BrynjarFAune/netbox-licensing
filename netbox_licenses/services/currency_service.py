@@ -58,13 +58,13 @@ CURRENCY_DESCRIPTIONS = {
 
 def fetch_currency_rate_from_api(currency_code):
     """
-    Fetch the latest exchange rate for a currency from Norges Bank API.
+    Fetch the latest exchange rate and currency name from Norges Bank API.
 
     Args:
         currency_code (str): ISO 4217 currency code (e.g., 'USD', 'EUR')
 
     Returns:
-        Decimal: The exchange rate (1 currency_code = X NOK)
+        tuple: (Decimal rate, str description) - The exchange rate and currency name
 
     Raises:
         NorgesBankAPIError: If API request fails or currency not found
@@ -72,7 +72,7 @@ def fetch_currency_rate_from_api(currency_code):
     currency_code = currency_code.upper()
 
     if currency_code == 'NOK':
-        return Decimal('1.0')
+        return Decimal('1.0'), 'Norwegian Krone'
 
     # Norges Bank API endpoint
     # B = Business day frequency
@@ -112,10 +112,34 @@ def fetch_currency_rate_from_api(currency_code):
             # Get the most recent observation
             obs_key = list(observations.keys())[0]
             rate_value = observations[obs_key][0]  # [0] is the rate value
-
             rate = Decimal(str(rate_value))
-            logger.info(f"Successfully fetched rate for {currency_code}: {rate} NOK")
-            return rate
+
+            # Extract currency name from metadata
+            # Structure: data.structure.dimensions.series[1].values[X].name
+            description = ''
+            try:
+                structure = data.get('data', {}).get('structure', {})
+                dimensions = structure.get('dimensions', {}).get('series', [])
+
+                # Dimension index 1 is BASE_CUR (the currency)
+                if len(dimensions) > 1:
+                    base_cur_values = dimensions[1].get('values', [])
+                    # Find the value matching our currency code
+                    for value in base_cur_values:
+                        if value.get('id') == currency_code:
+                            description = value.get('name', '')
+                            break
+
+                # Fallback to hardcoded mapping if API doesn't provide name
+                if not description:
+                    description = CURRENCY_DESCRIPTIONS.get(currency_code, '')
+
+            except (KeyError, IndexError, TypeError):
+                # Fallback to hardcoded mapping on metadata parse failure
+                description = CURRENCY_DESCRIPTIONS.get(currency_code, '')
+
+            logger.info(f"Successfully fetched rate for {currency_code} ({description}): {rate} NOK")
+            return rate, description
 
         except (KeyError, IndexError, TypeError) as e:
             raise NorgesBankAPIError(
@@ -161,8 +185,11 @@ def sync_currency_rate(currency_rate):
         return False
 
     try:
-        new_rate = fetch_currency_rate_from_api(currency_rate.currency_code)
+        new_rate, description = fetch_currency_rate_from_api(currency_rate.currency_code)
         currency_rate.rate_to_nok = new_rate
+        # Update description if API provides one and current is empty
+        if description and not currency_rate.description:
+            currency_rate.description = description
         currency_rate.save()
 
         logger.info(
@@ -239,11 +266,8 @@ def create_currency_from_api(currency_code, notes=''):
             f"Use the sync button to update its rate."
         )
 
-    # Fetch rate from API
-    rate = fetch_currency_rate_from_api(currency_code)
-
-    # Get currency description
-    description = CURRENCY_DESCRIPTIONS.get(currency_code, '')
+    # Fetch rate and description from API
+    rate, description = fetch_currency_rate_from_api(currency_code)
 
     # Create the currency rate
     currency_rate = CurrencyConversionRate.objects.create(
