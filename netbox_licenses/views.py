@@ -1,9 +1,7 @@
 from netbox.views import generic
 from django.views import View
-from django.shortcuts import render
-from netbox.views import generic
-from . import tables, filtersets, models, forms
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse
 from django.db.models import Count, Q, F, Sum
 from django.contrib import messages
 from django.http import HttpResponseBadRequest
@@ -12,6 +10,7 @@ import json
 from django.utils import timezone
 from datetime import timedelta
 from dcim.models import Manufacturer
+from . import tables, filtersets, models, forms
 
 
 # Dashboard views
