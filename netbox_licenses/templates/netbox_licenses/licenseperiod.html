@@ -7,12 +7,6 @@
   <li class="breadcrumb-item"><a href="{% url 'plugins:netbox_licenses:license' pk=object.license.pk %}">{{ object.license }}</a></li>
 {% endblock %}
 
-{% block extra_controls %}
-  <a href="{% url 'plugins:netbox_licenses:licenseperiod_edit' pk=object.pk %}" class="btn btn-warning">
-    <i class="mdi mdi-pencil"></i> Edit
-  </a>
-{% endblock %}
-
 {% block content %}
 <div class="row">
   <div class="col col-md-6">

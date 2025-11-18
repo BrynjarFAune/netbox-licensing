@@ -786,6 +786,13 @@ class LicensePeriodForm(NetBoxModelForm):
             from .services.currency_service import create_currency_from_api, NorgesBankAPIError
             try:
                 currency = create_currency_from_api(currency_code)
+            except ValidationError as e:
+                # Currency was created by another request between lookup and creation
+                # Try to get it again
+                try:
+                    currency = CurrencyConversionRate.objects.get(currency_code=currency_code)
+                except CurrencyConversionRate.DoesNotExist:
+                    raise ValidationError(str(e))
             except NorgesBankAPIError as e:
                 raise ValidationError(
                     f"Currency '{currency_code}' not found in database and could not be fetched from API: {str(e)}"
