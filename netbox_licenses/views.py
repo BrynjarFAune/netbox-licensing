@@ -506,7 +506,6 @@ class LicenseInstanceView(generic.ObjectView):
 class LicenseInstanceEditView(generic.ObjectEditView):
     queryset = models.LicenseInstance.objects.all()
     form = forms.LicenseInstanceForm
-    template_name = "netbox_licenses/licenseinstance_form.html"
 
     def get_form_kwargs(self):
         """Ensure form gets proper initial data"""

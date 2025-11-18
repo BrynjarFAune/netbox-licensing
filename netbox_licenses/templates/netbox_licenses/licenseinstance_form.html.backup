@@ -1,0 +1,29 @@
+{% extends 'generic/object_edit.html' %}
+{% load form_helpers %}
+{% load static %}
+
+{% block form %}
+  <div class="field-group">
+    {% render_field form.license %}
+
+    <div
+      id="assigned-object-container"
+      hx-get="{% url 'plugins:netbox_licenses:assigned-object-field' %}"
+      hx-target="#assigned-object-container"
+      hx-trigger="change from:#id_license"
+      hx-include="[name='license']"
+    >
+      {% include 'netbox_licenses/assigned_object_field.html' %}
+    </div>
+
+    {% render_field form.start_date %}
+    {% render_field form.end_date %}
+    {% render_field form.comments %}
+    {% render_field form.tags %}
+  </div>
+{% endblock %}
+
+  {% block javascript %}
+    {{ block.super }}
+    <script src="{% static 'netbox_licenses/js/currency_conversion.js' %}"></script>
+  {% endblock %}
