@@ -6,6 +6,7 @@ from django.forms import DateInput, NumberInput, IntegerField, DateField, ModelC
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from extras.models import Tag
 from .models import License, LicenseInstance, LicensePeriod, CurrencyConversionRate, PluginConfiguration
 from .choices import CurrencyChoices, PaymentMethodChoices, PricingModeChoices
 from tenancy.models import Contact, Tenant
@@ -63,6 +64,12 @@ class LicenseForm(NetBoxModelForm):
         required=False,
         label="Responsible Contact",
         help_text="Person responsible for maintaining this license (payments, renewals, compliance)"
+    )
+
+    tags = DynamicModelMultipleChoiceField(
+        queryset=Tag.objects.all(),
+        required=False,
+        quick_add=True
     )
 
     class Meta:
