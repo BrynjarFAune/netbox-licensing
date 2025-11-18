@@ -2,31 +2,24 @@
 {% load form_helpers %}
 {% load static %}
 
-  {% block content %}
-  <form method="post" enctype="multipart/form-data" class="form">
-    {% csrf_token %}
-    {% render_errors form %}
+{% block form %}
+  {% render_field form.license %}
 
-    <div class="field-group">
-      {% render_field form.license %}
+  <div
+    id="assigned-object-container"
+    hx-get="{% url 'plugins:netbox_licenses:assigned-object-field' %}"
+    hx-target="#assigned-object-container"
+    hx-trigger="change from:#id_license"
+    hx-include="[name='license']"
+  >
+    {% include 'netbox_licenses/assigned_object_field.html' %}
+  </div>
 
-      <div
-        id="assigned-object-container"
-        hx-get="{% url 'plugins:netbox_licenses:assigned-object-field' %}"
-        hx-target="#assigned-object-container"
-        hx-trigger="change from:#id_license, change from:#id_assigned_object_type"
-        hx-include="[name='license'], [name='assigned_object_type']"
-      >
-        {% include 'netbox_licenses/assigned_object_field.html' %}
-      </div>
-
-      {% render_field form.start_date %}
-      {% render_field form.end_date %}
-      {% render_field form.comments %}
-      {% render_field form.tags %}
-    </div>
-  </form>
-  {% endblock %}
+  {% render_field form.start_date %}
+  {% render_field form.end_date %}
+  {% render_field form.comments %}
+  {% render_field form.tags %}
+{% endblock %}
 
   {% block javascript %}
     {{ block.super }}

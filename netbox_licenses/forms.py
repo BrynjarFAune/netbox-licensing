@@ -99,13 +99,11 @@ class LicenseInstanceForm(NetBoxModelForm):
         required=True
     )
 
-    # Generic object selector - allows selecting from multiple content types
-    # Use regular ModelChoiceField for ContentType (no API endpoint)
+    # Hidden field - automatically set based on license's assignment_type
     assigned_object_type = forms.ModelChoiceField(
-        queryset=ContentType.objects.none(),  # Will be populated based on license
+        queryset=ContentType.objects.none(),
         required=True,
-        label="Object Type",
-        help_text="Select the type of object to assign"
+        widget=forms.HiddenInput()
     )
 
     assigned_object_selector = DynamicModelChoiceField(
