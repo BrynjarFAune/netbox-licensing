@@ -1,8 +1,5 @@
 {% load form_helpers %}
 
-{# Hidden field - rendered but not visible #}
-{{ form.assigned_object_type }}
-
 {% if form.fields.assigned_object_selector %}
   {% render_field form.assigned_object_selector %}
 {% endif %}

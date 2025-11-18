@@ -99,13 +99,6 @@ class LicenseInstanceForm(NetBoxModelForm):
         required=True
     )
 
-    # Hidden field - automatically set based on license's assignment_type
-    assigned_object_type = forms.ModelChoiceField(
-        queryset=ContentType.objects.none(),
-        required=False,
-        widget=forms.HiddenInput()
-    )
-
     assigned_object_selector = DynamicModelChoiceField(
         queryset=Contact.objects.none(),  # Will be updated based on license and type
         required=True,
@@ -116,7 +109,7 @@ class LicenseInstanceForm(NetBoxModelForm):
     class Meta:
         model = LicenseInstance
         fields = (
-            'license', 'assigned_object_type', 'assigned_object_selector',
+            'license', 'assigned_object_selector',
             'start_date', 'end_date', 'comments', 'tags'
         )
         widgets = {
@@ -127,30 +120,14 @@ class LicenseInstanceForm(NetBoxModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Get license to filter allowed content types
+        # Get license to determine allowed assignment type
         license_obj = self._get_license_object()
-
-        if license_obj and license_obj.assignment_type:
-            # Set the single allowed content type for the license
-            allowed_type = license_obj.assignment_type
-            self.fields['assigned_object_type'].queryset = ContentType.objects.filter(pk=allowed_type.pk)
-            self.fields['assigned_object_type'].initial = allowed_type
-            self.fields['assigned_object_type'].help_text = f"Assigning to: {allowed_type.model_class()._meta.verbose_name.title() if allowed_type.model_class() else allowed_type.model}"
-            # Custom label format for ContentType
-            self.fields['assigned_object_type'].label_from_instance = lambda obj: obj.model_class()._meta.verbose_name.title() if obj.model_class() else obj.model
 
         # Determine which content type to use for the assigned_object queryset
         selected_ct = None
 
-        # Check if user selected a type in the form (POST data)
-        if self.data and self.data.get('assigned_object_type'):
-            try:
-                selected_ct = ContentType.objects.get(pk=self.data.get('assigned_object_type'))
-            except (ContentType.DoesNotExist, ValueError):
-                pass
-
         # If editing existing instance, use its type
-        if not selected_ct and self.instance and self.instance.pk and self.instance.assigned_object_type:
+        if self.instance and self.instance.pk and self.instance.assigned_object_type:
             selected_ct = self.instance.assigned_object_type
 
         # Otherwise use the allowed type from license
@@ -164,12 +141,9 @@ class LicenseInstanceForm(NetBoxModelForm):
                 self.fields['assigned_object_selector'].queryset = model_class.objects.all()
                 self.fields['assigned_object_selector'].label = f"Assigned {model_class._meta.verbose_name.title()}"
 
-        # If editing existing instance, populate initial values
-        if self.instance and self.instance.pk:
-            if self.instance.assigned_object_type:
-                self.fields['assigned_object_type'].initial = self.instance.assigned_object_type
-            if self.instance.assigned_object:
-                self.fields['assigned_object_selector'].initial = self.instance.assigned_object
+        # If editing existing instance, populate initial value
+        if self.instance and self.instance.pk and self.instance.assigned_object:
+            self.fields['assigned_object_selector'].initial = self.instance.assigned_object
 
     def _get_license_object(self):
         """Get the license object from form data, initial data, or existing instance"""
@@ -202,16 +176,10 @@ class LicenseInstanceForm(NetBoxModelForm):
             return cleaned_data
 
         license = cleaned_data.get('license')
-        assigned_object_type = cleaned_data.get('assigned_object_type')
         assigned_object_selector = cleaned_data.get('assigned_object_selector')
 
         if not license:
             return cleaned_data
-
-        # Auto-set assigned_object_type from license if not provided
-        if not assigned_object_type and license.assignment_type:
-            cleaned_data['assigned_object_type'] = license.assignment_type
-            assigned_object_type = license.assignment_type
 
         # Check license availability for new instances (warning only, allow overallocation)
         if not self.instance.pk:  # New instance
@@ -229,12 +197,12 @@ class LicenseInstanceForm(NetBoxModelForm):
                         f"with {current_instances} already consumed."
                     )
 
-        # Validate object matches the selected type
-        if assigned_object_selector:
+        # Validate object matches the license's allowed type
+        if assigned_object_selector and license.assignment_type:
             actual_ct = ContentType.objects.get_for_model(assigned_object_selector)
-            if assigned_object_type and actual_ct.pk != assigned_object_type.pk:
+            if actual_ct.pk != license.assignment_type.pk:
                 self.add_error('assigned_object_selector',
-                    f"Selected object does not match the expected type")
+                    f"Selected object type does not match license's assignment type")
 
         # Assignment is required for instances
         if not assigned_object_selector:
