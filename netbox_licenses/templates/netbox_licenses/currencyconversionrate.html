@@ -1,6 +1,19 @@
 {% extends 'generic/object.html' %}
 {% load helpers %}
 
+{% block extra_controls %}
+  {# Override to hide clone and edit buttons - currencies are API-only #}
+  {% if perms.extras.add_bookmark and object.bookmarks %}
+    {% bookmark_button object %}
+  {% endif %}
+  {% if perms.extras.add_subscription and object.subscriptions %}
+    {% subscribe_button object %}
+  {% endif %}
+  {% if request.user|can_delete:object %}
+    {% delete_button object %}
+  {% endif %}
+{% endblock %}
+
 {% block content %}
 <div class="row mb-3">
     <div class="col col-md-6">
