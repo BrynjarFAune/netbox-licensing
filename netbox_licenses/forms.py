@@ -208,6 +208,11 @@ class LicenseInstanceForm(NetBoxModelForm):
         if not license:
             return cleaned_data
 
+        # Auto-set assigned_object_type from license if not provided
+        if not assigned_object_type and license.assignment_type:
+            cleaned_data['assigned_object_type'] = license.assignment_type
+            assigned_object_type = license.assignment_type
+
         # Check license availability for new instances (warning only, allow overallocation)
         if not self.instance.pk:  # New instance
             current_instances = license.instances.count()
@@ -224,25 +229,16 @@ class LicenseInstanceForm(NetBoxModelForm):
                         f"with {current_instances} already consumed."
                     )
 
-        # Validate assignment type matches the license's allowed type
-        if assigned_object_type and license.assignment_type:
-            if assigned_object_type.pk != license.assignment_type.pk:
-                self.add_error('assigned_object_type',
-                               f"Selected object type must be: {license.assignment_type.model}")
-
         # Validate object matches the selected type
         if assigned_object_selector:
             actual_ct = ContentType.objects.get_for_model(assigned_object_selector)
             if assigned_object_type and actual_ct.pk != assigned_object_type.pk:
                 self.add_error('assigned_object_selector',
-                    f"Selected object does not match the selected object type")
+                    f"Selected object does not match the expected type")
 
         # Assignment is required for instances
         if not assigned_object_selector:
             self.add_error('assigned_object_selector', "An assigned object is required for license instances")
-
-        if not assigned_object_type:
-            self.add_error('assigned_object_type', "Object type is required for license instances")
 
         return cleaned_data
 
