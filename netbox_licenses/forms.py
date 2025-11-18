@@ -748,6 +748,7 @@ class LicensePeriodForm(NetBoxModelForm):
                     # Auto-fill from license
                     if 'seats_purchased' not in self.initial:
                         self.initial['seats_purchased'] = license_obj.total_licenses
+                        self.fields['seats_purchased'].initial = license_obj.total_licenses
 
                     # Calculate total price from active period
                     if 'price' not in self.initial:
@@ -771,7 +772,7 @@ class LicensePeriodForm(NetBoxModelForm):
                     pass
 
     def clean_currency(self):
-        """Convert currency code to CurrencyConversionRate object"""
+        """Convert currency code to CurrencyConversionRate object, auto-creating from API if needed"""
         currency_code = self.cleaned_data.get('currency', '').upper()
 
         if not currency_code:
@@ -781,9 +782,14 @@ class LicensePeriodForm(NetBoxModelForm):
         try:
             currency = CurrencyConversionRate.objects.get(currency_code=currency_code)
         except CurrencyConversionRate.DoesNotExist:
-            raise ValidationError(
-                f"Currency '{currency_code}' not found. Please click the sync button to import it from the API."
-            )
+            # Try to auto-create from API
+            from .services.currency_service import create_currency_from_api, NorgesBankAPIError
+            try:
+                currency = create_currency_from_api(currency_code)
+            except NorgesBankAPIError as e:
+                raise ValidationError(
+                    f"Currency '{currency_code}' not found in database and could not be fetched from API: {str(e)}"
+                )
 
         return currency
 
