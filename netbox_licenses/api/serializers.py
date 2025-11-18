@@ -23,7 +23,7 @@ class NestedLicenseSerializer(WritableNestedSerializer):
 
     class Meta:
         model = License
-        fields = ('id', 'url', 'display', 'name', 'assignment_types')
+        fields = ('id', 'url', 'display', 'name', 'assignment_type')
         brief_fields = ('id', 'url' ,'display', 'vendor')
 
 class NestedLicenseInstanceSerializer(WritableNestedSerializer):
@@ -75,7 +75,7 @@ class LicenseSerializer(NetBoxModelSerializer):
     class Meta:
         model = License
         fields = (
-            'id', 'url', 'display', 'name', 'vendor', 'tenant', 'assignment_types',
+            'id', 'url', 'display', 'name', 'vendor', 'tenant', 'assignment_type',
             # Utilization fields
             'external_id', 'total_licenses', 'consumed_licenses', 'available_licenses',
             'utilization_percentage', 'metadata',

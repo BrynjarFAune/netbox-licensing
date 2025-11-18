@@ -28,11 +28,11 @@ class License(NetBoxModel):
         on_delete=models.PROTECT,
         related_name='licenses'
     )
-    assignment_types = models.ManyToManyField(
-        ContentType,
+    assignment_type = models.ForeignKey(
+        to=ContentType,
+        on_delete=models.PROTECT,
         related_name='licenses_by_type',
-        blank=True,
-        help_text="What object types can be assigned to this license"
+        help_text="What object type can be assigned to this license"
     )
     
     # NEW ENHANCEMENT FIELDS

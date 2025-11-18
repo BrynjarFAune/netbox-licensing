@@ -542,10 +542,10 @@ class LicenseInstanceEditView(generic.ObjectEditView):
             except models.License.DoesNotExist:
                 pass
 
-        if license_obj and license_obj.assignment_types.exists():
-            first_type = license_obj.assignment_types.first()
-            model_class = first_type.model_class()
-            model_name = first_type.model
+        if license_obj and license_obj.assignment_type:
+            assignment_type = license_obj.assignment_type
+            model_class = assignment_type.model_class()
+            model_name = assignment_type.model
             verbose_name = model_class._meta.verbose_name.title() if model_class else "Object"
 
         context.update({
@@ -568,7 +568,7 @@ class AssignedObjectFieldView(View):
             return HttpResponseBadRequest("Missing license ID")
 
         try:
-            license_obj = models.License.objects.prefetch_related('assignment_types').get(pk=license_id)
+            license_obj = models.License.objects.select_related('assignment_type').get(pk=license_id)
         except models.License.DoesNotExist:
             return HttpResponseBadRequest("Invalid license ID")
 
@@ -595,7 +595,7 @@ class AssignedObjectFieldView(View):
                 pass
 
         if not selected_type:
-            selected_type = license_obj.assignment_types.first()
+            selected_type = license_obj.assignment_type
 
         if selected_type:
             model_class = selected_type.model_class()

@@ -22,11 +22,11 @@ class LicenseForm(NetBoxModelForm):
         required=True,
         quick_add=True
     )
-    assignment_types = ContentTypeMultipleChoiceField(
+    assignment_type = ContentTypeChoiceField(
         queryset=ContentType.objects.all(),
-        required=False,
-        label="Assignable Object Types",
-        help_text="Select which object types can be assigned to this license (e.g., devices, VMs)"
+        required=True,
+        label="Assignable Object Type",
+        help_text="Select which object type can be assigned to this license (e.g., device, VM)"
     )
     
     total_licenses = IntegerField(
@@ -67,7 +67,7 @@ class LicenseForm(NetBoxModelForm):
     class Meta:
         model = License
         fields = (
-            'name', 'vendor', 'tenant', 'assignment_types',
+            'name', 'vendor', 'tenant', 'assignment_type',
             'billing_cycle', 'payment_method', 'payment_portal_url', 'responsible_contact',
             'total_licenses', 'metadata',
             'comments', 'tags'
@@ -103,7 +103,7 @@ class LicenseInstanceForm(NetBoxModelForm):
     # Use regular ModelChoiceField for ContentType (no API endpoint)
     assigned_object_type = forms.ModelChoiceField(
         queryset=ContentType.objects.none(),  # Will be populated based on license
-        required=False,
+        required=True,
         label="Object Type",
         help_text="Select the type of object to assign"
     )
@@ -132,11 +132,12 @@ class LicenseInstanceForm(NetBoxModelForm):
         # Get license to filter allowed content types
         license_obj = self._get_license_object()
 
-        if license_obj and license_obj.assignment_types.exists():
-            # Filter content types to only those allowed by the license
-            allowed_types = license_obj.assignment_types.all()
-            self.fields['assigned_object_type'].queryset = allowed_types
-            self.fields['assigned_object_type'].help_text = "Select from allowed object types for this license"
+        if license_obj and license_obj.assignment_type:
+            # Set the single allowed content type for the license
+            allowed_type = license_obj.assignment_type
+            self.fields['assigned_object_type'].queryset = ContentType.objects.filter(pk=allowed_type.pk)
+            self.fields['assigned_object_type'].initial = allowed_type
+            self.fields['assigned_object_type'].help_text = f"Assigning to: {allowed_type.model_class()._meta.verbose_name.title() if allowed_type.model_class() else allowed_type.model}"
             # Custom label format for ContentType
             self.fields['assigned_object_type'].label_from_instance = lambda obj: obj.model_class()._meta.verbose_name.title() if obj.model_class() else obj.model
 
@@ -154,9 +155,9 @@ class LicenseInstanceForm(NetBoxModelForm):
         if not selected_ct and self.instance and self.instance.pk and self.instance.assigned_object_type:
             selected_ct = self.instance.assigned_object_type
 
-        # Otherwise use first allowed type from license
-        if not selected_ct and license_obj and license_obj.assignment_types.exists():
-            selected_ct = license_obj.assignment_types.first()
+        # Otherwise use the allowed type from license
+        if not selected_ct and license_obj and license_obj.assignment_type:
+            selected_ct = license_obj.assignment_type
 
         # Set the queryset based on selected content type
         if selected_ct:
@@ -190,7 +191,7 @@ class LicenseInstanceForm(NetBoxModelForm):
 
         if license_id:
             try:
-                return License.objects.prefetch_related('assignment_types').get(pk=license_id)
+                return License.objects.select_related('assignment_type').get(pk=license_id)
             except (License.DoesNotExist, ValueError):
                 pass
 
@@ -225,13 +226,11 @@ class LicenseInstanceForm(NetBoxModelForm):
                         f"with {current_instances} already consumed."
                     )
 
-        # Validate assignment type is allowed by license
-        if assigned_object_type:
-            allowed_types = list(license.assignment_types.all())
-            if allowed_types and not any(ct.pk == assigned_object_type.pk for ct in allowed_types):
-                allowed_names = ', '.join([ct.model for ct in allowed_types])
+        # Validate assignment type matches the license's allowed type
+        if assigned_object_type and license.assignment_type:
+            if assigned_object_type.pk != license.assignment_type.pk:
                 self.add_error('assigned_object_type',
-                               f"Selected object type must be one of: {allowed_names}")
+                               f"Selected object type must be: {license.assignment_type.model}")
 
         # Validate object matches the selected type
         if assigned_object_selector:
@@ -359,10 +358,10 @@ class BulkLicenseInstanceForm(forms.Form):
             del self.fields['quantity']
 
         # Add static assignment fields based on quantity
-        if license.assignment_types.exists() and quantity:
-            # Use first assignment type for bulk creation
-            first_type = license.assignment_types.first()
-            model_class = first_type.model_class() if first_type else None
+        if license.assignment_type and quantity:
+            # Use the assignment type for bulk creation
+            assignment_type = license.assignment_type
+            model_class = assignment_type.model_class() if assignment_type else None
 
             if model_class:
                 for i in range(1, quantity + 1):

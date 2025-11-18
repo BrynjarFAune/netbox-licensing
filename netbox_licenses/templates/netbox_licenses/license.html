@@ -20,12 +20,10 @@
                     <td>{{ object.tenant|linkify }}</td>
                 </tr>
                 <tr>
-                    <th scope="row">Assignment Types</th>
+                    <th scope="row">Assignment Type</th>
                     <td>
-                        {% if object.assignment_types.all %}
-                            {% for ct in object.assignment_types.all %}
-                                {{ ct.model|title }}{% if not forloop.last %}, {% endif %}
-                            {% endfor %}
+                        {% if object.assignment_type %}
+                            {{ object.assignment_type.model|title }}
                         {% else %}
                             —
                         {% endif %}
