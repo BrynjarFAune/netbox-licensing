@@ -478,6 +478,9 @@ class LicenseEditView(generic.ObjectEditView):
     queryset = models.License.objects.all()
     form = forms.LicenseForm
 
+    def get_return_url(self, request, obj):
+        return obj.get_absolute_url()
+
 class LicenseDeleteView(generic.ObjectDeleteView):
     queryset = models.License.objects.all()
 
@@ -521,6 +524,10 @@ class LicenseInstanceEditView(generic.ObjectEditView):
                 kwargs['initial']['license'] = license_id
 
         return kwargs
+
+    def get_return_url(self, request, obj):
+        # Return to the license instance list by default
+        return reverse('plugins:netbox_licenses:licenseinstance_list')
 
     def get_extra_context(self, request, instance):
         context = super().get_extra_context(request, instance)
