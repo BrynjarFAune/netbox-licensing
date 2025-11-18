@@ -40,7 +40,7 @@
                             <br>
                             <span class="text-muted">Total: {{ active_period.total_price|floatformat:2 }} {{ active_period.currency.currency_code }}
                             {% if active_period.currency.currency_code != 'NOK' %}
-                                ({{ active_period.price_nok|floatformat:2 }} NOK)
+                                ({{ active_period.total_price_nok|floatformat:2 }} NOK)
                             {% endif %}
                             </span>
                         {% else %}

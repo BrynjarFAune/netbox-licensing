@@ -1094,9 +1094,27 @@ class LicensePeriod(NetBoxModel):
     @property
     def per_seat_price_nok(self):
         """Get per-seat price in NOK"""
-        if self.seats_purchased == 0:
+        if self.pricing_mode == PricingModeChoices.PER_SEAT:
+            # price_nok already represents per-seat price
+            return self.price_nok if self.price_nok else Decimal('0.00')
+        else:  # TOTAL
+            # price_nok is total, divide by seats to get per-seat
+            if self.seats_purchased == 0:
+                return Decimal('0.00')
+            return self.price_nok / self.seats_purchased if self.price_nok else Decimal('0.00')
+
+    @property
+    def total_price_nok(self):
+        """Get total price in NOK"""
+        if not self.price_nok:
             return Decimal('0.00')
-        return self.price_nok / self.seats_purchased
+
+        if self.pricing_mode == PricingModeChoices.TOTAL:
+            # price_nok already represents total price
+            return self.price_nok
+        else:  # PER_SEAT
+            # price_nok is per-seat, multiply by seats to get total
+            return self.price_nok * self.seats_purchased
 
     @property
     def is_active(self):
