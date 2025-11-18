@@ -2,6 +2,7 @@ import django_tables2 as tables
 from django.utils.html import format_html
 
 from netbox.tables import NetBoxTable, ChoiceFieldColumn, TagColumn
+from netbox.tables.columns import ActionsColumn
 from .models import License, LicenseInstance, LicensePeriod, CurrencyConversionRate
 from .choices import LicenseStatusChoices
 
@@ -225,6 +226,7 @@ class CurrencyConversionRateTable(NetBoxTable):
     source = tables.Column(verbose_name='Source', empty_values=())
     last_updated = tables.DateTimeColumn(format='d/m/Y H:i', verbose_name='Last Updated')
     status = tables.Column(empty_values=(), verbose_name='Status', orderable=False)
+    actions = ActionsColumn(actions=('delete',))  # Only show delete action, no edit
 
     class Meta(NetBoxTable.Meta):
         model = CurrencyConversionRate
