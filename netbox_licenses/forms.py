@@ -5,6 +5,7 @@ from django import forms
 from django.forms import DateInput, NumberInput, IntegerField, DateField, ModelChoiceField, HiddenInput, CharField, ChoiceField, DecimalField, Textarea, BooleanField, URLField
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 from .models import License, LicenseInstance, LicensePeriod, CurrencyConversionRate, PluginConfiguration
 from .choices import CurrencyChoices, PaymentMethodChoices, PricingModeChoices
 from tenancy.models import Contact, Tenant
@@ -282,6 +283,10 @@ class BulkLicenseInstanceForm(forms.Form):
     def __init__(self, license, *args, **kwargs):
         self.license = license
         super().__init__(*args, **kwargs)
+
+        # Set default start date to today
+        if 'initial' not in kwargs or 'start_date' not in kwargs.get('initial', {}):
+            self.fields['start_date'].initial = timezone.now().date()
 
         # Set quantity field limits
         max_available = license.available_licenses
