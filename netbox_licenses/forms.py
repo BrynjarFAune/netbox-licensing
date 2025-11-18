@@ -263,7 +263,7 @@ class BulkLicenseInstanceForm(forms.Form):
 
     # Common settings applied to all instances
     start_date = forms.DateField(
-        required=False,
+        required=True,
         widget=forms.DateInput(attrs={'type': 'date'}),
         label="Start Date"
     )
