@@ -67,7 +67,7 @@
                 <h6>Assign to:</h6>
                 {% for field in form %}
                     {% if "assigned_object_" in field.name %}
-                        <div class="mb-3 assignment-field" style="{% if not forloop.first %}display: none;{% endif %}">
+                        <div class="mb-3 assignment-field" data-index="{{ forloop.counter0 }}" style="display: none;">
                             {% render_field field %}
                         </div>
                     {% endif %}
@@ -111,8 +111,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const quantityField = document.getElementById('id_quantity');
     const assignmentFields = document.querySelectorAll('.assignment-field');
 
+    console.log('Quantity field:', quantityField);
+    console.log('Assignment fields found:', assignmentFields.length);
+
     function updateVisibleFields() {
         const quantity = parseInt(quantityField.value) || 0;
+        console.log('Updating fields for quantity:', quantity);
+
         assignmentFields.forEach((field, index) => {
             if (index < quantity) {
                 field.style.display = 'block';
@@ -129,14 +134,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
+
+        console.log('Visible fields:', document.querySelectorAll('.assignment-field[style*="block"]').length);
     }
 
     // Update on page load
     updateVisibleFields();
 
     // Update when quantity changes
-    quantityField.addEventListener('input', updateVisibleFields);
-    quantityField.addEventListener('change', updateVisibleFields);
+    if (quantityField) {
+        quantityField.addEventListener('input', updateVisibleFields);
+        quantityField.addEventListener('change', updateVisibleFields);
+    }
 });
 </script>
 {% endblock %}
