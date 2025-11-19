@@ -121,7 +121,7 @@
                     <th scope="row">Utilization</th>
                     <td>
                         {% if object.total_licenses > 0 %}
-                            <span class="badge text-bg-{% if object.utilization_percentage >= 90 %}success{% elif object.utilization_percentage >= 70 %}warning{% else %}danger{% endif %}">
+                            <span class="badge text-bg-{% if object.utilization_percentage > 100 %}danger{% elif object.utilization_percentage >= 90 %}warning{% elif object.utilization_percentage >= 70 %}info{% else %}success{% endif %}">
                                 {{ object.utilization_percentage|floatformat:1 }}%
                             </span>
                         {% else %}
@@ -157,21 +157,25 @@
                                     {% endif %}
                                 </a>
                                 {% if instance.end_date %}
-                                    <br><small class="text-muted">Expires: {{ instance.end_date }}</small>
+                                    {% if instance.is_active %}
+                                        <br><small class="text-muted">Expires: {{ instance.end_date|date:"M. j, Y" }}</small>
+                                    {% else %}
+                                        <br><small class="text-muted">Expired: {{ instance.end_date|date:"M. j, Y" }}</small>
+                                    {% endif %}
                                 {% endif %}
                             </div>
-                            {% if instance.end_date %}
-                                {% with days_until_expiry=instance.end_date|timeuntil %}
-                                    {% if "ago" in days_until_expiry %}
-                                        <span class="badge text-bg-danger">Expired</span>
-                                    {% elif "day" in days_until_expiry and "30" not in days_until_expiry %}
-                                        <span class="badge text-bg-warning">Soon</span>
+                            {% if instance.is_active %}
+                                {% if instance.end_date %}
+                                    {% if instance.days_until_expiry <= 30 %}
+                                        <span class="badge text-bg-warning">Expiring Soon</span>
                                     {% else %}
                                         <span class="badge text-bg-success">Active</span>
                                     {% endif %}
-                                {% endwith %}
+                                {% else %}
+                                    <span class="badge text-bg-secondary">No End Date</span>
+                                {% endif %}
                             {% else %}
-                                <span class="badge text-bg-secondary">No End Date</span>
+                                <span class="badge text-bg-danger">Expired</span>
                             {% endif %}
                         </div>
                         {% endfor %}
