@@ -1036,7 +1036,17 @@ class LicensePeriod(NetBoxModel):
         ]
 
     def __str__(self):
-        return f"{self.license.name} - {self.period_start} to {self.period_end}"
+        return self.name
+
+    @property
+    def name(self):
+        """Generate a descriptive name for this period"""
+        start = self.period_start.strftime('%d/%m/%Y')
+        if self.period_end:
+            end = self.period_end.strftime('%d/%m/%Y')
+            return f"{self.license.name} ({start} - {end})"
+        else:
+            return f"{self.license.name} (from {start})"
 
     def get_absolute_url(self):
         return reverse('plugins:netbox_licenses:licenseperiod', args=[self.pk])
