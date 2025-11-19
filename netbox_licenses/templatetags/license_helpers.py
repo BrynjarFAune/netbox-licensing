@@ -54,7 +54,7 @@ WASTE_COLORS = {
 def utilization_badge(value):
     """
     Returns a badge HTML with appropriate color based on utilization percentage.
-    High utilization = good (green), Low utilization = bad (red)
+    >100% = overallocated (red), High utilization = good (green), Low utilization = bad (red)
     Thresholds are read from plugin configuration.
     """
     if value is None:
@@ -62,20 +62,25 @@ def utilization_badge(value):
 
     value = float(str(value))  # Handle SafeString
 
-    # Get thresholds from config
-    thresholds = get_utilization_thresholds()
-
-    # Determine level based on thresholds
-    if value >= thresholds['excellent']:
-        level = 'excellent'
-    elif value >= thresholds['good']:
-        level = 'good'
-    elif value >= thresholds['moderate']:
-        level = 'moderate'
+    # Overallocation gets red badge regardless of thresholds
+    if value > 100:
+        color = 'danger'
     else:
-        level = 'poor'
+        # Get thresholds from config
+        thresholds = get_utilization_thresholds()
 
-    color = UTILIZATION_COLORS[level]
+        # Determine level based on thresholds
+        if value >= thresholds['excellent']:
+            level = 'excellent'
+        elif value >= thresholds['good']:
+            level = 'good'
+        elif value >= thresholds['moderate']:
+            level = 'moderate'
+        else:
+            level = 'poor'
+
+        color = UTILIZATION_COLORS[level]
+
     formatted_value = "{:.1f}%".format(value)
     return format_html(
         '<span class="badge text-bg-{}">{}</span>',
