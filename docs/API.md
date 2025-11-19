@@ -15,9 +15,9 @@
 - `vendor` (int) - Vendor/Manufacturer ID
 
 ### Optional Fields
-- `tenant` (int), `assignment_types` (array), `external_id` (string)
+- `tenant` (int), `assignment_type` (int - ContentType ID), `external_id` (string)
 - `total_licenses` (int, default: 1), `billing_cycle` (string), `payment_method` (string)
-- `payment_portal_url` (URL), `responsible_contact` (int), `metadata` (JSON)
+- `payment_portal_url` (URL), `responsible_contact` (int - Contact ID), `metadata` (JSON)
 - `comments` (string), `tags` (array)
 
 ### Read-Only
@@ -64,6 +64,7 @@ Periods are billing cycles that store pricing snapshots.
 ### Read-Only
 - `price_nok`, `conversion_rate`, `current_seats_utilized`, `utilization_percentage`
 - `is_active`, `days_remaining`, `total_price`, `per_seat_price`
+- `per_seat_price_nok`, `total_price_nok`, `name` (formatted display name)
 
 ### Validation
 - `period_end` must be after `period_start`
@@ -191,4 +192,6 @@ GET /api/plugins/licenses/licenses/?limit=50&offset=100&ordering=-created
 - **Dates:** Use `YYYY-MM-DD` format
 - **Nested reads, ID writes:** Response has nested objects, requests use IDs
 - **Auto-conversion:** Periods auto-calculate `price_nok` from currency rates
+- **Auto-currency fetch:** When creating a period with a new currency code, it automatically fetches the rate from Norges Bank API
 - **Live utilization:** Period utilization counts overlapping instances in real-time
+- **Name property:** License periods have a computed `name` field showing "License Name (DD/MM/YYYY - DD/MM/YYYY)"
