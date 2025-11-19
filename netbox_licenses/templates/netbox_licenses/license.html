@@ -121,7 +121,7 @@
                     <th scope="row">Utilization</th>
                     <td>
                         {% if object.total_licenses > 0 %}
-                            <span class="badge text-bg-{% if object.utilization_percentage > 100 %}danger{% elif object.utilization_percentage >= 90 %}warning{% elif object.utilization_percentage >= 70 %}info{% else %}success{% endif %}">
+                            <span class="badge text-bg-{% if object.utilization_percentage > 100 %}danger{% elif object.utilization_percentage >= 90 %}success{% elif object.utilization_percentage >= 70 %}info{% else %}warning{% endif %}">
                                 {{ object.utilization_percentage|floatformat:1 }}%
                             </span>
                         {% else %}
