@@ -479,6 +479,7 @@ class LicenseEditView(generic.ObjectEditView):
 
 class LicenseDeleteView(generic.ObjectDeleteView):
     queryset = models.License.objects.all()
+    default_return_url = 'plugins:netbox_licenses:license_list'
 
 class LicenseBulkDeleteView(generic.BulkDeleteView):
     queryset = models.License.objects.all()
@@ -556,6 +557,7 @@ class LicenseInstanceEditView(generic.ObjectEditView):
 
 class LicenseInstanceDeleteView(generic.ObjectDeleteView):
     queryset = models.LicenseInstance.objects.all()
+    default_return_url = 'plugins:netbox_licenses:licenseinstance_list'
 
 class AssignedObjectFieldView(View):
     def get(self, request):
