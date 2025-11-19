@@ -169,9 +169,10 @@ class LicenseInstanceTable(NetBoxTable):
     # pk column provided automatically by NetBoxTable
     license = tables.Column(linkify=True)
     assigned_object = tables.Column(verbose_name="Assigned To", orderable=False)
-    start_date = tables.DateColumn(format='d/m/Y')
-    end_date = tables.DateColumn(format='d/m/Y')
+    start_date = tables.DateColumn(format='d/m/Y', verbose_name="Start")
+    end_date = tables.DateColumn(format='d/m/Y', verbose_name="End")
     status = tables.Column(verbose_name="Status", orderable=False, accessor='derived_status')
+    billing_cycle = tables.Column(empty_values=(), verbose_name="Billing", orderable=False)
     instance_price_nok = tables.Column(empty_values=(), verbose_name="Price (NOK)")
 
     def render_assigned_object(self, record):
@@ -181,14 +182,20 @@ class LicenseInstanceTable(NetBoxTable):
             return format_html('<a href="{}">{}</a>', url, record.assigned_object)
         return "—"
 
+    def render_billing_cycle(self, record):
+        """Render billing cycle from license"""
+        if record.license and record.license.billing_cycle:
+            return record.license.get_billing_cycle_display()
+        return "—"
+
     class Meta(NetBoxTable.Meta):
         model = LicenseInstance
         fields = (
             'pk', 'id', 'license', 'assigned_object', 'start_date', 'end_date', 'status',
-            'instance_price_nok', 'actions'
+            'billing_cycle', 'instance_price_nok', 'actions'
         )
         default_columns = (
-            'pk', 'license', 'assigned_object', 'status', 'end_date'
+            'pk', 'license', 'start_date', 'end_date', 'status', 'billing_cycle', 'instance_price_nok'
         )
 
     def render_instance_price_nok(self, record):
