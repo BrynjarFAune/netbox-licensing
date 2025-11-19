@@ -108,13 +108,29 @@
 <!-- JavaScript to show/hide assignment fields based on quantity -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const quantityField = document.getElementById('id_quantity');
-    const assignmentFields = document.querySelectorAll('.assignment-field');
+    let quantityField = null;
+    let assignmentFields = null;
 
-    console.log('Quantity field:', quantityField);
-    console.log('Assignment fields found:', assignmentFields.length);
+    function initializeFields() {
+        quantityField = document.getElementById('id_quantity');
+        assignmentFields = document.querySelectorAll('.assignment-field');
+
+        console.log('Quantity field:', quantityField);
+        console.log('Assignment fields found:', assignmentFields.length);
+
+        if (quantityField && assignmentFields.length > 0) {
+            // Fields are ready, attach listeners
+            quantityField.addEventListener('input', updateVisibleFields);
+            quantityField.addEventListener('change', updateVisibleFields);
+            updateVisibleFields();
+            return true;
+        }
+        return false;
+    }
 
     function updateVisibleFields() {
+        if (!quantityField || !assignmentFields) return;
+
         const quantity = parseInt(quantityField.value) || 0;
         console.log('Updating fields for quantity:', quantity);
 
@@ -138,13 +154,20 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Visible fields:', document.querySelectorAll('.assignment-field[style*="block"]').length);
     }
 
-    // Update on page load
-    updateVisibleFields();
-
-    // Update when quantity changes
-    if (quantityField) {
-        quantityField.addEventListener('input', updateVisibleFields);
-        quantityField.addEventListener('change', updateVisibleFields);
+    // Try to initialize immediately
+    if (!initializeFields()) {
+        // If fields aren't ready, wait a bit and try again
+        setTimeout(function() {
+            if (!initializeFields()) {
+                // Still not ready, use MutationObserver to watch for field additions
+                const observer = new MutationObserver(function(mutations) {
+                    if (initializeFields()) {
+                        observer.disconnect();
+                    }
+                });
+                observer.observe(document.body, { childList: true, subtree: true });
+            }
+        }, 100);
     }
 });
 </script>
