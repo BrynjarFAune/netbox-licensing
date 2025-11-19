@@ -261,6 +261,7 @@ class CurrencyConversionRateTable(NetBoxTable):
 class LicensePeriodTable(NetBoxTable):
     """Table for displaying license period history"""
     # pk column provided automatically by NetBoxTable
+    name = tables.Column(linkify=True, verbose_name='Period', accessor='name')
     license = tables.Column(linkify=True, verbose_name='License')
     period_start = tables.DateColumn(format='d/m/Y', verbose_name='Period Start')
     period_end = tables.DateColumn(format='d/m/Y', verbose_name='Period End')
@@ -274,13 +275,13 @@ class LicensePeriodTable(NetBoxTable):
     class Meta(NetBoxTable.Meta):
         model = LicensePeriod
         fields = (
-            'pk', 'id', 'license', 'period_start', 'period_end', 'status',
+            'pk', 'id', 'name', 'license', 'period_start', 'period_end', 'status',
             'seats_purchased', 'utilization', 'price', 'currency',
             'payment_method', 'invoice_reference',
             'created', 'last_updated', 'actions'
         )
         default_columns = (
-            'pk', 'license', 'period_start', 'period_end', 'status',
+            'pk', 'name', 'period_start', 'period_end', 'status',
             'seats_purchased', 'utilization', 'price', 'currency'
         )
 
