@@ -195,7 +195,7 @@ class LicenseInstanceTable(NetBoxTable):
             'billing_cycle', 'instance_price_nok', 'actions'
         )
         default_columns = (
-            'pk', 'license', 'start_date', 'end_date', 'status', 'billing_cycle', 'instance_price_nok'
+            'pk', 'license', 'status', 'start_date', 'end_date', 'billing_cycle', 'instance_price_nok'
         )
 
     def render_instance_price_nok(self, record):
