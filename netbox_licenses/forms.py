@@ -295,20 +295,12 @@ class BulkLicenseInstanceForm(forms.Form):
         if 'initial' not in kwargs or 'start_date' not in kwargs.get('initial', {}):
             self.fields['start_date'].initial = timezone.now().date()
 
-        # Set quantity field limits
-        max_available = license.available_licenses
-        self.fields['quantity'].widget.attrs['max'] = max_available
-        self.fields['quantity'].help_text = f"Number of instances to create (max {max_available} available)"
-
-        if max_available <= 0:
-            self.fields['quantity'].widget.attrs['disabled'] = True
-            self.fields['quantity'].help_text = "No license slots available"
-
-        # Add dynamic assignment fields
+        # Add dynamic assignment fields (up to 20)
+        # Allow overallocation - don't restrict based on available_licenses
         if license.assignment_type:
             model_class = license.assignment_type.model_class()
 
-            for i in range(1, min(max_available + 1, 21)):  # Cap at 20 for UI sanity
+            for i in range(1, 21):  # Cap at 20 for UI sanity
                 field_name = f'assigned_object_{i}'
                 self.fields[field_name] = DynamicModelChoiceField(
                     queryset=model_class.objects.all(),
@@ -328,9 +320,14 @@ class BulkLicenseInstanceForm(forms.Form):
         # Use the quantity from the form
         quantity = cleaned_data.get('quantity', 0)
 
+        # Allow overallocation - just show warning if it would happen
         if quantity > self.license.available_licenses:
-            raise forms.ValidationError(
-                f"Cannot create {quantity} instances. Only {self.license.available_licenses} slots available."
+            from django.contrib import messages
+            messages.warning(
+                self.request if hasattr(self, 'request') else None,
+                f"Warning: Creating {quantity} instances will overallocate this license. "
+                f"License has {self.license.total_licenses} total slots with "
+                f"{self.license.consumed_licenses} already consumed."
             )
 
         # Check that we have enough assigned objects and no duplicates

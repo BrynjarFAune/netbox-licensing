@@ -450,27 +450,15 @@ class LicenseInstance(NetBoxModel):
         return reverse('plugins:netbox_licenses:licenseinstance', args=[self.pk])
 
     def clean(self):
-        """Validate license instance allocation"""
+        """Validate license instance data"""
         from django.core.exceptions import ValidationError
         super().clean()
-        
-        if self.license:
-            # Check if creating a new instance would exceed total licenses
-            current_count = self.license.instances.count()
-            
-            # If this is a new instance (no pk), increment the count
-            if not self.pk:
-                current_count += 1
-            
-            if current_count > self.license.total_licenses:
-                raise ValidationError(
-                    f"Cannot create license instance. This would exceed the total "
-                    f"available licenses ({self.license.total_licenses}). "
-                    f"Current instances: {self.license.instances.count()}"
-                )
+
+        # Allow overallocation - just track it, don't block it
+        # The license's get_availability_status() will show "overallocated"
 
     def save(self, *args, **kwargs):
-        # Validate allocation limits before saving
+        # Validate data before saving
         self.full_clean()
 
         super().save(*args, **kwargs)
