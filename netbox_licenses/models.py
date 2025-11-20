@@ -1149,20 +1149,17 @@ class LicensePeriod(NetBoxModel):
             if not self.payment_method:
                 self.payment_method = self.license.payment_method
 
-        # Auto-calculate NOK price and conversion rate if not manually set
+        # Auto-calculate NOK price and conversion rate
+        # Always recalculate from current currency rate (snapshot at save time)
         if self.price and self.currency:
             if self.currency.currency_code == 'NOK':
                 # Native currency is already NOK
                 self.price_nok = self.price
                 self.conversion_rate = Decimal('1.0')
-            elif not self.price_nok:
-                # Auto-convert to NOK using the currency's rate
+            else:
+                # Auto-convert to NOK using the currency's current rate
                 self.conversion_rate = self.currency.rate_to_nok
                 self.price_nok = self.price * self.currency.rate_to_nok
-            elif not self.conversion_rate and self.price_nok:
-                # Manual NOK price set - calculate implied rate
-                if self.price > 0:
-                    self.conversion_rate = self.price_nok / self.price
 
         super().save(*args, **kwargs)
 
