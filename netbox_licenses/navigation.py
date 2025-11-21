@@ -46,16 +46,19 @@ menu = PluginMenu(
             PluginMenuItem(
                 link='plugins:netbox_licenses:license_list',
                 link_text='Licenses',
+                permissions=['netbox_licenses.view_license'],
                 buttons=license_buttons
             ),
             PluginMenuItem(
                 link='plugins:netbox_licenses:licenseinstance_list',
                 link_text='License Instances',
+                permissions=['netbox_licenses.view_licenseinstance'],
                 buttons=licenseinstance_buttons
             ),
             PluginMenuItem(
                 link='plugins:netbox_licenses:licenseperiod_list',
                 link_text='License Periods',
+                permissions=['netbox_licenses.view_licenseperiod'],
                 buttons=licenseperiod_buttons
             ),
         )),
@@ -67,6 +70,7 @@ menu = PluginMenu(
             PluginMenuItem(
                 link='plugins:netbox_licenses:currencyconversionrate_list',
                 link_text='Currency Rates',
+                permissions=['netbox_licenses.view_currencyconversionrate'],
                 buttons=currencyrate_buttons
             ),
         )),
