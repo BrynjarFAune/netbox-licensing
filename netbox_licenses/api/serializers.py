@@ -50,7 +50,8 @@ class LicenseSerializer(NetBoxModelSerializer):
     # Nested serializers
     vendor = ManufacturerSerializer(nested=True)
     tenant = TenantSerializer(nested=True, allow_null=True, required=False)
-    responsible_contact = ContactSerializer(nested=True, allow_null=True, required=False)
+    # Removed: responsible_contact - now managed via ContactAssignment
+    # Use /api/tenancy/contact-assignments/ to manage contacts for licenses
 
     # Computed period fields (from active period)
     active_period_per_seat_price = serializers.ReadOnlyField()
@@ -82,7 +83,7 @@ class LicenseSerializer(NetBoxModelSerializer):
             # Lifecycle fields
             'billing_cycle', 'is_active', 'license_status',
             # Payment fields
-            'payment_method', 'payment_portal_url', 'responsible_contact',
+            'payment_method', 'payment_portal_url',
             # Active period pricing (computed)
             'active_period_per_seat_price', 'active_period_total_price', 'active_period_currency',
             # Standard fields

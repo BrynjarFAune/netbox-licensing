@@ -59,12 +59,8 @@ class LicenseForm(NetBoxModelForm):
         help_text="URL to payment portal or subscription management page"
     )
 
-    responsible_contact = DynamicModelChoiceField(
-        queryset=Contact.objects.all(),
-        required=False,
-        label="Responsible Contact",
-        help_text="Person responsible for maintaining this license (payments, renewals, compliance)"
-    )
+    # Removed: responsible_contact - now managed via ContactAssignment
+    # Contacts are assigned through NetBox's standard contact assignment UI
 
     tags = DynamicModelMultipleChoiceField(
         queryset=Tag.objects.all(),
@@ -76,7 +72,7 @@ class LicenseForm(NetBoxModelForm):
         model = License
         fields = (
             'name', 'vendor', 'tenant', 'assignment_type',
-            'billing_cycle', 'payment_method', 'payment_portal_url', 'responsible_contact',
+            'billing_cycle', 'payment_method', 'payment_portal_url',
             'total_licenses', 'metadata',
             'comments', 'tags'
         )

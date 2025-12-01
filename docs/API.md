@@ -17,8 +17,9 @@
 ### Optional Fields
 - `tenant` (int), `assignment_type` (int - ContentType ID), `external_id` (string)
 - `total_licenses` (int, default: 1), `billing_cycle` (string), `payment_method` (string)
-- `payment_portal_url` (URL), `responsible_contact` (int - Contact ID), `metadata` (JSON)
+- `payment_portal_url` (URL), `metadata` (JSON)
 - `comments` (string), `tags` (array)
+- **Note:** Contacts now managed via `/api/tenancy/contact-assignments/` (removed: `responsible_contact`)
 
 ### Read-Only
 - `consumed_licenses`, `available_licenses`, `utilization_percentage`

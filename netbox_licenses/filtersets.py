@@ -19,19 +19,13 @@ class LicenseFilterSet(NetBoxModelFilterSet):
     total_licenses__gte = django_filters.NumberFilter(field_name='total_licenses', lookup_expr='gte')
     consumed_licenses__gte = django_filters.NumberFilter(field_name='consumed_licenses', lookup_expr='gte')
 
-    # New filters for payment method and responsibility
+    # New filters for payment method
     payment_method = django_filters.MultipleChoiceFilter(
         choices=PaymentMethodChoices,
         label='Payment Method'
     )
-    responsible_contact = django_filters.ModelMultipleChoiceFilter(
-        queryset=Contact.objects.all(),
-        label='Responsible Contact'
-    )
-    has_responsible_contact = django_filters.BooleanFilter(
-        method='filter_has_responsible_contact',
-        label='Has Responsible Contact'
-    )
+    # Removed: responsible_contact filters - now managed via ContactAssignment
+    # Use NetBox's standard contact filtering instead
 
     # Period-based date filters
     active_from = django_filters.DateFilter(
@@ -55,28 +49,23 @@ class LicenseFilterSet(NetBoxModelFilterSet):
     class Meta:
         model = License
         fields = ('id', 'name', 'vendor', 'tenant', 'external_id', 'total_licenses',
-                  'consumed_licenses', 'payment_method', 'responsible_contact',
+                  'consumed_licenses', 'payment_method',
                   'active_from', 'active_to', 'license_status')
-    
+
     def filter_has_external_id(self, queryset, name, value):
         if value:
             return queryset.exclude(external_id__isnull=True).exclude(external_id='')
         return queryset.filter(models.Q(external_id__isnull=True) | models.Q(external_id=''))
-    
+
     def filter_underutilized(self, queryset, name, value):
         if value:
             return queryset.filter(consumed_licenses__lt=models.F('total_licenses'))
         return queryset
-    
+
     def filter_overallocated(self, queryset, name, value):
         if value:
             return queryset.filter(consumed_licenses__gt=models.F('total_licenses'))
         return queryset
-
-    def filter_has_responsible_contact(self, queryset, name, value):
-        if value:
-            return queryset.filter(responsible_contact__isnull=False)
-        return queryset.filter(responsible_contact__isnull=True)
 
     def filter_active_from(self, queryset, name, value):
         """Filter licenses active from this date onwards (period overlaps with value or later)"""

@@ -278,13 +278,16 @@ class CostReportView(View):
         for license in licenses:
             active_period = license.get_active_period()
 
+            # Get contacts for this license (from ContactAssignment)
+            contacts = license.get_contacts() if hasattr(license, 'get_contacts') else []
+
             license_info = {
                 'license': license,
                 'active_period': active_period,
                 'is_active': license.is_active,
                 'status': license.license_status,
                 'available_seats': license.available_licenses,
-                'responsible_contact': license.responsible_contact,
+                'contacts': contacts,  # Changed from responsible_contact to contacts
                 'current_period_end': license.current_period_end,
                 'payment_method': license.payment_method,
                 'utilization_percentage': license.utilization_percentage,
@@ -306,10 +309,10 @@ class CostReportView(View):
                 license_info['days_remaining'] = None
                 licenses_needing_action.append(license_info)
 
-            # If no responsible contact, flag it
-            if not license.responsible_contact:
+            # If no contacts assigned, flag it
+            if not contacts:
                 if license_info not in licenses_needing_action:
-                    license_info['action_reason'] = 'no_responsible_contact'
+                    license_info['action_reason'] = 'no_contacts'
                     licenses_needing_action.append(license_info)
 
             # Add to active list if currently active

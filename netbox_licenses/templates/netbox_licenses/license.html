@@ -78,18 +78,8 @@
                         {% endif %}
                     </td>
                 </tr>
-                <tr>
-                    <th scope="row">Responsible Contact</th>
-                    <td>
-                        {% if object.responsible_contact %}
-                            <a href="{{ object.responsible_contact.get_absolute_url }}" class="text-decoration-none">
-                                {{ object.responsible_contact|linkify }}
-                            </a>
-                        {% else %}
-                            <span class="text-muted">No one assigned</span>
-                        {% endif %}
-                    </td>
-                </tr>
+                {# Removed: Responsible Contact - now managed via ContactAssignment #}
+                {# Contacts are displayed through NetBox's standard contact panel #}
                 <tr>
                     <th scope="row">External ID</th>
                     <td>{{ object.external_id|default:"—" }}</td>

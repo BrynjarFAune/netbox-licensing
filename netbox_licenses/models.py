@@ -9,12 +9,13 @@ from datetime import timedelta
 from decimal import Decimal
 from django.db import models
 from netbox.models import NetBoxModel
+from netbox.models.features import ContactsMixin
 from tenancy.models import Contact, Tenant
 from dcim.models import Manufacturer
 from .choices import LicenseStatusChoices, CurrencyChoices, PaymentMethodChoices, PricingModeChoices
 
 
-class License(NetBoxModel):
+class License(ContactsMixin, NetBoxModel):
     name = models.CharField(
         max_length=50
     )
@@ -98,14 +99,8 @@ class License(NetBoxModel):
     )
 
     # RESPONSIBILITY TRACKING
-    responsible_contact = models.ForeignKey(
-        to=Contact,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='responsible_for_licenses',
-        help_text="Person responsible for maintaining this license (payments, renewals, compliance)"
-    )
+    # Removed: responsible_contact - now managed via ContactsMixin/ContactAssignment
+    # Use get_contacts() method to retrieve assigned contacts with roles
 
     # LEGACY FIELD - keeping for backward compatibility
     total_instances = models.PositiveIntegerField(default=0)
@@ -313,7 +308,7 @@ class License(NetBoxModel):
                 f"Please remove {actual_consumed - self.total_licenses} license instances first."
             )
 
-class LicenseInstance(NetBoxModel):
+class LicenseInstance(ContactsMixin, NetBoxModel):
     license = models.ForeignKey(
         to=License,
         on_delete=models.CASCADE,

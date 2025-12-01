@@ -26,20 +26,21 @@ class LicenseTable(NetBoxTable):
     currency = tables.Column(verbose_name="Currency", empty_values=())
     total_cost = tables.Column(empty_values=(), verbose_name="Total Cost (NOK)")
 
-    # PAYMENT AND RESPONSIBILITY COLUMNS
+    # PAYMENT COLUMNS
     payment_method = tables.Column(verbose_name="Payment Method")
-    responsible_contact = tables.Column(linkify=True, verbose_name="Responsible")
+    # Removed: responsible_contact - now managed via ContactAssignment
+    # Contacts displayed in detail view through NetBox's standard contact panel
 
     class Meta(NetBoxTable.Meta):
         model = License
         fields = (
             "pk", "name", "vendor", "tenant", "external_id", "status",
             "utilization", "total_licenses", "consumed_licenses", "available_licenses",
-            "price", "currency", "total_cost", "payment_method", "responsible_contact",
+            "price", "currency", "total_cost", "payment_method",
             "tags", "created", "last_updated", "actions"
         )
         default_columns = (
-            "pk", "name", "vendor", "status", "payment_method", "responsible_contact",
+            "pk", "name", "vendor", "status", "payment_method",
             "utilization", "total_licenses", "consumed_licenses", "available_licenses"
         )
 
