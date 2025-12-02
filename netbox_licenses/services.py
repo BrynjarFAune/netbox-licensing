@@ -116,7 +116,9 @@ class ComplianceMonitoringService:
     @staticmethod
     def check_overallocated_licenses():
         """Find and alert on overallocated licenses"""
+        # Exclude unlimited licenses (total_licenses = None)
         overallocated = License.objects.filter(
+            total_licenses__isnull=False,
             consumed_licenses__gt=F('total_licenses')
         )
         
@@ -152,7 +154,9 @@ class ComplianceMonitoringService:
     @staticmethod
     def check_underutilized_licenses(threshold: int = 50):
         """Find underutilized licenses for cost optimization"""
+        # Exclude unlimited licenses (total_licenses = None)
         underutilized = License.objects.filter(
+            total_licenses__isnull=False,
             total_licenses__gt=0,
             consumed_licenses__lt=F('total_licenses') * threshold / 100
         )
@@ -286,8 +290,9 @@ class AnalyticsService:
         """Generate cost optimization recommendations"""
         recommendations = []
         
-        # Find underutilized licenses
+        # Find underutilized licenses (exclude unlimited licenses)
         underutilized = License.objects.filter(
+            total_licenses__isnull=False,
             total_licenses__gt=0,
             consumed_licenses__lt=F('total_licenses') * 70 / 100  # Less than 70% utilized
         ).order_by('-total_licenses')

@@ -63,6 +63,10 @@ class LicenseSerializer(NetBoxModelSerializer):
 
     def validate_total_licenses(self, value):
         """Validate total_licenses cannot be reduced below consumed licenses"""
+        # Allow None for unlimited licenses
+        if value is None:
+            return None
+
         if self.instance and self.instance.pk:
             consumed = self.instance.instances.count()
             if value < consumed:

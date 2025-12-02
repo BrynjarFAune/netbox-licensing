@@ -45,8 +45,9 @@ class License(ContactsMixin, NetBoxModel):
     )
     
     total_licenses = models.PositiveIntegerField(
-        default=1,
-        help_text="Total available license slots purchased"
+        null=True,
+        blank=True,
+        help_text="Total available license slots purchased (leave blank for unlimited licenses)"
     )
     
     consumed_licenses = models.PositiveIntegerField(
@@ -112,22 +113,30 @@ class License(ContactsMixin, NetBoxModel):
     # NEW COMPUTED PROPERTIES
     @property
     def available_licenses(self):
-        """Calculate remaining available licenses"""
+        """Calculate remaining available licenses (None = unlimited)"""
+        if self.total_licenses is None:
+            return None  # Unlimited
         return self.total_licenses - self.consumed_licenses
-    
+
     @property
     def utilization_percentage(self):
-        """Calculate utilization percentage"""
+        """Calculate utilization percentage (None for unlimited licenses)"""
+        if self.total_licenses is None:
+            return None  # Unlimited - no percentage
         if self.total_licenses == 0:
             return 0
         return (self.consumed_licenses / self.total_licenses) * 100
-    
+
     def can_create_instance(self):
         """Check if a new instance can be created without exceeding total licenses"""
+        if self.total_licenses is None:
+            return True  # Unlimited licenses
         return self.available_licenses > 0
-    
+
     def get_availability_status(self):
         """Get human-readable availability status"""
+        if self.total_licenses is None:
+            return "unlimited"
         if self.available_licenses == 0:
             return "fully_allocated"
         elif self.available_licenses < 0:
@@ -174,7 +183,10 @@ class License(ContactsMixin, NetBoxModel):
 
     @property
     def total_monthly_commitment_nok(self):
-        """Total monthly commitment converted to NOK"""
+        """Total monthly commitment converted to NOK (None for unlimited licenses)"""
+        if self.total_licenses is None:
+            return None  # Unlimited - cannot calculate total commitment
+
         per_seat_monthly = self.monthly_equivalent_price
         if per_seat_monthly == 0:
             return Decimal('0.00')
@@ -193,7 +205,9 @@ class License(ContactsMixin, NetBoxModel):
 
     @property
     def total_yearly_commitment_nok(self):
-        """Total yearly commitment converted to NOK"""
+        """Total yearly commitment converted to NOK (None for unlimited licenses)"""
+        if self.total_monthly_commitment_nok is None:
+            return None
         return self.total_monthly_commitment_nok * 12
 
     def get_active_period(self):
@@ -288,7 +302,8 @@ class License(ContactsMixin, NetBoxModel):
         from django.core.exceptions import ValidationError
         super().clean()
 
-        if self.total_licenses < 0:
+        # Validate total_licenses if provided
+        if self.total_licenses is not None and self.total_licenses < 0:
             raise ValidationError("Total licenses cannot be negative")
 
         # Note: Pricing is now handled by LicensePeriod model, not License
@@ -301,7 +316,8 @@ class License(ContactsMixin, NetBoxModel):
             self.consumed_licenses = actual_consumed
 
         # CRITICAL: Prevent reducing total_licenses below consumed_licenses
-        if self.pk and self.total_licenses < actual_consumed:
+        # Skip this check for unlimited licenses (total_licenses = None)
+        if self.pk and self.total_licenses is not None and self.total_licenses < actual_consumed:
             raise ValidationError(
                 f"Cannot reduce total licenses to {self.total_licenses}. "
                 f"There are currently {actual_consumed} licenses in use. "

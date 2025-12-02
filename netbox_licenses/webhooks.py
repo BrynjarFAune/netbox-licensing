@@ -98,10 +98,11 @@ class VendorWebhookView(View):
             
             # Update license consumption from Microsoft data
             enabled_units = resource_data.get('consumedUnits', 0)
-            total_units = resource_data.get('prepaidUnits', {}).get('enabled', 0)
-            
+            total_units = resource_data.get('prepaidUnits', {}).get('enabled', None)
+
             license_obj.consumed_licenses = enabled_units
-            license_obj.total_licenses = total_units
+            # Allow None for unlimited licenses, or 0 if not provided
+            license_obj.total_licenses = total_units if total_units is not None else None
             license_obj.save()
             
             logger.info(f"Updated Microsoft 365 license {license_obj.name}: {enabled_units}/{total_units}")
@@ -182,8 +183,8 @@ class VendorWebhookView(View):
             license_obj.consumed_licenses = license_obj.consumed_licenses + 1
             license_obj.save()
             
-            # Check for overallocation
-            if license_obj.consumed_licenses > license_obj.total_licenses:
+            # Check for overallocation (skip for unlimited licenses)
+            if license_obj.total_licenses is not None and license_obj.consumed_licenses > license_obj.total_licenses:
                 LicenseAlert.objects.create(
                     license=license_obj,
                     alert_type='overallocated',
@@ -192,11 +193,12 @@ class VendorWebhookView(View):
                     message=f'Assignment to {user_id} caused overallocation: {license_obj.consumed_licenses}/{license_obj.total_licenses}',
                     alert_data={'user_id': user_id, 'source': 'webhook'}
                 )
-            
+
+            total_display = license_obj.total_licenses if license_obj.total_licenses is not None else "unlimited"
             return JsonResponse({
                 'status': 'success',
                 'message': f'License assigned to {user_id}',
-                'utilization': f'{license_obj.consumed_licenses}/{license_obj.total_licenses}'
+                'utilization': f'{license_obj.consumed_licenses}/{total_display}'
             })
             
         except License.DoesNotExist:
@@ -217,10 +219,11 @@ class VendorWebhookView(View):
             license_obj.consumed_licenses = max(0, license_obj.consumed_licenses - 1)
             license_obj.save()
             
+            total_display = license_obj.total_licenses if license_obj.total_licenses is not None else "unlimited"
             return JsonResponse({
                 'status': 'success',
                 'message': f'License released from {user_id}',
-                'utilization': f'{license_obj.consumed_licenses}/{license_obj.total_licenses}'
+                'utilization': f'{license_obj.consumed_licenses}/{total_display}'
             })
             
         except License.DoesNotExist:

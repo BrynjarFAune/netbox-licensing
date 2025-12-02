@@ -32,10 +32,10 @@ class LicenseForm(NetBoxModelForm):
     )
     
     total_licenses = IntegerField(
-        min_value=1,
-        initial=1,
+        required=False,
+        min_value=0,
         label="Seats",
-        help_text="Total available license seats purchased"
+        help_text="Total available license seats purchased (leave blank for unlimited licenses)"
     )
     
     metadata = CharField(
@@ -80,6 +80,10 @@ class LicenseForm(NetBoxModelForm):
     def clean_total_licenses(self):
         """Validate total_licenses cannot be reduced below consumed licenses"""
         total_licenses = self.cleaned_data.get('total_licenses')
+
+        # Allow None for unlimited licenses
+        if total_licenses is None:
+            return None
 
         if self.instance and self.instance.pk:
             # Existing license - check consumed instances
@@ -186,7 +190,8 @@ class LicenseInstanceForm(NetBoxModelForm):
             return cleaned_data
 
         # Check license availability for new instances (warning only, allow overallocation)
-        if not self.instance.pk:  # New instance
+        # Skip check for unlimited licenses (total_licenses = None)
+        if not self.instance.pk and license.total_licenses is not None:  # New instance with limited seats
             current_instances = license.instances.count()
             available_licenses = license.total_licenses - current_instances
 
@@ -317,14 +322,17 @@ class BulkLicenseInstanceForm(forms.Form):
         quantity = cleaned_data.get('quantity', 0)
 
         # Allow overallocation - just show warning if it would happen
-        if quantity > self.license.available_licenses:
-            from django.contrib import messages
-            messages.warning(
-                self.request if hasattr(self, 'request') else None,
-                f"Warning: Creating {quantity} instances will overallocate this license. "
-                f"License has {self.license.total_licenses} total slots with "
-                f"{self.license.consumed_licenses} already consumed."
-            )
+        # Skip check for unlimited licenses (total_licenses = None)
+        if self.license.total_licenses is not None:
+            available = self.license.available_licenses
+            if available is not None and quantity > available:
+                from django.contrib import messages
+                messages.warning(
+                    self.request if hasattr(self, 'request') else None,
+                    f"Warning: Creating {quantity} instances will overallocate this license. "
+                    f"License has {self.license.total_licenses} total slots with "
+                    f"{self.license.consumed_licenses} already consumed."
+                )
 
         # Check that we have enough assigned objects and no duplicates
         assigned_objects = []
@@ -738,8 +746,8 @@ class LicensePeriodForm(NetBoxModelForm):
                 try:
                     license_obj = License.objects.get(pk=license_id)
 
-                    # Auto-fill from license
-                    if 'seats_purchased' not in self.initial:
+                    # Auto-fill from license (if not unlimited)
+                    if 'seats_purchased' not in self.initial and license_obj.total_licenses is not None:
                         self.initial['seats_purchased'] = license_obj.total_licenses
                         self.fields['seats_purchased'].initial = license_obj.total_licenses
 
