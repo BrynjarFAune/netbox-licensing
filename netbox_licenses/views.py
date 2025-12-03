@@ -38,8 +38,10 @@ class LicenseDashboardView(View):
         total_utilized = 0
 
         for license in licenses:
-            total_licenses_count += license.total_licenses
-            total_utilized += license.consumed_licenses
+            # Only count licenses with defined total (exclude unlimited)
+            if license.total_licenses is not None:
+                total_licenses_count += license.total_licenses
+                total_utilized += license.consumed_licenses
 
         utilization_percent = (total_utilized / total_licenses_count * 100) if total_licenses_count > 0 else 0
 
@@ -47,22 +49,23 @@ class LicenseDashboardView(View):
         license_chart_data = []
         active_licenses_list = [l for l in licenses if l.is_active]
 
-        # Sort by total seats and take top 15
-        sorted_licenses = sorted(active_licenses_list, key=lambda x: x.total_licenses, reverse=True)[:15]
+        # Sort by total seats and take top 15 (exclude unlimited licenses)
+        limited_licenses = [l for l in active_licenses_list if l.total_licenses is not None]
+        sorted_licenses = sorted(limited_licenses, key=lambda x: x.total_licenses, reverse=True)[:15]
 
         for license in sorted_licenses:
             license_chart_data.append({
                 'name': license.name,
                 'used': license.consumed_licenses,
-                'free': license.available_licenses,
-                'total': license.total_licenses,
-                'utilization': license.utilization_percentage
+                'free': license.available_licenses if license.available_licenses is not None else 0,
+                'total': license.total_licenses if license.total_licenses is not None else 0,
+                'utilization': license.utilization_percentage if license.utilization_percentage is not None else 0
             })
 
         # === LICENSES WITH AVAILABLE CAPACITY ===
         available_capacity = []
         for license in licenses:
-            if license.available_licenses > 0 and license.is_active:
+            if license.available_licenses is not None and license.available_licenses > 0 and license.is_active:
                 available_capacity.append({
                     'license': license,
                     'available_seats': license.available_licenses,
@@ -77,7 +80,8 @@ class LicenseDashboardView(View):
         # === NEARLY FULL LICENSES (>90% utilized) ===
         nearly_full = []
         for license in licenses:
-            if license.is_active and license.utilization_percentage >= 90 and license.available_licenses >= 0:
+            if (license.is_active and license.utilization_percentage is not None and
+                license.utilization_percentage >= 90 and license.available_licenses is not None and license.available_licenses >= 0):
                 nearly_full.append({
                     'license': license,
                     'available_seats': license.available_licenses,
@@ -112,7 +116,7 @@ class LicenseDashboardView(View):
                 inactive_licenses.append(license_info)
 
         # Sort active by utilization (lowest first = most capacity)
-        active_licenses.sort(key=lambda x: x.get('utilization_percentage', 0))
+        active_licenses.sort(key=lambda x: x.get('utilization_percentage') if x.get('utilization_percentage') is not None else 0)
 
         context = {
             # Overview metrics
@@ -182,15 +186,17 @@ class CostReportView(View):
                 else:
                     rate = Decimal(str(rate))
 
-                license_cost_nok = per_seat_price * rate * license.total_licenses
-                total_cost_nok += license_cost_nok
+                if license.total_licenses is not None:
+                    license_cost_nok = per_seat_price * rate * license.total_licenses
+                    total_cost_nok += license_cost_nok
 
-                # Calculate unused cost
-                unused = license.available_licenses
-                if unused > 0:
-                    unused_cost_nok += per_seat_price * rate * unused
+                    # Calculate unused cost
+                    unused = license.available_licenses
+                    if unused is not None and unused > 0:
+                        unused_cost_nok += per_seat_price * rate * unused
 
-            total_licenses_count += license.total_licenses
+            if license.total_licenses is not None:
+                total_licenses_count += license.total_licenses
             total_utilized += license.consumed_licenses
 
         utilization_percent = (total_utilized / total_licenses_count * 100) if total_licenses_count > 0 else 0
@@ -206,7 +212,8 @@ class CostReportView(View):
             vendor_cost_nok = Decimal('0.00')
 
             for license in vendor_licenses:
-                vendor_total += license.total_licenses
+                if license.total_licenses is not None:
+                    vendor_total += license.total_licenses
                 vendor_consumed += license.consumed_licenses
 
                 # Skip cost calculation for FREE_TRIAL licenses
@@ -220,7 +227,8 @@ class CostReportView(View):
                     else:
                         rate = Decimal(str(rate))
 
-                    vendor_cost_nok += per_seat_price * rate * license.total_licenses
+                    if license.total_licenses is not None:
+                        vendor_cost_nok += per_seat_price * rate * license.total_licenses
 
             vendor_stats.append({
                 'vendor': vendor.name,
@@ -246,7 +254,8 @@ class CostReportView(View):
             # (no ongoing cost savings opportunity)
             from .choices import PaymentMethodChoices
             if (license.payment_method not in [PaymentMethodChoices.FREE_TRIAL, PaymentMethodChoices.PREPAID]
-                and license.available_licenses > 0 and license.total_licenses > 0):
+                and license.available_licenses is not None and license.available_licenses > 0
+                and license.total_licenses is not None and license.total_licenses > 0):
                 waste_pct = (license.available_licenses / license.total_licenses) * 100
 
                 per_seat_price = Decimal(str(license.active_period_per_seat_price))
@@ -452,8 +461,8 @@ class LicenseView(generic.ObjectView):
             # UTILIZATION CONTEXT
             'utilization_percentage': instance.utilization_percentage,
             'available_licenses': instance.available_licenses,
-            'is_underutilized': instance.utilization_percentage < 80,
-            'is_overallocated': instance.consumed_licenses > instance.total_licenses,
+            'is_underutilized': instance.utilization_percentage is not None and instance.utilization_percentage < 80,
+            'is_overallocated': instance.total_licenses is not None and instance.consumed_licenses > instance.total_licenses,
             "instance_table": tables.LicenseInstanceTable(
                 instance.instances.all(),
                 user=request.user
@@ -740,6 +749,7 @@ class UtilizationReportView(View):
         potential_savings = sum(
             (license.total_licenses - license.consumed_licenses) * float(license.active_period_per_seat_price or 0)
             for license in top_underutilized
+            if license.total_licenses is not None
         )
         
         context = {
@@ -769,8 +779,8 @@ class VendorUtilizationView(View):
             if vendor_id:
                 vendor_licenses = models.License.objects.filter(vendor_id=vendor_id)
                 vendor_name = vendor_licenses.first().vendor.name if vendor_licenses.exists() else 'Unknown'
-                
-                total_licenses = sum(license.total_licenses for license in vendor_licenses)
+
+                total_licenses = sum(license.total_licenses for license in vendor_licenses if license.total_licenses is not None)
                 consumed_licenses = sum(license.consumed_licenses for license in vendor_licenses)
                 utilization = (consumed_licenses / total_licenses * 100) if total_licenses > 0 else 0
                 total_cost = sum(license.total_cost or 0 for license in vendor_licenses)
@@ -921,7 +931,9 @@ class CostAllocationView(View):
             # Calculate based on total licensed capacity using active period pricing
             # This shows the full investment including unutilized slots
             license_per_seat_price = license.active_period_per_seat_price
-            total_license_value = license_per_seat_price * license.total_licenses
+            total_license_value = Decimal('0')
+            if license.total_licenses is not None:
+                total_license_value = license_per_seat_price * license.total_licenses
 
             # Add to total system cost (full investment)
             license_cost = total_license_value
@@ -958,7 +970,9 @@ class CostAllocationView(View):
 
             # Calculate full license investment using active period pricing
             license_per_seat_price = license.active_period_per_seat_price
-            total_invested_value = license_per_seat_price * license.total_licenses
+            total_invested_value = Decimal('0')
+            if license.total_licenses is not None:
+                total_invested_value = license_per_seat_price * license.total_licenses
 
             # Calculate actual usage value (only consumed slots)
             actual_usage_value = Decimal('0')
@@ -967,11 +981,14 @@ class CostAllocationView(View):
                 actual_usage_value += Decimal(str(instance_price))
 
             # Calculate wasted money (unutilized slots)
-            unutilized_slots = license.total_licenses - consumed
-            wasted_value = license_per_seat_price * unutilized_slots
+            unutilized_slots = 0
+            wasted_value = Decimal('0')
+            if license.total_licenses is not None:
+                unutilized_slots = license.total_licenses - consumed
+                wasted_value = license_per_seat_price * unutilized_slots
 
             utilization_percentage = 0
-            if license.total_licenses > 0:
+            if license.total_licenses is not None and license.total_licenses > 0:
                 utilization_percentage = (consumed / license.total_licenses) * 100
 
             license_details.append({
