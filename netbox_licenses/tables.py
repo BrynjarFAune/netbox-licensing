@@ -61,11 +61,15 @@ class LicenseTable(NetBoxTable):
 
     def value_utilization(self, record):
         """Plain text value for CSV export"""
+        if record.utilization_percentage is None:
+            return "Unlimited"
         return f"{record.utilization_percentage:.1f}%"
 
     def render_available_licenses(self, record):
         """Render free seats without color coding"""
         available = record.available_licenses
+        if available is None:
+            return format_html('<span class="badge text-bg-info">Unlimited</span>')
         if available < 0:
             return format_html('<span class="text-danger"><i class="mdi mdi-alert"></i> {}</span>', available)
         else:
@@ -73,6 +77,8 @@ class LicenseTable(NetBoxTable):
 
     def value_available_licenses(self, record):
         """Plain text value for CSV export"""
+        if record.available_licenses is None:
+            return "Unlimited"
         return record.available_licenses
 
     def render_price(self, record):
@@ -300,6 +306,9 @@ class LicensePeriodTable(NetBoxTable):
 
         percentage = record.utilization_percentage
 
+        if percentage is None:
+            return format_html('<span class="badge text-bg-info">Unlimited</span>')
+
         if percentage >= 90:
             color = 'success'
         elif percentage >= 70:
@@ -320,6 +329,8 @@ class LicensePeriodTable(NetBoxTable):
         if record.seats_purchased == 0:
             return "0%"
         percentage = record.utilization_percentage
+        if percentage is None:
+            return "Unlimited"
         return f"{percentage:.1f}%"
 
     def render_status(self, record):
