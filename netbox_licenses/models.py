@@ -47,7 +47,7 @@ class License(ContactsMixin, NetBoxModel):
     total_licenses = models.PositiveIntegerField(
         null=True,
         blank=True,
-        help_text="Total available license slots purchased (leave blank for unlimited licenses)"
+        help_text="Total available license slots purchased (leave blank if undefined/not applicable)"
     )
     
     consumed_licenses = models.PositiveIntegerField(
@@ -113,16 +113,16 @@ class License(ContactsMixin, NetBoxModel):
     # NEW COMPUTED PROPERTIES
     @property
     def available_licenses(self):
-        """Calculate remaining available licenses (None = unlimited)"""
+        """Calculate remaining available licenses (None = undefined capacity)"""
         if self.total_licenses is None:
-            return None  # Unlimited
+            return None  # Undefined - not applicable
         return self.total_licenses - self.consumed_licenses
 
     @property
     def utilization_percentage(self):
-        """Calculate utilization percentage (None for unlimited licenses)"""
+        """Calculate utilization percentage (None for undefined capacity licenses)"""
         if self.total_licenses is None:
-            return None  # Unlimited - no percentage
+            return None  # Undefined - no percentage
         if self.total_licenses == 0:
             return 0
         return (self.consumed_licenses / self.total_licenses) * 100
@@ -130,13 +130,13 @@ class License(ContactsMixin, NetBoxModel):
     def can_create_instance(self):
         """Check if a new instance can be created without exceeding total licenses"""
         if self.total_licenses is None:
-            return True  # Unlimited licenses
+            return True  # Undefined capacity - always allow
         return self.available_licenses > 0
 
     def get_availability_status(self):
         """Get human-readable availability status"""
         if self.total_licenses is None:
-            return "unlimited"
+            return "undefined"
         if self.available_licenses == 0:
             return "fully_allocated"
         elif self.available_licenses < 0:
@@ -183,9 +183,9 @@ class License(ContactsMixin, NetBoxModel):
 
     @property
     def total_monthly_commitment_nok(self):
-        """Total monthly commitment converted to NOK (None for unlimited licenses)"""
+        """Total monthly commitment converted to NOK (None for undefined capacity licenses)"""
         if self.total_licenses is None:
-            return None  # Unlimited - cannot calculate total commitment
+            return None  # Undefined - cannot calculate total commitment
 
         per_seat_monthly = self.monthly_equivalent_price
         if per_seat_monthly == 0:
@@ -205,7 +205,7 @@ class License(ContactsMixin, NetBoxModel):
 
     @property
     def total_yearly_commitment_nok(self):
-        """Total yearly commitment converted to NOK (None for unlimited licenses)"""
+        """Total yearly commitment converted to NOK (None for undefined capacity licenses)"""
         if self.total_monthly_commitment_nok is None:
             return None
         return self.total_monthly_commitment_nok * 12

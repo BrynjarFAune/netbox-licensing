@@ -101,7 +101,7 @@ class VendorWebhookView(View):
             total_units = resource_data.get('prepaidUnits', {}).get('enabled', None)
 
             license_obj.consumed_licenses = enabled_units
-            # Allow None for unlimited licenses, or 0 if not provided
+            # Allow None for undefined capacity licenses
             license_obj.total_licenses = total_units if total_units is not None else None
             license_obj.save()
             
@@ -183,7 +183,7 @@ class VendorWebhookView(View):
             license_obj.consumed_licenses = license_obj.consumed_licenses + 1
             license_obj.save()
             
-            # Check for overallocation (skip for unlimited licenses)
+            # Check for overallocation (skip for undefined capacity licenses)
             if license_obj.total_licenses is not None and license_obj.consumed_licenses > license_obj.total_licenses:
                 LicenseAlert.objects.create(
                     license=license_obj,
@@ -194,7 +194,7 @@ class VendorWebhookView(View):
                     alert_data={'user_id': user_id, 'source': 'webhook'}
                 )
 
-            total_display = license_obj.total_licenses if license_obj.total_licenses is not None else "unlimited"
+            total_display = license_obj.total_licenses if license_obj.total_licenses is not None else "undefined"
             return JsonResponse({
                 'status': 'success',
                 'message': f'License assigned to {user_id}',
@@ -219,7 +219,7 @@ class VendorWebhookView(View):
             license_obj.consumed_licenses = max(0, license_obj.consumed_licenses - 1)
             license_obj.save()
             
-            total_display = license_obj.total_licenses if license_obj.total_licenses is not None else "unlimited"
+            total_display = license_obj.total_licenses if license_obj.total_licenses is not None else "undefined"
             return JsonResponse({
                 'status': 'success',
                 'message': f'License released from {user_id}',

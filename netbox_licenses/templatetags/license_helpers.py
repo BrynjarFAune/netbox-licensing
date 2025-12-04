@@ -56,10 +56,10 @@ def utilization_badge(value):
     Returns a badge HTML with appropriate color based on utilization percentage.
     >100% = overallocated (red), High utilization = good (green), Low utilization = bad (red)
     Thresholds are read from plugin configuration.
-    None = unlimited license
+    None = undefined capacity license
     """
     if value is None:
-        return format_html('<span class="badge text-bg-info">Unlimited</span>')
+        return format_html('<span class="badge text-bg-secondary">Undefined</span>')
 
     value = float(str(value))  # Handle SafeString
 

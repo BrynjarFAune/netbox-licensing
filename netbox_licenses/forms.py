@@ -35,7 +35,7 @@ class LicenseForm(NetBoxModelForm):
         required=False,
         min_value=0,
         label="Seats",
-        help_text="Total available license seats purchased (leave blank for unlimited licenses)"
+        help_text="Total available license seats purchased (leave blank if undefined/not applicable)"
     )
     
     metadata = CharField(
@@ -81,7 +81,7 @@ class LicenseForm(NetBoxModelForm):
         """Validate total_licenses cannot be reduced below consumed licenses"""
         total_licenses = self.cleaned_data.get('total_licenses')
 
-        # Allow None for unlimited licenses
+        # Allow None for undefined capacity licenses
         if total_licenses is None:
             return None
 
