@@ -114,11 +114,49 @@ class LicenseInstanceForm(NetBoxModelForm):
         help_text="Search and select the specific object to assign"
     )
 
+    # INDIVIDUAL INSTANCE PRICING (optional - shown only for undefined capacity licenses)
+    individual_price = DecimalField(
+        required=False,
+        max_digits=12,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={'step': '0.01'}),
+        label="Individual Price",
+        help_text="Price for this specific instance (optional)"
+    )
+
+    individual_currency = CharField(
+        required=False,
+        max_length=3,
+        label="Currency",
+        help_text="Currency code (e.g., USD, EUR, NOK)",
+        widget=forms.TextInput(attrs={
+            'placeholder': 'NOK',
+            'maxlength': '3',
+            'style': 'text-transform: uppercase;',
+        })
+    )
+
+    billing_start = DateField(
+        required=False,
+        widget=DateInput(attrs={'type': 'date'}),
+        label="Billing Start",
+        help_text="When billing starts for this instance"
+    )
+
+    billing_end = DateField(
+        required=False,
+        widget=DateInput(attrs={'type': 'date'}),
+        label="Billing End",
+        help_text="When billing ends (leave blank for ongoing)"
+    )
+
     class Meta:
         model = LicenseInstance
         fields = (
             'license', 'assigned_object_selector',
-            'start_date', 'end_date', 'comments', 'tags'
+            'start_date', 'end_date',
+            'individual_price', 'individual_currency', 'billing_start', 'billing_end',
+            'comments', 'tags'
         )
         widgets = {
             'start_date': DateInput(attrs={'type': 'date', 'format': '%d/%m/%Y'}),
@@ -152,6 +190,10 @@ class LicenseInstanceForm(NetBoxModelForm):
         # If editing existing instance, populate initial value
         if self.instance and self.instance.pk and self.instance.assigned_object:
             self.fields['assigned_object_selector'].initial = self.instance.assigned_object
+
+        # Pre-populate individual_currency if editing
+        if self.instance and self.instance.pk and self.instance.individual_currency:
+            self.fields['individual_currency'].initial = self.instance.individual_currency.currency_code
 
     def _get_license_object(self):
         """Get the license object from form data, initial data, or existing instance"""
@@ -216,6 +258,36 @@ class LicenseInstanceForm(NetBoxModelForm):
         # Assignment is required for instances
         if not assigned_object_selector:
             self.add_error('assigned_object_selector', "An assigned object is required for license instances")
+
+        # Validate individual pricing currency
+        individual_price = cleaned_data.get('individual_price')
+        individual_currency_code = cleaned_data.get('individual_currency')
+
+        if individual_price and individual_currency_code:
+            # Convert currency code to CurrencyConversionRate object
+            currency_code = individual_currency_code.upper()
+            try:
+                from netbox_licenses.models import CurrencyConversionRate
+                currency = CurrencyConversionRate.objects.get(currency_code=currency_code)
+                cleaned_data['individual_currency'] = currency
+            except CurrencyConversionRate.DoesNotExist:
+                # Try to auto-create from API
+                from netbox_licenses.services.currency_service import create_currency_from_api, NorgesBankAPIError
+                try:
+                    currency = create_currency_from_api(currency_code)
+                    cleaned_data['individual_currency'] = currency
+                except (ValidationError, NorgesBankAPIError) as e:
+                    self.add_error('individual_currency', f"Currency '{currency_code}' not found: {str(e)}")
+        elif individual_price and not individual_currency_code:
+            # Price without currency - assume NOK
+            from netbox_licenses.models import CurrencyConversionRate
+            try:
+                currency = CurrencyConversionRate.objects.get(currency_code='NOK')
+                cleaned_data['individual_currency'] = currency
+            except CurrencyConversionRate.DoesNotExist:
+                cleaned_data['individual_currency'] = None  # Will be treated as NOK in model
+        else:
+            cleaned_data['individual_currency'] = None
 
         return cleaned_data
 

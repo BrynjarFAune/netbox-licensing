@@ -222,8 +222,22 @@ class License(ContactsMixin, NetBoxModel):
 
     @property
     def is_active(self):
-        """License is active if there's a period covering today"""
-        return self.get_active_period() is not None
+        """
+        License is active if:
+        - Pool license (defined capacity): Has a period covering today
+        - Individual license (undefined capacity): Has any active instances
+        """
+        # Pool licenses: check for active period
+        if self.total_licenses is not None:
+            return self.get_active_period() is not None
+
+        # Individual licenses: active if has any active instances
+        today = timezone.now().date()
+        return self.instances.filter(
+            start_date__lte=today
+        ).filter(
+            models.Q(end_date__isnull=True) | models.Q(end_date__gte=today)
+        ).exists()
 
     @property
     def license_status(self):
@@ -338,6 +352,34 @@ class LicenseInstance(ContactsMixin, NetBoxModel):
     start_date = models.DateField(default=timezone.now, help_text="When this user/device was assigned the license")
     end_date = models.DateField(null=True, blank=True, help_text="When this assignment ended (null = still active)")
 
+    # INDIVIDUAL INSTANCE PRICING (optional - for per-user subscriptions)
+    individual_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Price for this individual instance (leave blank to use license/period pricing)"
+    )
+    individual_currency = models.ForeignKey(
+        to='CurrencyConversionRate',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='license_instances',
+        help_text="Currency for individual instance pricing",
+        to_field='currency_code'
+    )
+    billing_start = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Billing start date for this instance (if different from assignment date)"
+    )
+    billing_end = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Billing end date for this instance (null = ongoing)"
+    )
+
     comments = models.TextField(blank=True)
 
     def __str__(self):
@@ -345,21 +387,38 @@ class LicenseInstance(ContactsMixin, NetBoxModel):
 
     @property
     def license_currency(self):
-        """Returns the currency from the parent license's active period"""
+        """Returns the currency - individual pricing takes precedence over license/period pricing"""
+        if self.individual_currency:
+            return self.individual_currency.currency_code
         return self.license.active_period_currency
 
     @property
     def license_price(self):
-        """Returns the per-seat price from the parent license's active period"""
+        """Returns the price - individual pricing takes precedence over license/period pricing"""
         from decimal import Decimal
+        if self.individual_price is not None:
+            return self.individual_price
         return self.license.active_period_per_seat_price
 
     @property
     def instance_price_nok(self):
-        """Returns the NOK price for this instance from the license"""
+        """Returns the NOK price for this instance"""
         from decimal import Decimal
 
-        # If the license is already in NOK, use its price
+        # Use individual pricing if set
+        if self.individual_price is not None:
+            if self.individual_currency and self.individual_currency.currency_code == 'NOK':
+                return self.individual_price
+            elif self.individual_currency:
+                rate = CurrencyConversionRate.get_rate_to_nok(self.individual_currency.currency_code)
+                if rate is None:
+                    return Decimal('0.0')
+                return self.individual_price * rate
+            else:
+                # Individual price but no currency specified - assume NOK
+                return self.individual_price
+
+        # Fall back to license/period pricing
         if self.license_currency == 'NOK':
             return self.license_price
 

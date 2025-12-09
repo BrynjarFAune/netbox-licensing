@@ -1,7 +1,8 @@
 # Database Migration Required
 
 ## Change Summary
-Making `total_licenses` field optional to support unlimited licenses.
+1. Making `total_licenses` field optional to support undefined capacity licenses
+2. Adding individual instance pricing fields to LicenseInstance model (for per-user subscriptions)
 
 ## Migration Command
 Run this on the NetBox server after deploying the code:
@@ -14,40 +15,76 @@ docker compose exec netbox python manage.py migrate netbox_licenses
 
 ## Expected Migration Changes
 
-The migration will modify the `netbox_licenses_license` table:
+The migration will modify two tables:
 
+### 1. `netbox_licenses_license` table
 ```python
-# Generated migration (approximate)
-operations = [
-    migrations.AlterField(
-        model_name='license',
-        name='total_licenses',
-        field=models.PositiveIntegerField(
-            blank=True,
-            null=True,
-            help_text='Total available license slots purchased (leave blank for unlimited licenses)'
-        ),
+migrations.AlterField(
+    model_name='license',
+    name='total_licenses',
+    field=models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        help_text='Total available license slots purchased (leave blank if undefined/not applicable)'
     ),
-]
+)
+```
+
+### 2. `netbox_licenses_licenseinstance` table
+```python
+migrations.AddField(
+    model_name='licenseinstance',
+    name='individual_price',
+    field=models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True),
+),
+migrations.AddField(
+    model_name='licenseinstance',
+    name='individual_currency',
+    field=models.ForeignKey(to='netbox_licenses.CurrencyConversionRate', null=True, blank=True),
+),
+migrations.AddField(
+    model_name='licenseinstance',
+    name='billing_start',
+    field=models.DateField(null=True, blank=True),
+),
+migrations.AddField(
+    model_name='licenseinstance',
+    name='billing_end',
+    field=models.DateField(null=True, blank=True),
+),
 ```
 
 ## SQL Changes (PostgreSQL)
 The migration will execute approximately:
 
 ```sql
--- Make column nullable
+-- License table: Make total_licenses nullable
 ALTER TABLE "netbox_licenses_license"
 ALTER COLUMN "total_licenses" DROP NOT NULL;
 
--- Update default (removes default value)
 ALTER TABLE "netbox_licenses_license"
 ALTER COLUMN "total_licenses" DROP DEFAULT;
+
+-- LicenseInstance table: Add individual pricing columns
+ALTER TABLE "netbox_licenses_licenseinstance"
+ADD COLUMN "individual_price" NUMERIC(12, 2) NULL;
+
+ALTER TABLE "netbox_licenses_licenseinstance"
+ADD COLUMN "individual_currency_id" VARCHAR(3) NULL REFERENCES "netbox_licenses_currencyconversionrate"("currency_code");
+
+ALTER TABLE "netbox_licenses_licenseinstance"
+ADD COLUMN "billing_start" DATE NULL;
+
+ALTER TABLE "netbox_licenses_licenseinstance"
+ADD COLUMN "billing_end" DATE NULL;
 ```
 
 ## Data Impact
-- **Existing Records**: All existing licenses will retain their current `total_licenses` values
-- **New Records**: Can now be created with `total_licenses = NULL` (unlimited)
-- **No Data Loss**: This is a non-destructive change
+- **Existing Licenses**: All existing licenses will retain their current `total_licenses` values
+- **Existing Instances**: All existing instances will have NULL for new pricing fields (will use license/period pricing as before)
+- **New Licenses**: Can now be created with `total_licenses = NULL` (undefined capacity)
+- **New Instances**: Can optionally include individual pricing for per-user subscriptions
+- **No Data Loss**: This is a non-destructive, backward-compatible change
 
 ## Validation Steps
 After migration:
