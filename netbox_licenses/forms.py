@@ -312,16 +312,17 @@ class LicenseInstanceForm(NetBoxModelForm):
                 self.instance.assigned_object_type = ContentType.objects.get_for_model(assigned_object_selector)
                 self.instance.assigned_object_id = assigned_object_selector.pk
 
+            # CRITICAL: Handle currency conversion BEFORE super()._post_clean()
+            # This prevents Django from trying to assign the string value directly
+            if 'individual_currency' in self.cleaned_data:
+                self.instance.individual_currency = self.cleaned_data['individual_currency']
+
         super()._post_clean()
 
     def save(self, commit=True):
         instance = super().save(commit=False)
 
-        # Handle currency assignment from cleaned_data
-        if hasattr(self, 'cleaned_data') and 'individual_currency' in self.cleaned_data:
-            instance.individual_currency = self.cleaned_data['individual_currency']
-
-        # Assignment fields already set in _post_clean()
+        # Assignment fields and currency already set in _post_clean()
         if commit:
             instance.save()
             self.save_m2m()
