@@ -123,6 +123,24 @@
                         {% endif %}
                     </td>
                 </tr>
+                {% if object.total_licenses is None and object.total_individual_monthly_cost_nok %}
+                    <tr>
+                        <th scope="row">Monthly Cost</th>
+                        <td>
+                            {% load license_helpers %}
+                            <strong>{{ object.total_individual_monthly_cost_nok|currency_format:"NOK" }}</strong>
+                            <br><small class="text-muted">Sum of {{ object.consumed_licenses }} individual subscription{{ object.consumed_licenses|pluralize }}</small>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Total Cost to Date</th>
+                        <td>
+                            {% load license_helpers %}
+                            <strong>{{ object.total_individual_cost_to_date_nok|currency_format:"NOK" }}</strong>
+                            <br><small class="text-muted">Accumulated cost across all active periods</small>
+                        </td>
+                    </tr>
+                {% endif %}
                 <tr>
                     <th scope="row">Created</th>
                     <td>{{ object.created }}</td>

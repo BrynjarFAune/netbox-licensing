@@ -210,6 +210,59 @@ class License(ContactsMixin, NetBoxModel):
             return None
         return self.total_monthly_commitment_nok * 12
 
+    @property
+    def total_individual_monthly_cost(self):
+        """Sum of all individual instance monthly prices (for undefined capacity licenses)"""
+        from decimal import Decimal
+
+        if self.total_licenses is not None:
+            # Pool license - use period-based pricing
+            return None
+
+        # Sum up individual instance prices
+        total = Decimal('0.00')
+        for instance in self.instances.all():
+            if instance.individual_price:
+                total += instance.individual_price
+
+        return total if total > 0 else None
+
+    @property
+    def total_individual_monthly_cost_nok(self):
+        """Sum of all individual instance monthly prices in NOK"""
+        from decimal import Decimal
+
+        if self.total_licenses is not None:
+            # Pool license - use period-based pricing
+            return None
+
+        # Sum up individual instance prices in NOK
+        total = Decimal('0.00')
+        for instance in self.instances.all():
+            if instance.individual_price:
+                price_nok = instance.instance_price_nok
+                if price_nok:
+                    total += price_nok
+
+        return total if total > 0 else None
+
+    @property
+    def total_individual_cost_to_date_nok(self):
+        """Sum of all individual instance total costs to date in NOK"""
+        from decimal import Decimal
+
+        if self.total_licenses is not None:
+            # Pool license - use period-based pricing
+            return None
+
+        # Sum up total costs to date for all instances
+        total = Decimal('0.00')
+        for instance in self.instances.all():
+            if instance.total_cost_to_date_nok:
+                total += instance.total_cost_to_date_nok
+
+        return total if total > 0 else None
+
     def get_active_period(self):
         """Get the period covering today (if any)"""
         from django.db.models import Q
