@@ -195,6 +195,15 @@ class LicenseInstanceForm(NetBoxModelForm):
         if self.instance and self.instance.pk and self.instance.individual_currency:
             self.fields['individual_currency'].initial = self.instance.individual_currency.currency_code
 
+        # Auto-fill pricing from license for new instances (if license has undefined capacity)
+        if not self.instance.pk and license_obj and license_obj.total_licenses is None:
+            # This is a new instance for an undefined capacity license
+            # Pre-fill with license's active period pricing as a helpful default
+            if license_obj.active_period_per_seat_price and license_obj.active_period_per_seat_price > 0:
+                self.fields['individual_price'].initial = license_obj.active_period_per_seat_price
+                self.fields['individual_currency'].initial = license_obj.active_period_currency
+                self.fields['individual_price'].help_text = f"Pre-filled from license (default: {license_obj.active_period_per_seat_price} {license_obj.active_period_currency})"
+
     def _get_license_object(self):
         """Get the license object from form data, initial data, or existing instance"""
         license_id = None
@@ -306,6 +315,10 @@ class LicenseInstanceForm(NetBoxModelForm):
 
     def save(self, commit=True):
         instance = super().save(commit=False)
+
+        # Handle currency assignment from cleaned_data
+        if hasattr(self, 'cleaned_data') and 'individual_currency' in self.cleaned_data:
+            instance.individual_currency = self.cleaned_data['individual_currency']
 
         # Assignment fields already set in _post_clean()
         if commit:
