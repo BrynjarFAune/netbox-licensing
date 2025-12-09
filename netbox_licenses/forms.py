@@ -320,14 +320,31 @@ class LicenseInstanceForm(NetBoxModelForm):
                 self.instance.assigned_object_id = assigned_object_selector.pk
 
             # CRITICAL: Handle currency conversion BEFORE super()._post_clean()
-            # Only assign if it's a CurrencyConversionRate object (not a string)
+            # Must convert string to CurrencyConversionRate object
             if 'individual_currency' in self.cleaned_data:
                 currency_value = self.cleaned_data['individual_currency']
-                # Only assign if it's already converted to an object or None
                 from netbox_licenses.models import CurrencyConversionRate
+
+                # If it's a string, convert it now (clean() might not have run)
+                if isinstance(currency_value, str) and currency_value:
+                    try:
+                        currency_code = currency_value.upper()
+                        currency_value = CurrencyConversionRate.objects.get(currency_code=currency_code)
+                        self.cleaned_data['individual_currency'] = currency_value
+                    except CurrencyConversionRate.DoesNotExist:
+                        # Try to create it
+                        from netbox_licenses.services.currency_service import create_currency_from_api
+                        try:
+                            currency_value = create_currency_from_api(currency_code)
+                            self.cleaned_data['individual_currency'] = currency_value
+                        except Exception:
+                            # Failed to create - set to None
+                            currency_value = None
+                            self.cleaned_data['individual_currency'] = None
+
+                # Now assign if it's the right type
                 if currency_value is None or isinstance(currency_value, CurrencyConversionRate):
                     self.instance.individual_currency = currency_value
-                # If it's still a string, it means conversion failed - skip assignment
 
         super()._post_clean()
 
