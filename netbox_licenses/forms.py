@@ -282,13 +282,18 @@ class LicenseInstanceForm(NetBoxModelForm):
                 cleaned_data['individual_currency'] = currency
             except CurrencyConversionRate.DoesNotExist:
                 # Try to auto-create from API
-                from netbox_licenses.services.currency_service import create_currency_from_api, NorgesBankAPIError
+                from netbox_licenses.services.currency_service import create_currency_from_api
                 try:
                     currency = create_currency_from_api(currency_code)
                     cleaned_data['individual_currency'] = currency
-                except (ValidationError, NorgesBankAPIError) as e:
-                    self.add_error('individual_currency', f"Currency '{currency_code}' not found: {str(e)}")
+                except ValidationError as e:
+                    # Currency creation failed or validation error
+                    self.add_error('individual_currency', f"Currency '{currency_code}' could not be created: {str(e)}")
                     # CRITICAL: Set to None so we don't try to assign the string later
+                    cleaned_data['individual_currency'] = None
+                except Exception as e:
+                    # API error or other issues
+                    self.add_error('individual_currency', f"Error creating currency '{currency_code}': {str(e)}")
                     cleaned_data['individual_currency'] = None
         elif individual_price and not individual_currency_code:
             # Price without currency - assume NOK
