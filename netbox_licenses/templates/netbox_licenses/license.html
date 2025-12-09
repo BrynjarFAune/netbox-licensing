@@ -102,9 +102,13 @@
                 <tr>
                     <th scope="row">Available Licenses</th>
                     <td>
-                        <span class="{% if object.available_licenses > 0 %}text-success{% else %}text-danger{% endif %}">
-                            {{ object.available_licenses }}
-                        </span>
+                        {% if object.available_licenses is None %}
+                            &mdash;
+                        {% else %}
+                            <span class="{% if object.available_licenses > 0 %}text-success{% else %}text-danger{% endif %}">
+                                {{ object.available_licenses }}
+                            </span>
+                        {% endif %}
                     </td>
                 </tr>
                 <tr>
@@ -230,12 +234,12 @@
             <h5 class="card-header">Quick Actions</h5>
             <div class="card-body">
                 <div class="d-flex gap-2 align-items-center flex-wrap">
-                    {% if object.available_licenses >= 1 %}
+                    {% if object.available_licenses is None or object.available_licenses >= 1 %}
                     <a href="{% url 'plugins:netbox_licenses:licenseinstance_add' %}?license={{ object.pk }}" class="btn btn-success">
                         <i class="mdi mdi-plus-thick"></i> Add Instance
                     </a>
                     {% endif %}
-                    {% if object.available_licenses > 1 %}
+                    {% if object.available_licenses is None or object.available_licenses > 1 %}
                         <a href="{% url 'plugins:netbox_licenses:license_bulk_add_instances' pk=object.pk %}" class="btn btn-info">
                             <i class="mdi mdi-plus-multiple"></i> Bulk Add Instances
                         </a>
@@ -243,7 +247,9 @@
                     <a href="{% url 'plugins:netbox_licenses:licenseperiod_add' %}?license={{ object.pk }}" class="btn btn-warning">
                         <i class="mdi mdi-refresh"></i> Add Period
                     </a>
-                    {% if object.available_licenses > 0 %}
+                    {% if object.available_licenses is None %}
+                        <span class="badge text-bg-secondary">Undefined capacity</span>
+                    {% elif object.available_licenses > 0 %}
                         <span class="badge text-bg-success">{{ object.available_licenses }} slot(s) available</span>
                     {% else %}
                         <span class="badge text-bg-danger">No available slots</span>
@@ -251,7 +257,7 @@
                 </div>
                 <small class="text-muted mt-2 d-block">
                     Create license instances and assign them to contacts, devices, or services.
-                    {% if object.available_licenses > 1 %}Use bulk add for multiple instances at once.{% endif %}
+                    {% if object.available_licenses is None or object.available_licenses > 1 %}Use bulk add for multiple instances at once.{% endif %}
                 </small>
             </div>
         </div>
@@ -269,7 +275,7 @@
         <a href="{% url 'plugins:netbox_licenses:licenseinstance_add' %}?license={{ object.pk }}" class="btn btn-sm btn-primary">
           <i class="mdi mdi-plus-thick"></i> Add Instance
         </a>
-        {% if object.available_licenses > 1 %}
+        {% if object.available_licenses is None or object.available_licenses > 1 %}
           <a href="{% url 'plugins:netbox_licenses:license_bulk_add_instances' pk=object.pk %}" class="btn btn-sm btn-info">
             <i class="mdi mdi-plus-multiple"></i> Bulk Add
           </a>
