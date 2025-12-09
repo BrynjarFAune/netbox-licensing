@@ -35,18 +35,79 @@
                     <td>{{ object.end_date|default:"—" }}</td>
                 </tr>
                 <tr>
-                    <th scope="row">Price (NOK)</th>
+                    <th scope="row">Status</th>
                     <td>
-                        {% load license_helpers %}
-                        {{ object.instance_price_nok|currency_format }}
-                        {% if object.license.active_period_currency != 'NOK' %}
-                        <br><small class="text-muted">Native: {{ object.license.active_period_per_seat_price|floatformat:2 }} {{ object.license.active_period_currency }}</small>
+                        {% if object.is_active %}
+                            <span class="badge text-bg-success">Active</span>
+                        {% else %}
+                            <span class="badge text-bg-secondary">Inactive</span>
                         {% endif %}
                     </td>
                 </tr>
             </table>
         </div>
     </div>
+    <div class="col col-md-6">
+        <div class="card">
+            <h5 class="card-header">Pricing Information</h5>
+            <table class="table table-hover attr-table">
+                {% if object.individual_price %}
+                    <tr>
+                        <th scope="row">Monthly Price</th>
+                        <td>
+                            {{ object.individual_price|floatformat:2 }}
+                            {% if object.individual_currency %}{{ object.individual_currency.currency_code }}{% else %}NOK{% endif %}
+                            <br><small class="text-muted">Individual subscription pricing</small>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Billing Period</th>
+                        <td>
+                            {% if object.billing_start %}{{ object.billing_start }}{% else %}{{ object.start_date }}{% endif %}
+                            &rarr;
+                            {% if object.billing_end %}{{ object.billing_end }}{% elif object.end_date %}{{ object.end_date }}{% else %}Ongoing{% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Months Active</th>
+                        <td>
+                            {{ object.months_active }} month{{ object.months_active|pluralize }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Total Cost</th>
+                        <td>
+                            <strong>
+                                {{ object.total_cost_to_date|floatformat:2 }}
+                                {% if object.individual_currency %}{{ object.individual_currency.currency_code }}{% else %}NOK{% endif %}
+                            </strong>
+                            {% if object.individual_currency and object.individual_currency.currency_code != 'NOK' %}
+                                <br><small class="text-muted">
+                                    {% load license_helpers %}
+                                    {{ object.total_cost_to_date_nok|currency_format:"NOK" }}
+                                </small>
+                            {% endif %}
+                            <br><small class="text-muted">{{ object.individual_price|floatformat:2 }} × {{ object.months_active }} months</small>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <th scope="row">Monthly Price (NOK)</th>
+                        <td>
+                            {% load license_helpers %}
+                            {{ object.instance_price_nok|currency_format }}
+                            <br><small class="text-muted">From license/period pricing</small>
+                            {% if object.license.active_period_currency != 'NOK' %}
+                                <br><small class="text-muted">Native: {{ object.license.active_period_per_seat_price|floatformat:2 }} {{ object.license.active_period_currency }}</small>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endif %}
+            </table>
+        </div>
+    </div>
+</div>
+<div class="row mb-3">
     <div class="col col-md-6">
         <div class="card">
             <h5 class="card-header">Related Information</h5>
