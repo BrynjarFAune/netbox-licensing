@@ -120,8 +120,8 @@ class LicenseInstanceForm(NetBoxModelForm):
         max_digits=12,
         decimal_places=2,
         widget=forms.NumberInput(attrs={'step': '0.01'}),
-        label="Individual Price",
-        help_text="Price for this specific instance (optional)"
+        label="Monthly Price",
+        help_text="Monthly subscription price for this instance (e.g., $20/month for Claude Pro)"
     )
 
     individual_currency = CharField(
@@ -155,9 +155,10 @@ class LicenseInstanceForm(NetBoxModelForm):
         fields = (
             'license', 'assigned_object_selector',
             'start_date', 'end_date',
-            'individual_price', 'individual_currency', 'billing_start', 'billing_end',
+            'individual_price', 'billing_start', 'billing_end',
             'comments', 'tags'
         )
+        # Note: individual_currency handled separately in save() due to ForeignKey conversion
         widgets = {
             'start_date': DateInput(attrs={'type': 'date', 'format': '%d/%m/%Y'}),
             'end_date': DateInput(attrs={'type': 'date', 'format': '%d/%m/%Y'}),

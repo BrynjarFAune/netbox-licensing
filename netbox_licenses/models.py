@@ -358,7 +358,7 @@ class LicenseInstance(ContactsMixin, NetBoxModel):
         decimal_places=2,
         null=True,
         blank=True,
-        help_text="Price for this individual instance (leave blank to use license/period pricing)"
+        help_text="Monthly subscription price for this instance (leave blank to use license/period pricing)"
     )
     individual_currency = models.ForeignKey(
         to='CurrencyConversionRate',
@@ -432,6 +432,49 @@ class LicenseInstance(ContactsMixin, NetBoxModel):
     def display_price(self):
         """Returns a formatted price display string"""
         return f"{self.license_price} {self.license_currency}"
+
+    @property
+    def months_active(self):
+        """Calculate number of months this instance has been/will be active"""
+        from dateutil.relativedelta import relativedelta
+
+        start = self.billing_start or self.start_date
+        end = self.billing_end or self.end_date or timezone.now().date()
+
+        if not start:
+            return 0
+
+        # Calculate difference in months
+        delta = relativedelta(end, start)
+        months = delta.years * 12 + delta.months + (1 if delta.days > 0 else 0)
+        return max(months, 1)  # Minimum 1 month
+
+    @property
+    def total_cost_to_date(self):
+        """Calculate total cost from start to now (or end date) for individual pricing"""
+        from decimal import Decimal
+
+        # Only applicable for individual pricing
+        if self.individual_price is None:
+            return None
+
+        months = self.months_active
+        return self.individual_price * Decimal(str(months))
+
+    @property
+    def total_cost_to_date_nok(self):
+        """Calculate total cost in NOK from start to now (or end date)"""
+        from decimal import Decimal
+
+        if self.individual_price is None:
+            return None
+
+        months = self.months_active
+        monthly_nok = self.instance_price_nok
+
+        if monthly_nok:
+            return monthly_nok * Decimal(str(months))
+        return Decimal('0.0')
 
     @property
     def is_active(self):
