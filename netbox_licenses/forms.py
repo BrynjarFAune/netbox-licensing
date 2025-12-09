@@ -288,6 +288,8 @@ class LicenseInstanceForm(NetBoxModelForm):
                     cleaned_data['individual_currency'] = currency
                 except (ValidationError, NorgesBankAPIError) as e:
                     self.add_error('individual_currency', f"Currency '{currency_code}' not found: {str(e)}")
+                    # CRITICAL: Set to None so we don't try to assign the string later
+                    cleaned_data['individual_currency'] = None
         elif individual_price and not individual_currency_code:
             # Price without currency - assume NOK
             from netbox_licenses.models import CurrencyConversionRate
@@ -313,9 +315,14 @@ class LicenseInstanceForm(NetBoxModelForm):
                 self.instance.assigned_object_id = assigned_object_selector.pk
 
             # CRITICAL: Handle currency conversion BEFORE super()._post_clean()
-            # This prevents Django from trying to assign the string value directly
+            # Only assign if it's a CurrencyConversionRate object (not a string)
             if 'individual_currency' in self.cleaned_data:
-                self.instance.individual_currency = self.cleaned_data['individual_currency']
+                currency_value = self.cleaned_data['individual_currency']
+                # Only assign if it's already converted to an object or None
+                from netbox_licenses.models import CurrencyConversionRate
+                if currency_value is None or isinstance(currency_value, CurrencyConversionRate):
+                    self.instance.individual_currency = currency_value
+                # If it's still a string, it means conversion failed - skip assignment
 
         super()._post_clean()
 
